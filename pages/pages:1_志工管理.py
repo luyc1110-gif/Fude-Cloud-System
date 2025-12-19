@@ -5,7 +5,7 @@ import gspread
 import time
 import plotly.express as px
 
-# --- 1. 🎨 薰衣草紫主題 (V4.2 終極整合版) ---
+# --- 1. 🎨 薰衣草紫主題 (V4.3 視覺美學版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
 # 定義顏色
@@ -15,7 +15,7 @@ TEXT_COLOR = "#4527A0"
 
 st.markdown(f"""
     <style>
-    /* 1. 全域字體強制深色 (解決看不見字的問題) */
+    /* 1. 全域字體強制深色 */
     html, body, [class*="css"] {{
         color: #212121 !important;
         font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
@@ -33,15 +33,12 @@ st.markdown(f"""
         font-weight: bold !important;
         font-size: 1rem !important;
     }}
-    
-    /* 輸入框本體 */
     .stTextInput input, .stSelectbox div[data-baseweb="select"] {{
         color: #000000 !important;
         background-color: #FFFFFF !important;
         border: 1px solid #B39DDB !important;
         border-radius: 10px;
     }}
-    /* 下拉選單的選項文字 */
     div[role="listbox"] ul {{
         background-color: #FFFFFF !important;
         color: #000000 !important;
@@ -88,6 +85,35 @@ st.markdown(f"""
         padding: 10px;
         border-radius: 15px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }}
+
+    /* 🔥 8. 全新設計：數據統計卡片 (Stat Card) */
+    .stat-card {{
+        background-color: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(103, 58, 183, 0.1);
+        text-align: center;
+        border: 1px solid #E1BEE7;
+        margin-bottom: 15px;
+    }}
+    .stat-title {{
+        color: #7E57C2;
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }}
+    .stat-value {{
+        color: #4527A0;
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin: 0;
+    }}
+    .stat-sub {{
+        color: #616161;
+        font-size: 1.2rem; /* 放大字體 */
+        font-weight: bold;
+        margin-top: 5px;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -137,7 +163,7 @@ def save_data_to_sheet(df, sheet_name):
     except Exception as e:
         st.error(f"寫入失敗：{e}")
 
-# --- 3. 🧮 邏輯運算 (包含狀態判斷與年齡) ---
+# --- 3. 🧮 邏輯運算 ---
 def calculate_age(birthday_str):
     if not birthday_str or len(birthday_str) < 4: return 0
     try:
@@ -155,23 +181,19 @@ def calculate_age(birthday_str):
     except: return 0
 
 def check_is_fully_retired(row):
-    # 只要有加入日期，且該加入日期對應的退出日期是空的，就算是在職
-    # 相反：如果所有有加入的類別都退出了，才算完全退出
     roles = [('祥和_加入日期', '祥和_退出日期'), ('據點週二_加入日期', '據點週二_退出日期'),
              ('據點週三_加入日期', '據點週三_退出日期'), ('環保_加入日期', '環保_退出日期')]
     
     has_any_role = False
     is_active = False
-    
     for join_col, exit_col in roles:
         if join_col in row and str(row[join_col]).strip() != "":
             has_any_role = True
-            # 有加入，且沒退出 => 在職
             if not (exit_col in row and str(row[exit_col]).strip() != ""):
                 is_active = True
                 
-    if not has_any_role: return False # 沒資料算在職(或新進)
-    return not is_active # 如果不是 active 就是 retired
+    if not has_any_role: return False 
+    return not is_active
 
 # --- 4. 🖥️ UI 導航 ---
 if 'page' not in st.session_state:
@@ -208,7 +230,7 @@ if st.session_state.page == 'home':
             if st.button("查看報表", key="h3", use_container_width=True):
                 st.session_state.page = 'report'; st.rerun()
 
-# === ⏰ 打卡頁 (包含專案說明欄位) ===
+# === ⏰ 打卡頁 ===
 elif st.session_state.page == 'checkin':
     st.markdown("## ⏰ 智能打卡站")
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
@@ -219,12 +241,10 @@ elif st.session_state.page == 'checkin':
         c_act, c_input = st.columns([1, 2])
         with c_act: 
             raw_act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES)
-            # 🔥【功能補回】如果是專案活動或教育訓練，跳出輸入框
             final_act = raw_act
             if raw_act in ["專案活動", "教育訓練"]:
-                note = st.text_input("📝 請輸入活動名稱/說明", placeholder="例如：社區大掃除、消防講習...")
-                if note:
-                    final_act = f"{raw_act}：{note}"
+                note = st.text_input("📝 請輸入活動名稱/說明", placeholder="例如：社區大掃除...")
+                if note: final_act = f"{raw_act}：{note}"
 
         def process_scan():
             pid = st.session_state.scan_box.strip().upper()
@@ -242,7 +262,7 @@ elif st.session_state.page == 'checkin':
             if not person.empty:
                 row = person.iloc[0]
                 name = row['姓名']
-                if check_is_fully_retired(row): st.error(f"❌ {name} 已顯示為「退出」，無法打卡。")
+                if check_is_fully_retired(row): st.error(f"❌ {name} 已退出")
                 else:
                     today = now.strftime("%Y-%m-%d")
                     t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
@@ -279,22 +299,19 @@ elif st.session_state.page == 'checkin':
                 save_data_to_sheet(pd.concat([logs, new], ignore_index=True), "logs")
                 st.success("已補登")
 
-# === 📋 名冊頁 (包含狀態篩選) ===
+# === 📋 名冊頁 ===
 elif st.session_state.page == 'members':
     st.markdown("## 📋 志工名冊管理")
     df = load_data_from_sheet("members")
     
     with st.expander("➕ 新增志工 (點擊展開)", expanded=True):
-        st.write("請輸入以下資料：")
         c1, c2, c3 = st.columns(3)
         with c1: n = st.text_input("姓名")
         with c2: p = st.text_input("身分證字號")
         with c3: b = st.text_input("生日 (YYYY-MM-DD)")
-        
         c4, c5 = st.columns([2, 1])
         with c4: addr = st.text_input("地址")
         with c5: ph = st.text_input("電話")
-        
         cats = st.multiselect("志工分類", ALL_CATEGORIES)
         
         if st.button("新增資料"):
@@ -316,35 +333,26 @@ elif st.session_state.page == 'members':
 
     if not df.empty:
         st.write("---")
-        
-        # 🔥【功能補回】自動判斷狀態，並提供篩選
         df['狀態'] = df.apply(lambda row: '已退出' if check_is_fully_retired(row) else '在職', axis=1)
         df['年齡'] = df['生日'].apply(calculate_age)
         
-        # 篩選器
         col_filter, col_spacer = st.columns([1, 3])
         with col_filter:
             status_filter = st.radio("名單檢視模式", ["只看在職", "查看所有 (含已退出)"], horizontal=True)
         
-        # 根據篩選過濾
-        if status_filter == "只看在職":
-            display_df = df[df['狀態'] == '在職']
-        else:
-            display_df = df
+        if status_filter == "只看在職": display_df = df[df['狀態'] == '在職']
+        else: display_df = df
             
-        # 欄位排序：把「狀態」放在最前面，方便查看
         special_cols = ['狀態', '姓名', '年齡', '電話', '地址', '志工分類']
         date_cols = [c for c in df.columns if '日期' in c]
         other_cols = [c for c in df.columns if c not in special_cols and c not in date_cols and c != '年齡' and c != '狀態']
-        
         final_cols = special_cols + date_cols + other_cols
         final_cols = [c for c in final_cols if c in df.columns]
         
-        # 顯示人數
         st.markdown(f"**共 {len(display_df)} 筆資料**")
         st.data_editor(display_df[final_cols], use_container_width=True, num_rows="dynamic", key="member_editor")
 
-# === 📊 報表頁 ===
+# === 📊 報表頁 (視覺美化版) ===
 elif st.session_state.page == 'report':
     st.markdown("## 📊 數據分析")
     
@@ -360,7 +368,6 @@ elif st.session_state.page == 'report':
     st.markdown("### 🎂 志工年齡結構 (在職志工)")
     if members.empty: st.info("尚無志工資料")
     else:
-        # 只統計在職志工
         active_members = members[~members.apply(check_is_fully_retired, axis=1)]
         active_members['Calculated_Age'] = active_members['生日'].apply(calculate_age)
         valid_ages = active_members[active_members['Calculated_Age'] > 0]
@@ -374,12 +381,20 @@ elif st.session_state.page == 'report':
                 if not subset.empty:
                     cat_stats.append({'志工類別': cat, '平均年齡': round(subset['Calculated_Age'].mean(), 1), '人數': len(subset)})
             
+            # 🔥 全新客製化卡片顯示
             if cat_stats:
                 df_stats = pd.DataFrame(cat_stats)
                 cols = st.columns(len(cat_stats))
                 for idx, row in df_stats.iterrows():
                     with cols[idx]:
-                        st.metric(label=f"{row['志工類別']}", value=f"{row['平均年齡']} 歲", delta=f"{row['人數']} 人")
+                        # 使用 HTML 渲染漂亮的卡片
+                        st.markdown(f"""
+                        <div class="stat-card">
+                            <div class="stat-title">{row['志工類別']}</div>
+                            <div class="stat-value">{row['平均年齡']} <span style="font-size:1rem; color:#888;">歲</span></div>
+                            <div class="stat-sub">共 {row['人數']} 人</div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
             st.write("")
             
@@ -389,16 +404,17 @@ elif st.session_state.page == 'report':
             age_counts = valid_ages['Age_Group'].value_counts().sort_index().reset_index()
             age_counts.columns = ['年齡區間', '人數']
             
-            fig = px.bar(
-                age_counts, x='年齡區間', y='人數', text='人數', 
-                color='人數', color_continuous_scale=['#D1C4E9', '#673AB7']
+            # 🔥 換成甜甜圈圖 (Donut Chart)
+            fig = px.pie(
+                age_counts, names='年齡區間', values='人數',
+                hole=0.4, # 中間挖空變成甜甜圈
+                color_discrete_sequence=px.colors.sequential.Purples_r # 使用紫色漸層
             )
+            fig.update_traces(textposition='outside', textinfo='label+percent+value') # 顯示標籤、百分比、數值
             fig.update_layout(
                 plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                font_color=THEME_COLOR, xaxis=dict(showgrid=False),
-                yaxis=dict(showgrid=False, visible=False),
-                margin=dict(t=10, b=10, l=10, r=10),
-                coloraxis_showscale=False
+                font=dict(color=TEXT_COLOR, size=14),
+                margin=dict(t=20, b=20, l=20, r=20),
+                showlegend=False # 隱藏圖例，直接顯示在圖上比較清楚
             )
-            fig.update_traces(textposition='outside', marker_line_width=0)
             st.plotly_chart(fig, use_container_width=True)
