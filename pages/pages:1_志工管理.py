@@ -5,15 +5,14 @@ import gspread
 import time
 import plotly.express as px
 import os
-import base64
 
-# --- 1. 🎨 視覺美學設定 (V8.0 完美對齊+卡片回歸版) ---
+# --- 1. 🎨 視覺美學設定 (V9.0 卡片回歸+強制整齊版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
 TW_TZ = timezone(timedelta(hours=8))
-PRIMARY = "#4A148C"    # 尊爵紫 (深)
+PRIMARY = "#4A148C"    # 尊爵紫
 ACCENT = "#7B1FA2"     # 亮紫
-BG_MAIN = "#F3F4F6"    # 極淺灰背景
+BG_MAIN = "#F3F4F6"    # 極淺灰
 
 st.markdown(f"""
     <style>
@@ -24,39 +23,23 @@ st.markdown(f"""
     }}
     .stApp {{ background-color: {BG_MAIN}; }}
     
-    /* 🔥 1. 圖片容器終極對齊術 */
-    div[data-testid="stImage"] {{
-        height: 100px;              /* 設定固定高度 */
-        display: flex;
-        align-items: center;        /* 垂直置中 */
-        justify-content: center;    /* 水平置中 */
-        margin-bottom: 5px;         /* 與下方按鈕的距離 */
-        overflow: hidden;           /* 超出範圍隱藏 */
-    }}
-    div[data-testid="stImage"] img {{
-        max-height: 90px !important;  /* 圖片最大高度 */
-        max-width: 100px !important;  /* 圖片最大寬度 */
-        object-fit: contain !important; /* 🔥 關鍵：保持比例，完整顯示 */
-        padding: 5px;
-    }}
-
-    /* 🔥 2. 找回您喜歡的「大卡片按鈕」樣式 */
+    /* 🔥 找回 V7.0 的大卡片按鈕風格 */
     .stButton>button {{
         width: 100%;
-        height: auto;               /* 高度自動 */
-        padding: 15px 0;            /* 增加內距 */
         background-color: white !important;
         color: {PRIMARY} !important;
-        border: 2px solid {PRIMARY} !important; /* 深紫邊框 */
+        border: 2px solid {PRIMARY} !important;
         border-radius: 15px !important;
         font-size: 20px !important;
         font-weight: 900 !important;
+        padding: 15px 0; /* 增加高度 */
         box-shadow: 0 4px 0px rgba(74, 20, 140, 0.2); /* 立體陰影 */
         transition: all 0.2s;
+        margin-top: 5px;
     }}
     .stButton>button:hover {{
         transform: translateY(-3px);
-        background-color: #F3E5F5 !important; /* 滑鼠移過去變淺紫 */
+        background-color: #F3E5F5 !important;
         box-shadow: 0 6px 0px rgba(74, 20, 140, 0.3);
     }}
     .stButton>button:active {{
@@ -64,7 +47,15 @@ st.markdown(f"""
         box-shadow: none;
     }}
     
-    /* 輸入框白底黑字 */
+    /* 圖片容器對齊 */
+    div[data-testid="stImage"] {{
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        height: 120px; /* 固定圖片區高度 */
+    }}
+    
+    /* 輸入框優化 */
     .stTextInput input, .stSelectbox div[data-baseweb="select"], .stDateInput input, .stTimeInput input {{
         background-color: #FFFFFF !important;
         color: #000000 !important;
@@ -76,7 +67,7 @@ st.markdown(f"""
         font-weight: bold;
     }}
     
-    /* 統計小卡 (戰情室) */
+    /* 統計小卡 */
     .dash-card {{
         background-color: white;
         padding: 15px;
@@ -88,7 +79,7 @@ st.markdown(f"""
     .dash-label {{ font-size: 1rem; color: #666; font-weight: bold; }}
     .dash-value {{ font-size: 1.8rem; color: {PRIMARY}; font-weight: 900; margin: 5px 0; }}
     .dash-sub {{ font-size: 0.9rem; color: #888; }}
-
+    
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     </style>
@@ -212,39 +203,41 @@ if st.session_state.page != 'home':
             if st.button("📊 報表", use_container_width=True): st.session_state.page = 'report'; st.rerun()
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-# === 🏠 首頁 (卡片回歸+圖片對齊) ===
+# === 🏠 首頁 (卡片回歸版) ===
 if st.session_state.page == 'home':
     st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>💜 福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
     
-    # 版面：置中
     col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1, 2, 2, 2, 1])
     
     # 🔥 1. 智能打卡
     with c1:
-        # 圖片
+        # 強制圖片寬度為 120 (解決大小不一問題)
         if os.path.exists("icon_checkin.png"):
-            st.image("icon_checkin.png") # 因為 CSS 已經控制了 stImage，所以這裡直接呼叫即可
+            st.image("icon_checkin.png", width=120) 
         else:
             st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
-        # 按鈕 (卡片樣式)
+        
         if st.button("智能打卡站", key="home_btn1"):
             st.session_state.page = 'checkin'; st.rerun()
 
-    # 🔥 2. 志工名冊
+    # 🔥 2. 志工名冊 (注意檔名 icon_members.png)
     with c2:
         if os.path.exists("icon_members.png"):
-            st.image("icon_members.png")
+            st.image("icon_members.png", width=120)
         else:
-            st.markdown("<div style='text-align:center; font-size:60px;'>📋</div>", unsafe_allow_html=True)
+            # 如果找不到，這裡會顯示文字提示，讓您知道檔案有問題
+            st.error("找不到 icon_members.png")
+        
         if st.button("志工名冊", key="home_btn2"):
             st.session_state.page = 'members'; st.rerun()
 
     # 🔥 3. 數據分析
     with c3:
         if os.path.exists("icon_report.png"):
-            st.image("icon_report.png")
+            st.image("icon_report.png", width=120)
         else:
             st.markdown("<div style='text-align:center; font-size:60px;'>📊</div>", unsafe_allow_html=True)
+        
         if st.button("數據分析", key="home_btn3"):
             st.session_state.page = 'report'; st.rerun()
     
