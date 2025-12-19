@@ -7,19 +7,13 @@ import plotly.express as px
 import os
 import base64
 
-# --- 1. 🎨 視覺美學設定 (V7.3 圖片整形修復版) ---
+# --- 1. 🎨 視覺美學設定 (V7.4 圖片對齊終極版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
 TW_TZ = timezone(timedelta(hours=8))
 PRIMARY = "#4A148C"
 ACCENT = "#7B1FA2"
 BG_MAIN = "#F3F4F6"
-
-# 讀取圖片並轉為 Base64 (解決圖片無法用 HTML 控制大小的問題)
-def get_img_as_base64(file_path):
-    with open(file_path, "rb") as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
 
 st.markdown(f"""
     <style>
@@ -29,18 +23,32 @@ st.markdown(f"""
     }}
     .stApp {{ background-color: {BG_MAIN}; }}
     
-    /* 膠囊按鈕優化 */
+    /* 🔥 關鍵修正：強制控制圖片高度與對齊 */
+    div[data-testid="stImage"] {{
+        display: flex;
+        justify-content: center; /* 水平置中 */
+        align-items: flex-end;   /* 靠下對齊 */
+        height: 120px;           /* 固定高度容器 */
+        margin-bottom: 10px;     /* 與按鈕的距離 */
+    }}
+    div[data-testid="stImage"] img {{
+        max-height: 120px !important; /* 圖片最高 120px */
+        width: auto !important;       /* 寬度自動 */
+        object-fit: contain;          /* 保持比例 */
+    }}
+
+    /* 膠囊按鈕 */
     .stButton>button {{
         width: 100%;
         background: linear-gradient(135deg, {PRIMARY} 0%, {ACCENT} 100%);
-        color: white !important; /* 強制白字 */
+        color: white !important;
         border: none !important;
         border-radius: 50px !important;
         font-size: 18px !important;
         font-weight: bold !important;
         padding: 10px 0;
         box-shadow: 0 4px 10px rgba(74, 20, 140, 0.3);
-        margin-top: 10px; /* 與上方圖片保持距離 */
+        margin-top: 0px; 
     }}
     .stButton>button:hover {{
         transform: translateY(-2px);
@@ -73,7 +81,6 @@ st.markdown(f"""
     .dash-value {{ font-size: 1.8rem; color: {PRIMARY}; font-weight: 900; margin: 5px 0; }}
     .dash-sub {{ font-size: 0.9rem; color: #888; }}
     
-    /* 隱藏選單 */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     </style>
@@ -197,30 +204,29 @@ if st.session_state.page != 'home':
             if st.button("📊 報表", use_container_width=True): st.session_state.page = 'report'; st.rerun()
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-# === 🏠 首頁 (完美圖片版) ===
+# === 🏠 首頁 (圖片對齊版) ===
 if st.session_state.page == 'home':
     st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>💜 福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
     
-    # 版面：置中 (中間三個各佔 2)
     col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1, 2, 2, 2, 1])
     
-    # 🔥 1. 智能打卡卡片 (強制控制圖片大小)
+    # 🔥 1. 智能打卡
     with c1:
-        # 使用 Columns 技巧來置中圖片
-        sub_c1, sub_c2, sub_c3 = st.columns([1, 2, 1]) # 中間佔 50%
-        with sub_c2:
+        # 使用 columns 讓圖片置中
+        s1, s2, s3 = st.columns([1, 4, 1])
+        with s2:
             if os.path.exists("icon_checkin.png"):
-                st.image("icon_checkin.png", use_container_width=True) # 因為外層已經限制寬度，這裡填滿即可
+                st.image("icon_checkin.png", use_container_width=True)
             else:
                 st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
         
         if st.button("進入打卡", key="home_btn1"):
             st.session_state.page = 'checkin'; st.rerun()
 
-    # 🔥 2. 志工名冊卡片
+    # 🔥 2. 志工名冊
     with c2:
-        sub_c1, sub_c2, sub_c3 = st.columns([1, 2, 1])
-        with sub_c2:
+        s1, s2, s3 = st.columns([1, 4, 1])
+        with s2:
             if os.path.exists("icon_members.png"):
                 st.image("icon_members.png", use_container_width=True)
             else:
@@ -229,10 +235,10 @@ if st.session_state.page == 'home':
         if st.button("名冊管理", key="home_btn2"):
             st.session_state.page = 'members'; st.rerun()
 
-    # 🔥 3. 數據分析卡片
+    # 🔥 3. 數據分析
     with c3:
-        sub_c1, sub_c2, sub_c3 = st.columns([1, 2, 1])
-        with sub_c2:
+        s1, s2, s3 = st.columns([1, 4, 1])
+        with s2:
             if os.path.exists("icon_report.png"):
                 st.image("icon_report.png", use_container_width=True)
             else:
