@@ -27,11 +27,6 @@ CARD_BG = "#FFFFFF"
 
 # =========================================================
 # 1) Styles
-#   ✅ 修正你提出的四件事：
-#   1) 「新增區」字被擋住 + 出現 keyboard_arrow_down 文字：是全域字體把 Material Icons 蓋掉 → 還原 icons 字體
-#   2) 「新增」按鈕看不到字：針對 stFormSubmitButton 做成紫底白字
-#   3) 在職/全部改成「在職/退隊」且卡片式：用 st.radio 但 CSS 變卡片、移除點點、無圖示
-#   4) 那條白色長條：主要來自 expander header / icon 異常 → 直接移除 expander，改用卡片區塊呈現
 # =========================================================
 st.markdown(
     f"""
@@ -52,7 +47,7 @@ st.markdown(
 /* 隱藏 Streamlit 原生側欄 */
 [data-testid="stSidebar"] {{ display: none; }}
 
-/* ✅ 文字字體（不要用 * 全灑，會把 Material Icons 變成 keyboard_arrow_down） */
+/* ✅ 不用 * 全灑，避免 Material Icons 變 keyboard_arrow_down */
 html, body {{
   font-family: "Noto Sans TC","Microsoft JhengHei","微軟正黑體",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
   color: var(--text);
@@ -68,7 +63,7 @@ html, body {{
   color: var(--text);
 }}
 
-/* ✅ 還原 Material Icons（避免 keyboard_arrow_down 文字跑出來） */
+/* ✅ 還原 Material Icons（避免出現 keyboard_arrow_down 文字） */
 .material-icons, .material-icons-outlined, .material-symbols-outlined,
 [data-testid="stIconMaterial"] span,
 span[translate="no"] {{
@@ -85,7 +80,6 @@ span[translate="no"] {{
   -webkit-font-smoothing: antialiased !important;
 }}
 
-/* 主容器 */
 .block-container {{
   padding-top: 2.0rem;
   padding-bottom: 2rem;
@@ -106,7 +100,7 @@ span[translate="no"] {{
   gap: 12px;
 
   position: sticky;
-  top: 72px;        /* 避開 Streamlit 上方黑色固定列 */
+  top: 72px;
   z-index: 999;
 }}
 
@@ -159,26 +153,29 @@ div[data-testid="stButton"] > button:active {{
   box-shadow: 0 5px 12px rgba(0,0,0,0.07);
 }}
 
-/* ✅ 表單送出按鈕（新增/補登/儲存）：紫底白字，解決「看不到字」 */
+/* ✅ 表單送出按鈕：紫底白字（強制把 button 內所有文字都白色） */
 div[data-testid="stFormSubmitButton"] > button {{
   width: 100% !important;
   border-radius: 999px !important;
   border: none !important;
   background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%) !important;
+  box-shadow: 0 12px 26px rgba(81,45,168,0.25) !important;
+  padding: 12px 16px !important;
+}}
+div[data-testid="stFormSubmitButton"] > button,
+div[data-testid="stFormSubmitButton"] > button * {{
   color: #FFFFFF !important;
   font-weight: 900 !important;
   font-size: 1.05rem !important;
   letter-spacing: 0.6px !important;
-  padding: 12px 16px !important;
-  box-shadow: 0 12px 26px rgba(81,45,168,0.25);
 }}
 div[data-testid="stFormSubmitButton"] > button:hover {{
   transform: translateY(-1px);
-  box-shadow: 0 16px 34px rgba(81,45,168,0.30);
+  box-shadow: 0 16px 34px rgba(81,45,168,0.30) !important;
 }}
 div[data-testid="stFormSubmitButton"] > button:active {{
   transform: translateY(1px);
-  box-shadow: 0 8px 18px rgba(81,45,168,0.20);
+  box-shadow: 0 8px 18px rgba(81,45,168,0.20) !important;
 }}
 
 /* ===== Card ===== */
@@ -229,13 +226,38 @@ div[data-testid="stFormSubmitButton"] > button:active {{
 div[data-testid="stImage"] {{ margin: 0 !important; }}
 div[data-testid="stImage"] img {{ margin: 0 !important; padding: 0 !important; }}
 
-/* ===== 讓 radio 變成卡片切換（在職 / 退隊），無點點、無圖示 ===== */
+/* ===== 分類統計小卡 ===== */
+.stat {{
+  background: white;
+  border-radius: 18px;
+  padding: 16px 16px;
+  border-left: 7px solid var(--accent);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.06);
+}}
+.stat-label {{
+  font-size: 0.95rem;
+  color: var(--muted) !important;
+  font-weight: 900;
+}}
+.stat-value {{
+  font-size: 2.1rem;
+  font-weight: 900;
+  color: var(--primary) !important;
+  line-height: 1.1;
+  margin-top: 6px;
+}}
+.stat-sub {{
+  font-size: 0.9rem;
+  color: #888 !important;
+  margin-top: 2px;
+}}
+
+/* ===== radio 變卡片（在職 / 退隊）===== */
 div[data-testid="stRadio"] div[role="radiogroup"] {{
   display: flex !important;
   gap: 12px !important;
   flex-wrap: wrap;
 }}
-/* 每個選項卡片 */
 div[data-testid="stRadio"] div[role="radio"] {{
   border: 1.5px solid rgba(74, 20, 140, 0.18);
   background: #FFFFFF;
@@ -245,17 +267,14 @@ div[data-testid="stRadio"] div[role="radio"] {{
   box-shadow: 0 10px 22px rgba(0,0,0,0.06);
   cursor: pointer;
 }}
-/* 隱藏原本的小圓點 */
 div[data-testid="stRadio"] svg {{
   display: none !important;
 }}
-/* 被選中的卡片 */
 div[data-testid="stRadio"] div[role="radio"][aria-checked="true"] {{
   background: #F6EAF8;
   border: 1.8px solid rgba(74, 20, 140, 0.35);
   box-shadow: 0 14px 30px rgba(0,0,0,0.08);
 }}
-/* radio 文案更漂亮 */
 div[data-testid="stRadio"] div[role="radio"] > div {{
   font-weight: 900;
   color: var(--primary) !important;
@@ -277,11 +296,11 @@ div[data-testid="stRadio"] div[role="radio"] > div {{
   border: 1px solid rgba(74, 20, 140, 0.22) !important;
 }}
 label {{
-  font-weight: 800 !important;
+  font-weight: 900 !important;
   color: var(--primary) !important;
 }}
 
-/* Dataframe/Editor 看起來像卡片 */
+/* Dataframe/Editor 像卡片 */
 div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {{
   background: white;
   border-radius: 22px;
@@ -523,7 +542,7 @@ def render_nav():
     spacer(14)
 
 # =========================================================
-# 6) HOME
+# 6) HOME  ✅ 補回「各類志工人數 / 平均年齡」
 # =========================================================
 def page_home():
     st.markdown(
@@ -581,15 +600,57 @@ def page_home():
     st.markdown(
         f"""
 <div class="card" style="padding: 26px; background: linear-gradient(135deg, #7E57C2 0%, #512DA8 100%); color: white;">
-  <div style="opacity:0.92; font-weight: 900;">📅 {this_year} 年度 - 全體志工總服務時數</div>
-  <div style="font-size: 3.2rem; font-weight: 900; margin-top: 10px;">
-    {total_h}<span style="font-size:1.4rem; font-weight:900;"> 小時</span>
-    {total_m}<span style="font-size:1.4rem; font-weight:900;"> 分</span>
+  <div style="opacity:0.92; font-weight: 900; color:white;">📅 {this_year} 年度 - 全體志工總服務時數</div>
+  <div style="font-size: 3.2rem; font-weight: 900; margin-top: 10px; color:white;">
+    {total_h}<span style="font-size:1.4rem; font-weight:900; color:white;"> 小時</span>
+    {total_m}<span style="font-size:1.4rem; font-weight:900; color:white;"> 分</span>
   </div>
 </div>
 """,
         unsafe_allow_html=True,
     )
+
+    # ✅ 補回「各類志工人數 / 平均年齡」
+    if members.empty:
+        spacer(12)
+        card_open("⚠️ 名冊讀取失敗", "無法顯示各類志工人數 / 平均年齡")
+        card_close()
+        return
+
+    dfm = members.copy()
+    dfm["狀態"] = dfm.apply(lambda r: "已退出" if check_is_fully_retired(r) else "在職", axis=1)
+    active_m = dfm[dfm["狀態"] == "在職"].copy()
+    active_m["年齡"] = active_m["生日"].apply(calculate_age)
+    valid_age = active_m[active_m["年齡"] > 0].copy()
+
+    spacer(14)
+    card_open("📌 在職志工概況", "人數與平均年齡（依分類）")
+
+    cols = st.columns(4)
+    idx = 0
+    for cat in ALL_CATEGORIES:
+        if cat == "臨時志工":
+            continue
+        subset = active_m[active_m["志工分類"].astype(str).str.contains(cat, na=False)]
+        age_subset = valid_age[valid_age["志工分類"].astype(str).str.contains(cat, na=False)]
+
+        count = len(subset)
+        avg_age = round(age_subset["年齡"].mean(), 1) if not age_subset.empty else 0
+
+        with cols[idx % 4]:
+            st.markdown(
+                f"""
+<div class="stat">
+  <div class="stat-label">{cat.replace('志工','')}</div>
+  <div class="stat-value">{count}<span style="font-size:1rem; color:#888; font-weight:900;"> 人</span></div>
+  <div class="stat-sub">平均 {avg_age} 歲</div>
+</div>
+""",
+                unsafe_allow_html=True,
+            )
+        idx += 1
+
+    card_close()
 
 # =========================================================
 # 7) CHECKIN
@@ -744,7 +805,7 @@ def page_checkin():
         card_close()
 
 # =========================================================
-# 8) MEMBERS  ✅（重做：移除 expander、修正新增區、卡片式在職/退隊）
+# 8) MEMBERS
 # =========================================================
 def page_members():
     render_nav()
@@ -752,7 +813,7 @@ def page_members():
 
     df = load_data_from_sheet("members")
 
-    # ---- 新增志工（不再用 expander，避免白長條與 icon 亂碼）----
+    # ---- 新增志工 ----
     card_open("新增志工", "請填寫基本資料與分類加入日期")
     with st.form("add_member_form"):
         c1, c2, c3 = st.columns(3)
@@ -834,7 +895,6 @@ def page_members():
 
     card_open("名冊檢視", "切換在職 / 退隊，並可直接編輯後儲存")
 
-    # ✅ 只要「在職 / 退隊」，卡片式（radio 但看起來是卡片）
     view_mode = st.radio(
         "檢視模式",
         ["在職", "退隊"],
@@ -845,10 +905,8 @@ def page_members():
 
     show_df = df2[df2["狀態"] == "在職"].copy() if view_mode == "在職" else df2[df2["狀態"] == "已退出"].copy()
 
-    # 讓編輯表更合理：退隊名單通常不需要改「加入/退出日期」但你要改也可以
-    cols = [
-        "身分證字號", "狀態", "姓名", "年齡", "電話", "地址", "志工分類"
-    ] + [c for c in df2.columns if "日期" in c] + ["備註"]
+    cols = ["身分證字號", "狀態", "姓名", "年齡", "電話", "地址", "志工分類"] + \
+           [c for c in df2.columns if "日期" in c] + ["備註"]
     cols = [c for c in cols if c in show_df.columns]
 
     edited = st.data_editor(
@@ -915,24 +973,24 @@ def page_report():
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(
-            f"<div class='card-tight card'><div class='card-title'>{this_year} 總工時</div><div style='font-size:2.2rem;font-weight:900;color:{PRIMARY};'>{total_h}h {total_m}m</div><div class='card-sub'>簽到/簽退配對計算</div></div>",
+            f"<div class='stat'><div class='stat-label'>{this_year} 總工時</div><div class='stat-value'>{total_h}h {total_m}m</div><div class='stat-sub'>簽到/簽退配對計算</div></div>",
             unsafe_allow_html=True,
         )
     with c2:
         st.markdown(
-            f"<div class='card-tight card'><div class='card-title'>今年出勤筆數</div><div style='font-size:2.2rem;font-weight:900;color:{PRIMARY};'>{len(y)}</div><div class='card-sub'>session 數</div></div>",
+            f"<div class='stat'><div class='stat-label'>今年出勤筆數</div><div class='stat-value'>{len(y)}</div><div class='stat-sub'>session 數</div></div>",
             unsafe_allow_html=True,
         )
     with c3:
         uniq = y["姓名"].nunique() if not y.empty else 0
         st.markdown(
-            f"<div class='card-tight card'><div class='card-title'>今年服務人數</div><div style='font-size:2.2rem;font-weight:900;color:{PRIMARY};'>{uniq}</div><div class='card-sub'>不重複姓名</div></div>",
+            f"<div class='stat'><div class='stat-label'>今年服務人數</div><div class='stat-value'>{uniq}</div><div class='stat-sub'>不重複姓名</div></div>",
             unsafe_allow_html=True,
         )
     with c4:
         avg = y["hours"].mean() if not y.empty else 0
         st.markdown(
-            f"<div class='card-tight card'><div class='card-title'>平均每次工時</div><div style='font-size:2.2rem;font-weight:900;color:{PRIMARY};'>{avg:.2f}h</div><div class='card-sub'>session 平均</div></div>",
+            f"<div class='stat'><div class='stat-label'>平均每次工時</div><div class='stat-value'>{avg:.2f}h</div><div class='stat-sub'>session 平均</div></div>",
             unsafe_allow_html=True,
         )
 
