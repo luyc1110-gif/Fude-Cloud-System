@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
-import time
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+import time
 
 # --- 設定網頁 ---
 st.set_page_config(page_title="志工管理 (雲端版)", page_icon="👤", layout="wide")
@@ -17,25 +16,30 @@ DISPLAY_ORDER = [
     '據點週三_加入日期', '據點週三_退出日期', '環保_加入日期', '環保_退出日期'
 ]
 
-# --- ☁️ Google Sheets 連線設定 (核心) ---
-# 使用 st.cache_resource 讓連線保持，不用每次操作都重連
+# 您的 Google 試算表 ID (這是這份檔案的唯一身分證)
+SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
+
+# --- ☁️ Google Sheets 連線設定 ---
 @st.cache_resource
 def get_google_sheet_client():
-    # 從 Streamlit 雲端的 secrets 讀取我們剛剛申請的鑰匙
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
-    client = gspread.authorize(creds)
-    return client
+    # 使用 streamlit secrets 裡的憑證
+    return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
 
 def load_data_from_sheet(sheet_name):
     try:
         client = get_google_sheet_client()
-        # 開啟試算表 'Fude_Database' (請確保您的 Google 試算表名稱是這個)
-        sheet = client.open("Fude_Database").worksheet(sheet_name)
+        
+        # 🔑 [關鍵修改] 改用 open_by_key 直接鎖定檔案 ID，不再用搜尋
+        try:
+            sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
+        except gspread.exceptions.WorksheetNotFound:
+            st.error(f"❌ 找不到分頁 '{sheet_name}'。請檢查 Google 試算表下方的工作表名稱是否完全正確 (大小寫要一樣)。")
+            return pd.DataFrame()
+            
         data = sheet.get_all_records()
         df = pd.DataFrame(data)
         
-        # 強制轉為字串避免格式跑掉
+        # 強制轉為字串
         df = df.astype(str)
         
         # 欄位補齊
@@ -49,18 +53,19 @@ def load_data_from_sheet(sheet_name):
                 
         return df
     except Exception as e:
-        st.error(f"無法讀取 Google 試算表 ({sheet_name})：{e}")
+        st.error(f"❌ 連線失敗：{e}")
+        st.caption("請檢查：1. Google API 是否啟用 2. 試算表是否已共用給機器人 email")
         return pd.DataFrame()
 
 def save_data_to_sheet(df, sheet_name):
     try:
         client = get_google_sheet_client()
-        sheet = client.open("Fude_Database").worksheet(sheet_name)
-        # 清空舊資料並寫入新資料 (這在資料量小時最安全簡單)
+        # 🔑 改用 open_by_key
+        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
         sheet.update([df.columns.values.tolist()] + df.values.tolist())
     except Exception as e:
-        st.error(f"無法寫入 Google 試算表：{e}")
+        st.error(f"寫入失敗：{e}")
 
 # --- CSS 樣式 ---
 st.markdown("""
@@ -89,6 +94,7 @@ def format_time(seconds):
     return f"{int(hours)}小時 {int(minutes)}分"
 
 def calculate_work_stats(log_df):
+    if log_df.empty: return 0, 0
     count = log_df['日期'].nunique()
     total_seconds = 0
     for d, day_group in log_df.groupby('日期'):
@@ -96,9 +102,12 @@ def calculate_work_stats(log_df):
         actions = day_group['動作'].tolist()
         times = pd.to_datetime(day_group['日期'].astype(str) + ' ' + day_group['時間']).tolist()
         if '簽到' in actions and '簽退' in actions:
-            t_in = times[actions.index('簽到')]
-            t_out = times[len(actions) - 1 - actions[::-1].index('簽退')]
-            if t_out > t_in: total_seconds += (t_out - t_in).total_seconds()
+            try:
+                t_in = times[actions.index('簽到')]
+                # 找最後一個簽退
+                t_out = times[len(actions) - 1 - actions[::-1].index('簽退')]
+                if t_out > t_in: total_seconds += (t_out - t_in).total_seconds()
+            except: pass
     return count, total_seconds
 
 # --- 側邊欄 ---
@@ -134,6 +143,10 @@ if page == "智能打卡站":
             df = load_data_from_sheet("members")
             logs = load_data_from_sheet("logs")
             
+            if df.empty: 
+                st.session_state.msg = ("error", "無法讀取志工名單，請稍候再試。")
+                st.session_state.scan_box = ""; return
+
             person = df[df['身分證字號'] == pid]
             if not person.empty:
                 row = person.iloc[0]
@@ -169,37 +182,37 @@ if page == "智能打卡站":
 
     with tab2:
         st.write("手動補登與維護")
-        mode = st.radio("模式", ["單筆補登", "整批補登", "紀錄維護"])
+        mode = st.radio("模式", ["單筆補登", "紀錄維護"])
         
         if mode == "單筆補登":
             df = load_data_from_sheet("members")
-            sel = st.selectbox("選擇志工", ["請選擇"] + df['姓名'].tolist())
-            if sel != "請選擇":
-                target = df[df['姓名']==sel].iloc[0]
-                with st.form("fix"):
-                    d = st.date_input("日期")
-                    t = st.time_input("時間")
-                    a = st.radio("動作", ["簽到", "簽退"], horizontal=True)
-                    if st.form_submit_button("補登"):
-                        logs = load_data_from_sheet("logs")
-                        new = pd.DataFrame([{
-                            '姓名': target['姓名'], '身分證字號': target['身分證字號'], 
-                            '電話': target['電話'], '志工分類': target['志工分類'],
-                            '動作': a, '時間': t.strftime("%H:%M:%S"), '日期': d.strftime("%Y-%m-%d"), '活動內容': act
-                        }])
-                        save_data_to_sheet(pd.concat([logs, new], ignore_index=True), "logs")
-                        st.success("已補登")
-                        
-        elif mode == "整批補登":
-             st.info("批次掃描功能在雲端版需確保網路穩定")
-             # (為節省篇幅，邏輯與上面類似，只是寫入 logs)
-             
+            if not df.empty:
+                sel = st.selectbox("選擇志工", ["請選擇"] + df['姓名'].tolist())
+                if sel != "請選擇":
+                    target = df[df['姓名']==sel].iloc[0]
+                    with st.form("fix"):
+                        d = st.date_input("日期")
+                        t = st.time_input("時間")
+                        a = st.radio("動作", ["簽到", "簽退"], horizontal=True)
+                        if st.form_submit_button("補登"):
+                            logs = load_data_from_sheet("logs")
+                            new = pd.DataFrame([{
+                                '姓名': target['姓名'], '身分證字號': target['身分證字號'], 
+                                '電話': target['電話'], '志工分類': target['志工分類'],
+                                '動作': a, '時間': t.strftime("%H:%M:%S"), '日期': d.strftime("%Y-%m-%d"), '活動內容': act
+                            }])
+                            save_data_to_sheet(pd.concat([logs, new], ignore_index=True), "logs")
+                            st.success("已補登")
+            else:
+                st.warning("無法載入志工名單")
+
         elif mode == "紀錄維護":
             logs = load_data_from_sheet("logs")
-            edited = st.data_editor(logs, num_rows="dynamic", use_container_width=True)
-            if st.button("儲存變更"):
-                save_data_to_sheet(edited, "logs")
-                st.success("已更新雲端資料庫")
+            if not logs.empty:
+                edited = st.data_editor(logs, num_rows="dynamic", use_container_width=True)
+                if st.button("儲存變更"):
+                    save_data_to_sheet(edited, "logs")
+                    st.success("已更新雲端資料庫")
 
 elif page == "志工名單管理":
     st.title("📋 志工名單 (雲端版)")
@@ -211,7 +224,7 @@ elif page == "志工名單管理":
         p = c2.text_input("身分證")
         cats = st.multiselect("分類", ALL_CATEGORIES)
         if st.button("新增"):
-            if not df[df['身分證字號']==p].empty:
+            if not df.empty and not df[df['身分證字號']==p].empty:
                 st.error("重複")
             else:
                 new = pd.DataFrame([{'姓名':n, '身分證字號':p, '志工分類':",".join(cats)}])
@@ -220,17 +233,17 @@ elif page == "志工名單管理":
                 save_data_to_sheet(pd.concat([df, new], ignore_index=True), "members")
                 st.success("已新增")
     
-    edited = st.data_editor(df, num_rows="dynamic", use_container_width=True)
-    if st.button("儲存修改"):
-        save_data_to_sheet(edited, "members")
-        st.success("已同步至 Google 試算表")
+    if not df.empty:
+        edited = st.data_editor(df, num_rows="dynamic", use_container_width=True)
+        if st.button("儲存修改"):
+            save_data_to_sheet(edited, "members")
+            st.success("已同步至 Google 試算表")
 
 elif page == "數據報表":
     st.title("📊 數據報表 (雲端版)")
     logs = load_data_from_sheet("logs")
     
     if not logs.empty:
-        # 榮譽榜
         _, total_sec = calculate_work_stats(logs)
         st.markdown(f"""<div class="honor-card"><h3>🏆 累積總時數</h3><h1>{format_time(total_sec)}</h1></div>""", unsafe_allow_html=True)
         st.divider()
