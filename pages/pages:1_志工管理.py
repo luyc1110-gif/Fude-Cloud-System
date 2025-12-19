@@ -26,11 +26,16 @@ MUTED = "#666666"
 CARD_BG = "#FFFFFF"
 
 # =========================================================
-# 1) Styles (更穩定：少用 class*="css"，改用 data-testid 與自訂 class)
+# 1) Styles
+#   - 首頁：移除三張卡「上方說明區」→ 改成乾淨 tile
+#   - 三個按鈕字體：更好看、更粗
+#   - topbar 避開 Streamlit 上方黑條：top: 72px
 # =========================================================
 st.markdown(
     f"""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
+
 :root {{
   --primary: {PRIMARY};
   --accent: {ACCENT};
@@ -40,24 +45,20 @@ st.markdown(
   --card: {CARD_BG};
 }}
 
-.stApp {{
-  background: var(--bg);
-}}
+.stApp {{ background: var(--bg); }}
 
 /* 隱藏 Streamlit 原生側欄 */
-[data-testid="stSidebar"] {{
-  display: none;
-}}
+[data-testid="stSidebar"] {{ display: none; }}
 
-/* 全域字體（只針對主要區域，別掃到所有 div） */
+/* 全域字體 */
 [data-testid="stAppViewContainer"] * {{
-  font-family: "Microsoft JhengHei", "微軟正黑體", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  font-family: "Noto Sans TC", "Microsoft JhengHei", "微軟正黑體", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   color: var(--text);
 }}
 
-/* 讓主容器左右留白更漂亮 */
+/* 主容器 */
 .block-container {{
-  padding-top: 1.25rem;
+  padding-top: 2.2rem;
   padding-bottom: 2rem;
   max-width: 1250px;
 }}
@@ -74,9 +75,10 @@ st.markdown(
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+
   position: sticky;
-  top: 10px;
-  z-index: 50;
+  top: 72px;        /* ✅ 避開上方黑色固定列 */
+  z-index: 999;
 }}
 
 .brand {{
@@ -104,26 +106,29 @@ st.markdown(
   color: var(--muted) !important;
 }}
 
-/* ===== Nav Buttons (膠囊) ===== */
+/* ===== Buttons：字體更好看 + 更粗 ===== */
 div[data-testid="stButton"] > button {{
   width: 100%;
   border-radius: 999px !important;
-  border: 1.5px solid rgba(74, 20, 140, 0.25) !important;
+  border: 1.5px solid rgba(74, 20, 140, 0.28) !important;
   background: white !important;
   color: var(--primary) !important;
-  font-weight: 800 !important;
-  padding: 10px 14px !important;
+  font-family: "Noto Sans TC", "Microsoft JhengHei", "微軟正黑體", sans-serif !important;
+  font-weight: 900 !important;              /* ✅ 更粗 */
+  font-size: 1.05rem !important;            /* ✅ 更好看 */
+  letter-spacing: 0.6px !important;
+  padding: 12px 16px !important;
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.07);
 }}
 div[data-testid="stButton"] > button:hover {{
   transform: translateY(-1px);
   background: #F6EAF8 !important;
-  box-shadow: 0 10px 22px rgba(0,0,0,0.09);
+  box-shadow: 0 12px 26px rgba(0,0,0,0.10);
 }}
 div[data-testid="stButton"] > button:active {{
   transform: translateY(1px);
-  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+  box-shadow: 0 5px 12px rgba(0,0,0,0.07);
 }}
 
 /* ===== Card ===== */
@@ -134,9 +139,7 @@ div[data-testid="stButton"] > button:active {{
   box-shadow: 0 14px 34px rgba(0,0,0,0.06);
   padding: 18px 18px;
 }}
-.card-tight {{
-  padding: 14px 16px;
-}}
+.card-tight {{ padding: 14px 16px; }}
 .card-title {{
   font-weight: 900;
   font-size: 1.05rem;
@@ -147,6 +150,30 @@ div[data-testid="stButton"] > button:active {{
   font-size: 0.9rem;
   color: var(--muted) !important;
   margin: 0 0 10px 0;
+}}
+
+/* ===== Home Tile（首頁三張卡用）===== */
+.tile {{
+  background: white;
+  border-radius: 26px;
+  padding: 22px 20px 18px;
+  box-shadow: 0 18px 38px rgba(0,0,0,0.07);
+  border: 1px solid rgba(255,255,255,0.85);
+  text-align: center;
+}}
+.tile-icon {{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 150px;
+  margin-bottom: 6px;
+}}
+.tile-title {{
+  font-weight: 900;
+  font-size: 1.22rem;
+  color: var(--primary) !important;
+  margin: 2px 0 14px;
+  letter-spacing: 0.6px;
 }}
 
 /* Dashboard Stat */
@@ -206,7 +233,6 @@ div[data-testid="stExpander"] summary {{
   color: var(--primary) !important;
 }}
 
-/* Hide Streamlit menu/footer */
 #MainMenu {{ visibility: hidden; }}
 footer {{ visibility: hidden; }}
 </style>
@@ -265,7 +291,6 @@ DISPLAY_ORDER = [
 
 @st.cache_resource
 def get_google_sheet_client():
-    # 需要 st.secrets["gcp_service_account"]
     return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
 
 @st.cache_data(ttl=60)
@@ -277,7 +302,6 @@ def load_data_from_sheet(sheet_name: str) -> pd.DataFrame:
         df = pd.DataFrame(data)
 
         if df.empty:
-            # 依工作表補欄位
             if sheet_name == "members":
                 df = pd.DataFrame(columns=DISPLAY_ORDER)
             elif sheet_name == "logs":
@@ -297,9 +321,7 @@ def load_data_from_sheet(sheet_name: str) -> pd.DataFrame:
                     df[c] = ""
 
         return df
-
     except Exception:
-        # 不在這裡 st.error，避免快取重複噴訊息
         return pd.DataFrame()
 
 def save_data_to_sheet(df: pd.DataFrame, sheet_name: str):
@@ -307,8 +329,7 @@ def save_data_to_sheet(df: pd.DataFrame, sheet_name: str):
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
-        df2 = df.copy()
-        df2 = df2.fillna("").astype(str)
+        df2 = df.copy().fillna("").astype(str)
         sheet.update([df2.columns.values.tolist()] + df2.values.tolist())
         load_data_from_sheet.clear()
         st.toast("✅ 已儲存", icon="✅")
@@ -360,7 +381,6 @@ def check_is_fully_retired(row: pd.Series) -> bool:
     return not is_active
 
 def build_sessions(logs_df: pd.DataFrame) -> pd.DataFrame:
-    """把簽到/簽退配對成 session（同人同日，依時間排序；找下一個簽退）"""
     if logs_df.empty:
         return pd.DataFrame(columns=["姓名", "身分證字號", "日期", "活動內容", "start", "end", "seconds"])
 
@@ -378,7 +398,6 @@ def build_sessions(logs_df: pd.DataFrame) -> pd.DataFrame:
         i = 0
         while i < len(actions):
             if actions[i] == "簽到":
-                # 找下一個簽退
                 j = i + 1
                 while j < len(actions) and actions[j] != "簽退":
                     j += 1
@@ -421,7 +440,6 @@ def goto(page_key: str):
     st.rerun()
 
 def render_nav():
-    # 用 topbar + 三顆膠囊按鈕
     page_map = {
         "home": "🏠 首頁",
         "checkin": "⏰ 打卡站",
@@ -448,60 +466,47 @@ def render_nav():
     spacer(18)
 
 # =========================================================
-# 6) HOME
+# 6) HOME (✅ 移除三張卡上方說明與白色條狀物 → 改成乾淨 tile)
 # =========================================================
 def page_home():
-    # 首頁不黏 topbar（但你也可以留著）
     st.markdown(
         f"""
 <div style="text-align:center; margin-top: 10px;">
-  <div style="font-size: 2.1rem; font-weight: 900; color: {PRIMARY};">福德里 - 志工管理系統</div>
-  <div style="color: {MUTED}; margin-top: 6px;">打卡、名冊、報表，一套搞定。</div>
+  <div style="font-size: 2.2rem; font-weight: 900; color: {PRIMARY}; letter-spacing: 1px;">福德里 - 志工管理系統</div>
+  <div style="color: {MUTED}; margin-top: 8px; font-weight: 700;">打卡、名冊、報表，一套搞定。</div>
 </div>
 """,
         unsafe_allow_html=True,
     )
-    spacer(22)
+    spacer(26)
 
-    # 三張入口卡
     c1, c2, c3 = st.columns(3)
+
+    def tile(icon_path, emoji_fallback, title, btn_text, btn_key, target_page):
+        st.markdown("<div class='tile'>", unsafe_allow_html=True)
+        st.markdown("<div class='tile-icon'>", unsafe_allow_html=True)
+
+        if icon_path and os.path.exists(icon_path):
+            st.image(icon_path, width=150)
+        else:
+            st.markdown(f"<div style='font-size:88px; line-height:1;'>{emoji_fallback}</div>", unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='tile-title'>{title}</div>", unsafe_allow_html=True)
+
+        if st.button(btn_text, key=btn_key):
+            goto(target_page)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
     with c1:
-        card_open("⏰ 智能打卡站", "現場刷卡 / 補登 / 修改紀錄", tight=False)
-        spacer(6)
-        if os.path.exists("icon_checkin.png"):
-            st.image("icon_checkin.png", width=110)
-        else:
-            st.markdown("<div style='font-size:64px; text-align:center;'>⏰</div>", unsafe_allow_html=True)
-        spacer(10)
-        if st.button("進入打卡站", key="home_go_checkin"):
-            goto("checkin")
-        card_close()
-
+        tile("icon_checkin.png", "⏰", "智能打卡站", "進入打卡站", "home_btn_checkin", "checkin")
     with c2:
-        card_open("📋 志工名冊", "新增志工、維護資料、在職/退出", tight=False)
-        spacer(6)
-        if os.path.exists("icon_members.png"):
-            st.image("icon_members.png", width=110)
-        else:
-            st.markdown("<div style='font-size:64px; text-align:center;'>📋</div>", unsafe_allow_html=True)
-        spacer(10)
-        if st.button("進入名冊管理", key="home_go_members"):
-            goto("members")
-        card_close()
-
+        tile("icon_members.png", "📋", "志工名冊", "進入名冊管理", "home_btn_members", "members")
     with c3:
-        card_open("📊 數據分析", "工時、出勤、活動統計", tight=False)
-        spacer(6)
-        if os.path.exists("icon_report.png"):
-            st.image("icon_report.png", width=110)
-        else:
-            st.markdown("<div style='font-size:64px; text-align:center;'>📊</div>", unsafe_allow_html=True)
-        spacer(10)
-        if st.button("進入報表分析", key="home_go_report"):
-            goto("report")
-        card_close()
+        tile("icon_report.png", "📊", "數據分析", "進入報表分析", "home_btn_report", "report")
 
-    spacer(22)
+    spacer(24)
 
     # 即時概況
     logs = load_data_from_sheet("logs")
@@ -518,11 +523,10 @@ def page_home():
 
     total_h, total_m = seconds_to_hm(total_sec)
 
-    # 大卡：總時數
     st.markdown(
         f"""
 <div class="card" style="padding: 26px; background: linear-gradient(135deg, #7E57C2 0%, #512DA8 100%); color: white;">
-  <div style="opacity:0.92; font-weight: 800;">📅 {this_year} 年度 - 全體志工總服務時數</div>
+  <div style="opacity:0.92; font-weight: 900;">📅 {this_year} 年度 - 全體志工總服務時數</div>
   <div style="font-size: 3.2rem; font-weight: 900; margin-top: 10px;">
     {total_h}<span style="font-size:1.4rem; font-weight:900;"> 小時</span>
     {total_m}<span style="font-size:1.4rem; font-weight:900;"> 分</span>
@@ -533,7 +537,6 @@ def page_home():
     )
     spacer(14)
 
-    # 分類統計小卡
     if members.empty:
         card_open("⚠️ 無法讀取名冊", "請確認 Google Sheets / 服務帳號權限。", tight=True)
         card_close()
@@ -585,17 +588,15 @@ def page_checkin():
 
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
 
-    # ========== Tab1：現場打卡 ==========
     with tab1:
         card_open("⚡️ 現場打卡", "輸入身分證或刷卡；系統會自動判斷簽到/簽退", tight=False)
-        c1, c2 = st.columns([1.2, 2.2])
-        with c1:
-            raw_act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES, key="act_select")
-            final_act = raw_act
-            if raw_act in ["專案活動", "教育訓練"]:
-                note = st.text_input("📝 請輸入名稱", placeholder="例：大掃除 / 反詐宣導", key="act_note")
-                if note:
-                    final_act = f"{raw_act}：{note}"
+
+        raw_act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES, key="act_select")
+        final_act = raw_act
+        if raw_act in ["專案活動", "教育訓練"]:
+            note = st.text_input("📝 請輸入名稱", placeholder="例：大掃除 / 反詐宣導", key="act_note")
+            if note:
+                final_act = f"{raw_act}：{note}"
 
         def process_scan():
             pid = st.session_state.get("scan_box", "").strip().upper()
@@ -631,10 +632,8 @@ def page_checkin():
                 return
 
             today = now.strftime("%Y-%m-%d")
-            # 今天該人的 logs
-            if df_l.empty:
-                t_logs = pd.DataFrame()
-            else:
+            t_logs = pd.DataFrame()
+            if not df_l.empty:
                 t_logs = df_l[
                     (df_l["身分證字號"].astype(str).str.upper() == pid)
                     & (df_l["日期"].astype(str) == today)
@@ -670,7 +669,6 @@ def page_checkin():
         st.caption("提示：同一張卡 2 分鐘內重複刷會被擋掉（防誤刷）。")
         card_close()
 
-    # ========== Tab2：補登 ==========
     with tab2:
         df_m = load_data_from_sheet("members")
         if df_m.empty:
@@ -696,6 +694,7 @@ def page_checkin():
                     names = st.multiselect("選擇多位", name_list)
 
                 submitted = st.form_submit_button("✅ 補登")
+
             if submitted:
                 if not names or (len(names) == 1 and names[0] == ""):
                     st.warning("請先選擇志工。")
@@ -721,7 +720,6 @@ def page_checkin():
                     st.success("✅ 已補登")
             card_close()
 
-    # ========== Tab3：修改紀錄 ==========
     with tab3:
         logs = load_data_from_sheet("logs")
         card_open("✏️ 紀錄修改", "直接編修 logs（小心：這裡是強力模式）", tight=False)
@@ -729,11 +727,9 @@ def page_checkin():
             st.info("無資料")
         else:
             edited = st.data_editor(logs, num_rows="dynamic", use_container_width=True, key="logs_editor")
-            c1, c2 = st.columns([1, 5])
-            with c1:
-                if st.button("💾 儲存修改", use_container_width=True):
-                    save_data_to_sheet(edited, "logs")
-                    st.success("✅ 已更新")
+            if st.button("💾 儲存修改", use_container_width=True):
+                save_data_to_sheet(edited, "logs")
+                st.success("✅ 已更新")
         card_close()
 
 # =========================================================
@@ -775,15 +771,12 @@ def page_members():
             d_e = right.text_input("環保加入日", value=str(date.today()) if is_e else "")
 
             submitted = st.form_submit_button("✅ 新增")
+
         if submitted:
             if not p:
                 st.error("身分證必填")
             else:
-                if df.empty:
-                    df_check = pd.DataFrame(columns=DISPLAY_ORDER)
-                else:
-                    df_check = df.copy()
-
+                df_check = df.copy() if not df.empty else pd.DataFrame(columns=DISPLAY_ORDER)
                 if (df_check["身分證字號"].astype(str).str.upper() == str(p).upper()).any():
                     st.error("重複：此身分證已存在")
                 else:
@@ -808,7 +801,6 @@ def page_members():
                     for c in DISPLAY_ORDER:
                         if c not in new.columns:
                             new[c] = ""
-                    # 補上缺的欄位
                     for c in DISPLAY_ORDER:
                         if c not in df_check.columns:
                             df_check[c] = ""
@@ -830,46 +822,52 @@ def page_members():
     df2["狀態"] = df2.apply(lambda r: "已退出" if check_is_fully_retired(r) else "在職", axis=1)
     df2["年齡"] = df2["生日"].apply(calculate_age)
 
-    card_open("名冊檢視", "可切換在職/全部，並直接編輯（資料會寫回 Google Sheets）", tight=False)
+    card_open("名冊檢視", "可切換在職/全部，並直接編輯後儲存", tight=False)
     mode = st.radio("檢視模式", ["🟢 在職", "📋 全部"], horizontal=True, key="members_view_mode")
     show_df = df2[df2["狀態"] == "在職"].copy() if mode == "🟢 在職" else df2.copy()
 
-    cols = ["狀態", "姓名", "年齡", "電話", "地址", "志工分類"] + [c for c in df2.columns if "日期" in c] + ["備註"]
+    # ✅ 把 身分證字號放進來，才能安全對齊儲存
+    cols = ["身分證字號", "狀態", "姓名", "年齡", "電話", "地址", "志工分類"] + \
+           [c for c in df2.columns if "日期" in c] + ["備註"]
     cols = [c for c in cols if c in show_df.columns]
 
     edited = st.data_editor(
         show_df[cols],
         use_container_width=True,
         num_rows="dynamic",
+        disabled=["身分證字號", "狀態", "年齡"],  # ✅ 保護關鍵欄位
         key="members_editor",
     )
-    c1, c2 = st.columns([1.2, 6])
-    with c1:
-        if st.button("💾 儲存名冊", use_container_width=True):
-            # 把 edited 合併回原 df2（避免只存畫面欄位）
-            # 以身分證做 key
-            base = df2.copy()
-            ed = edited.copy()
-            if "身分證字號" not in base.columns:
-                st.error("名冊缺少 身分證字號 欄位，無法安全儲存。")
-            else:
-                # 更新 base 的對應欄位
-                for i in range(len(ed)):
-                    # 如果畫面沒有身分證欄位，就用姓名+電話判斷不可靠；因此強制要求 base 有
-                    # 這裡簡化：以 '姓名'+'電話' 對應（但更建議把 身分證字號 也放進 cols）
-                    pass
 
-                # ✅ 更穩做法：把 身分證字號 也放進顯示欄位，方便對齊
-                # 這裡直接用全量覆寫：讀取最新 df2，再以 key 合併
-                # -> 你的 cols 沒放 身分證字號，我在這裡補一個「安全儲存」：直接儲存整張 df2 不改
-                # 所以我改成：把 身分證字號 加進畫面欄位（不可見你可自己決定），避免錯寫
-                st.warning("為了避免對不到人，建議把『身分證字號』也放進表格欄位再啟用儲存。")
-    card_close()
+    if st.button("💾 儲存名冊", use_container_width=True):
+        base = df2.copy()
+        key = "身分證字號"
 
-    # 直接提示你「最好怎麼做」
-    spacer(10)
-    card_open("✅ 建議（名冊編輯的安全儲存）", "把『身分證字號』也顯示在表格內（可放最左），儲存時才能穩定對齊", tight=True)
-    st.code("把 cols 變成：\ncols = ['身分證字號','狀態','姓名','年齡','電話','地址','志工分類'] + ...", language="text")
+        base[key] = base[key].astype(str).str.upper()
+        ed = edited.copy()
+        ed[key] = ed[key].astype(str).str.upper()
+
+        # 以 key 更新 base 的可編欄位
+        for col in ed.columns:
+            if col in [key, "狀態", "年齡"]:
+                continue
+            if col not in base.columns:
+                base[col] = ""
+            base = base.merge(ed[[key, col]], on=key, how="left", suffixes=("", "_new"))
+            base[col] = base[f"{col}_new"].where(base[f"{col}_new"].notna(), base[col])
+            base.drop(columns=[f"{col}_new"], inplace=True)
+
+        # 不把狀態/年齡寫回表
+        base = base.drop(columns=["狀態", "年齡"], errors="ignore")
+
+        # 補齊欄位、依 DISPLAY_ORDER 儲存
+        for c in DISPLAY_ORDER:
+            if c not in base.columns:
+                base[c] = ""
+        base_out = base[DISPLAY_ORDER].copy()
+        save_data_to_sheet(base_out, "members")
+        st.success("✅ 名冊已更新")
+
     card_close()
 
 # =========================================================
@@ -892,16 +890,13 @@ def page_report():
         card_close()
         return
 
-    # 派生欄位
     sessions["month"] = pd.to_datetime(sessions["start"]).dt.to_period("M").astype(str)
     sessions["hours"] = sessions["seconds"] / 3600.0
 
-    # KPI
     this_year = datetime.now().year
     y = sessions[pd.to_datetime(sessions["start"]).dt.year == this_year].copy()
     total_h, total_m = seconds_to_hm(y["seconds"].sum() if not y.empty else 0)
 
-    # 顯示 KPI 卡
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(
@@ -928,7 +923,6 @@ def page_report():
 
     spacer(16)
 
-    # 圖表區
     card_open("📈 趨勢與分佈", "你可以用下面的篩選器快速看重點", tight=False)
 
     c1, c2, c3 = st.columns([1.2, 1.2, 1.6])
@@ -951,7 +945,7 @@ def page_report():
         fig = px.bar(agg, x="活動內容", y="hours", title=f"{year_sel} 活動別總工時（Top {topn}）")
         st.plotly_chart(fig, use_container_width=True)
 
-    else:  # 姓名
+    else:
         agg = sf.groupby("姓名", as_index=False)["hours"].sum().sort_values("hours", ascending=False).head(topn)
         fig = px.bar(agg, x="姓名", y="hours", title=f"{year_sel} 志工別總工時（Top {topn}）")
         st.plotly_chart(fig, use_container_width=True)
@@ -959,7 +953,6 @@ def page_report():
     card_close()
     spacer(14)
 
-    # 原始資料區
     card_open("📝 近期出勤（logs）", "原始打卡紀錄", tight=False)
     st.dataframe(logs, use_container_width=True, height=420)
     card_close()
