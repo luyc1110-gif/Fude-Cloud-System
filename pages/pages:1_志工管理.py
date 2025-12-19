@@ -3,75 +3,75 @@ import pandas as pd
 from datetime import datetime, date
 import gspread
 import time
-import plotly.express as px  # 引入繪圖庫
+import plotly.express as px
 
-# --- 1. 🎨 薰衣草紫主題與 CSS 美化 ---
+# --- 1. 🎨 薰衣草紫主題 (高對比修正版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
-# 定義薰衣草紫主色調
-THEME_COLOR = "#8E7CC3"  # 較深的薰衣草紫 (按鈕/標題)
-BG_COLOR = "#F3E5F5"     # 極淺的紫 (背景)
-CARD_COLOR = "#FFFFFF"   # 卡片白
+# 定義顏色變數
+THEME_COLOR = "#673AB7"  # 深紫色 (按鈕/重點)
+BG_COLOR = "#F3E5F5"     # 淺紫背景
+TEXT_COLOR = "#311B92"   # 深藍紫色 (標題文字)
+BODY_TEXT = "#212121"    # 深鐵灰 (一般內文，確保閱讀清晰)
 
 st.markdown(f"""
     <style>
-    /* 全站背景設定 */
+    /* 1. 強制設定全域文字顏色 (解決白字問題) */
+    html, body, [class*="css"] {{
+        color: {BODY_TEXT};
+        font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+    }}
+    
+    /* 2. 背景設定 */
     .stApp {{
         background-color: {BG_COLOR};
-        background-image: linear-gradient(180deg, #F3E5F5 0%, #EDE7F6 100%);
+        background-image: linear-gradient(180deg, #F3E5F5 0%, #E1BEE7 100%);
     }}
     
-    /* 隱藏預設的左側 Sidebar (Streamlit 內建) */
-    [data-testid="stSidebar"] {{
-        display: none;
-    }}
-    
-    /* 卡片式容器風格 */
-    .css-1r6slb0, .stDataFrame, .stTab, div[data-testid="stVerticalBlock"] > div {{
-        background-color: {CARD_COLOR};
-        border-radius: 20px;
-        padding: 15px;
-        box-shadow: 0 4px 20px rgba(142, 124, 195, 0.15); /* 紫色陰影 */
+    /* 3. 卡片容器風格 (白底 + 深色陰影) */
+    .stDataFrame, .stTab, div[data-testid="stVerticalBlock"] > div {{
+        background-color: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border: 1px solid rgba(0,0,0,0.05);
     }}
 
-    /* 按鈕美化：薰衣草紫按鈕 */
+    /* 4. 標題文字強制深色 (解決標題看不見的問題) */
+    h1, h2, h3, h4, h5, h6 {{
+        color: {TEXT_COLOR} !important;
+        font-weight: 800 !important;
+        text-shadow: none !important; /* 移除陰影避免模糊 */
+    }}
+    
+    /* 5. 一般文字與說明 */
+    p, span, div {{
+        color: {BODY_TEXT};
+    }}
+
+    /* 6. 按鈕美化 */
     .stButton>button {{
         background-color: {THEME_COLOR};
-        color: white;
+        color: white !important; /* 按鈕字一定是白色 */
         border-radius: 30px;
         border: none;
         padding: 10px 25px;
         font-weight: bold;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
     }}
     .stButton>button:hover {{
-        background-color: #7B68EE; /* 深一點的紫 */
-        transform: translateY(-3px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        background-color: #512DA8;
+        transform: scale(1.02);
     }}
 
-    /* 首頁大卡片按鈕特製 */
-    .big-card-btn > button {{
-        height: 150px;
-        width: 100%;
-        font-size: 1.5rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #B39DDB 0%, #7E57C2 100%);
+    /* 7. 首頁大卡片修正 */
+    .big-card-text {{
+        font-size: 1.2rem;
+        color: {BODY_TEXT};
+        text-align: center;
+        margin-bottom: 10px;
+        font-weight: bold;
     }}
-
-    /* 標題與文字 */
-    h1, h2, h3 {{
-        color: #512DA8; /* 深紫文字 */
-        font-weight: 800 !important;
-    }}
-    
-    /* 成功與錯誤訊息 */
-    .stSuccess {{ background-color: #D1C4E9; color: #311B92; }}
-    .stError {{ background-color: #FFCDD2; color: #B71C1C; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -97,7 +97,6 @@ def load_data_from_sheet(sheet_name):
         data = sheet.get_all_records()
         df = pd.DataFrame(data)
         df = df.astype(str)
-        
         if sheet_name == 'members':
             for c in DISPLAY_ORDER:
                 if c not in df.columns: df[c] = ""
@@ -121,25 +120,20 @@ def save_data_to_sheet(df, sheet_name):
 
 # --- 3. 🧮 邏輯運算 (含年齡計算) ---
 def calculate_age(birthday_str):
-    # 嘗試解析多種生日格式
-    if not birthday_str or len(birthday_str) < 4: return "未填寫"
+    if not birthday_str or len(birthday_str) < 4: return 0
     try:
-        # 處理常見格式 YYYY/MM/DD, YYYY-MM-DD, YYYY.MM.DD
         b_date = None
         for fmt in ["%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d", "%Y%m%d"]:
             try:
                 b_date = datetime.strptime(birthday_str, fmt)
                 break
             except: continue
-        
         if b_date:
             today = date.today()
             age = today.year - b_date.year - ((today.month, today.day) < (b_date.month, b_date.day))
             return age
-        else:
-            return "格式錯誤"
-    except:
-        return "格式錯誤"
+        else: return 0
+    except: return 0
 
 def check_is_fully_retired(row):
     roles = [('祥和_加入日期', '祥和_退出日期'), ('據點週二_加入日期', '據點週二_退出日期'),
@@ -150,56 +144,46 @@ def check_is_fully_retired(row):
             if not (exit_col in row and row[exit_col]): is_active = True
     return not is_active
 
-# --- 4. 🖥️ UI 導航控制 (核心改造) ---
-# 初始化頁面狀態
+# --- 4. 🖥️ UI 導航控制 ---
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
-# 頂部導航列 (除了首頁外都顯示)
+# 導航按鈕列
 if st.session_state.page != 'home':
-    c1, c2, c3, c4 = st.columns([1, 1, 1, 3])
-    with c1:
-        if st.button("🏠 回首頁"): st.session_state.page = 'home'; st.rerun()
-    with c2:
-        if st.button("⏰ 智能打卡"): st.session_state.page = 'checkin'; st.rerun()
-    with c3:
-        if st.button("📊 數據報表"): st.session_state.page = 'report'; st.rerun()
-    st.divider()
-
-# === 🏠 首頁 (卡片式選單) ===
-if st.session_state.page == 'home':
-    st.markdown("<h1 style='text-align: center; font-size: 3rem;'>💜 福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>請點擊下方卡片進入功能</p>", unsafe_allow_html=True)
-    st.write("")
-    st.write("")
-    
-    col1, col2, col3 = st.columns(3)
-    
+    col1, col2, col3, space = st.columns([1, 1, 1, 4])
     with col1:
-        st.markdown('<div class="big-card-btn">', unsafe_allow_html=True)
-        if st.button("⏰\n\n智能打卡站\n(手機/電腦)", key="home_btn_1"):
-            st.session_state.page = 'checkin'
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
+        if st.button("🏠 回首頁"): st.session_state.page = 'home'; st.rerun()
     with col2:
-        st.markdown('<div class="big-card-btn">', unsafe_allow_html=True)
-        if st.button("📋\n\n志工名冊管理\n(新增/修改)", key="home_btn_2"):
-            st.session_state.page = 'members'
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-        
+        if st.button("⏰ 智能打卡"): st.session_state.page = 'checkin'; st.rerun()
     with col3:
-        st.markdown('<div class="big-card-btn">', unsafe_allow_html=True)
-        if st.button("📊\n\n數據與年齡報表\n(統計分析)", key="home_btn_3"):
-            st.session_state.page = 'report'
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        if st.button("📊 數據報表"): st.session_state.page = 'report'; st.rerun()
+    st.write("---")
+
+# === 🏠 首頁 ===
+if st.session_state.page == 'home':
+    st.markdown(f"<h1 style='text-align: center; color: {TEXT_COLOR};'>💜 福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='text-align: center; color: #555;'>請點擊下方卡片進入功能</h4>", unsafe_allow_html=True)
+    st.write("")
+    
+    # 使用 container 包裹卡片，確保背景是白色的
+    with st.container():
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown(f'<div class="big-card-text">⏰ 智能打卡站</div>', unsafe_allow_html=True)
+            if st.button("進入打卡系統", key="btn_h1", use_container_width=True):
+                st.session_state.page = 'checkin'; st.rerun()
+        with c2:
+            st.markdown(f'<div class="big-card-text">📋 志工名冊管理</div>', unsafe_allow_html=True)
+            if st.button("管理名單", key="btn_h2", use_container_width=True):
+                st.session_state.page = 'members'; st.rerun()
+        with c3:
+            st.markdown(f'<div class="big-card-text">📊 數據與年齡分析</div>', unsafe_allow_html=True)
+            if st.button("查看報表", key="btn_h3", use_container_width=True):
+                st.session_state.page = 'report'; st.rerun()
 
 # === ⏰ 智能打卡頁面 ===
 elif st.session_state.page == 'checkin':
-    st.title("⏰ 智能打卡站")
-    
+    st.markdown(f"## ⏰ 智能打卡站")
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
     
     tab1, tab2 = st.tabs(["⚡️ 快速打卡區", "🛠️ 補登與維護"])
@@ -212,30 +196,24 @@ elif st.session_state.page == 'checkin':
         def process_scan():
             pid = st.session_state.scan_box.strip().upper()
             if not pid: return
-            
             now = datetime.now()
             last = st.session_state['scan_cooldowns'].get(pid)
             if last and (now - last).total_seconds() < 120:
                 st.warning(f"⏳ 兩分鐘內請勿重複刷卡 ({pid})")
                 st.session_state.scan_box = ""; return
-
             df_m = load_data_from_sheet("members")
             df_l = load_data_from_sheet("logs")
-            
             if df_m.empty: st.error("❌ 無法讀取名單"); return
-
             person = df_m[df_m['身分證字號'] == pid]
             if not person.empty:
                 row = person.iloc[0]
                 name = row['姓名']
-                if check_is_fully_retired(row):
-                    st.error(f"❌ {name} 已退出")
+                if check_is_fully_retired(row): st.error(f"❌ {name} 已退出")
                 else:
                     today = now.strftime("%Y-%m-%d")
                     t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
                     action = "簽到"
                     if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": action = "簽退"
-                    
                     new_log = pd.DataFrame([{
                         '姓名': name, '身分證字號': pid, '電話': row['電話'], '志工分類': row['志工分類'],
                         '動作': action, '時間': now.strftime("%H:%M:%S"), '日期': today, '活動內容': act
@@ -243,8 +221,7 @@ elif st.session_state.page == 'checkin':
                     save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
                     st.session_state['scan_cooldowns'][pid] = now
                     st.success(f"✅ {name} {action} 成功！")
-            else:
-                st.error("❌ 查無此人")
+            else: st.error("❌ 查無此人")
             st.session_state.scan_box = ""
 
         st.text_input("請輸入身分證 (或掃描)", key="scan_box", on_change=process_scan)
@@ -257,7 +234,6 @@ elif st.session_state.page == 'checkin':
             with c1: t_name = st.selectbox("志工", df_m['姓名'].tolist())
             with c2: t_date = st.date_input("日期")
             with c3: t_action = st.radio("動作", ["簽到", "簽退"], horizontal=True)
-            
             if st.button("補登"):
                 row = df_m[df_m['姓名'] == t_name].iloc[0]
                 logs = load_data_from_sheet("logs")
@@ -271,18 +247,14 @@ elif st.session_state.page == 'checkin':
 
 # === 📋 志工名單頁面 ===
 elif st.session_state.page == 'members':
-    st.title("📋 志工名冊管理")
-    
-    # 回首頁按鈕已經在最上方了，這裡專注內容
+    st.markdown(f"## 📋 志工名冊管理")
     df = load_data_from_sheet("members")
-    
     with st.expander("➕ 新增志工 (展開)", expanded=False):
         c1, c2, c3 = st.columns(3)
         n = c1.text_input("姓名")
         p = c2.text_input("身分證字號")
         b = c3.text_input("生日 (YYYY-MM-DD)", placeholder="例：1960-01-01")
         cats = st.multiselect("分類", ALL_CATEGORIES)
-        
         if st.button("新增"):
             if not p: st.error("身分證必填");
             elif not df.empty and p in df['身分證字號'].values: st.error("重複")
@@ -291,69 +263,46 @@ elif st.session_state.page == 'members':
                 for c in DISPLAY_ORDER: 
                     if c not in new.columns: new[c] = ""
                 save_data_to_sheet(pd.concat([df, new], ignore_index=True), "members")
-                st.success("新增成功")
-                time.sleep(1); st.rerun()
+                st.success("新增成功"); time.sleep(1); st.rerun()
 
     if not df.empty:
-        # 計算年齡預覽
         df['年齡'] = df['生日'].apply(calculate_age)
-        # 調整顯示順序，把年齡放在前面一點
         cols = ['姓名', '年齡', '生日', '電話', '志工分類'] + [c for c in df.columns if c not in ['姓名', '年齡', '生日', '電話', '志工分類']]
         st.data_editor(df[cols], use_container_width=True, num_rows="dynamic", key="member_editor")
-        if st.button("💾 儲存名單"):
-            # 注意：這裡僅示範，完整版需處理欄位對應
-            st.warning("請直接在 Google Sheets 修改較為安全，或使用新增功能。")
 
 # === 📊 報表與年齡分析 ===
 elif st.session_state.page == 'report':
-    st.title("📊 數據與年齡分析")
-    
+    st.markdown(f"## 📊 數據與年齡分析")
     logs = load_data_from_sheet("logs")
     members = load_data_from_sheet("members")
-    
     tab_work, tab_age = st.tabs(["📈 出勤統計", "🎂 年齡結構分析"])
     
     with tab_work:
-        if logs.empty:
-            st.info("尚無出勤資料")
-        else:
-            st.dataframe(logs, use_container_width=True)
+        if logs.empty: st.info("尚無出勤資料")
+        else: st.dataframe(logs, use_container_width=True)
             
     with tab_age:
-        if members.empty:
-            st.info("尚無志工資料")
+        if members.empty: st.info("尚無志工資料")
         else:
-            # 計算年齡
             members['Calculated_Age'] = members['生日'].apply(calculate_age)
-            
-            # 過濾出有效年齡 (排除 '格式錯誤' 或 '未填寫')
-            valid_ages = members[members['Calculated_Age'].apply(lambda x: isinstance(x, int))]
+            valid_ages = members[members['Calculated_Age'] > 0]
             
             if valid_ages.empty:
-                st.warning("⚠️ 目前志工資料中沒有有效的「生日」資料，無法計算年齡。請至名單管理補填生日 (格式 YYYY-MM-DD)。")
+                st.warning("⚠️ 無有效生日資料，請至名單補填生日 (YYYY-MM-DD)。")
             else:
-                # 1. 顯示平均年齡
                 avg_age = valid_ages['Calculated_Age'].mean()
                 c1, c2, c3 = st.columns(3)
                 c1.metric("平均年齡", f"{avg_age:.1f} 歲")
                 c2.metric("最年長", f"{valid_ages['Calculated_Age'].max()} 歲")
                 c3.metric("最年輕", f"{valid_ages['Calculated_Age'].min()} 歲")
-                
                 st.divider()
-                
-                # 2. 年齡分佈圖 (長條圖)
-                # 建立年齡區間
                 bins = [0, 20, 30, 40, 50, 60, 70, 80, 90, 100]
                 labels = ['20歲以下', '20-30歲', '30-40歲', '40-50歲', '50-60歲', '60-70歲', '70-80歲', '80-90歲', '90歲以上']
                 valid_ages['Age_Group'] = pd.cut(valid_ages['Calculated_Age'], bins=bins, labels=labels, right=False)
-                
                 age_counts = valid_ages['Age_Group'].value_counts().sort_index().reset_index()
                 age_counts.columns = ['年齡區間', '人數']
                 
-                # 使用 Plotly 畫漂亮的紫色圖表
                 fig = px.bar(age_counts, x='年齡區間', y='人數', title="志工年齡分佈圖", text='人數',
-                             color_discrete_sequence=['#7E57C2']) # 使用薰衣草紫
-                fig.update_layout(plot_bgcolor="white")
+                             color_discrete_sequence=['#7E57C2'])
+                fig.update_layout(plot_bgcolor="white", font=dict(color="#333"))
                 st.plotly_chart(fig, use_container_width=True)
-                
-                st.caption("註：僅統計生日格式正確之志工資料")
