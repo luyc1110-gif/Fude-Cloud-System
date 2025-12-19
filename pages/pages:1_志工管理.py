@@ -6,7 +6,7 @@ import time
 import plotly.express as px
 import os
 
-# --- 1. 🎨 視覺美學設定 (V10.0 完美對齊與字體設計版) ---
+# --- 1. 🎨 視覺美學設定 (V10.1 向右微調+字體加粗版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
 TW_TZ = timezone(timedelta(hours=8))
@@ -23,23 +23,25 @@ st.markdown(f"""
     }}
     .stApp {{ background-color: {BG_MAIN}; }}
     
-    /* 🔥 V10.0 新增：卡片按鈕字體設計感優化 */
+    /* 🔥 卡片按鈕優化 */
     .stButton>button {{
         width: 100%;
         background-color: white !important;
         color: {PRIMARY} !important;
         border: 2px solid {PRIMARY} !important;
         border-radius: 15px !important;
-        padding: 15px 0;
+        
+        /* ✨ 字體優化區 */
+        font-size: 22px !important;
+        font-weight: 900 !important;      /* 最粗體 */
+        letter-spacing: 1.5px !important; /* 字距 */
+        
+        /* 📐 排版優化區 */
+        padding: 15px 30px !important;    /* 上下15, 左右30 (避免貼邊) */
+        margin-top: 10px;
+        
         box-shadow: 0 4px 0px rgba(74, 20, 140, 0.2);
         transition: all 0.2s;
-        margin-top: 5px;
-        
-        /* ✨ 字體設計感關鍵 */
-        font-size: 22px !important;       /* 加大字號 */
-        font-weight: 700 !important;      /* 稍微降低字重，更有質感 */
-        letter-spacing: 2px !important;   /* 增加字距，提升現代感 */
-        text-shadow: 0px 1px 1px rgba(74, 20, 140, 0.1); /* 極細微的文字陰影增加層次 */
     }}
     .stButton>button:hover {{
         transform: translateY(-3px);
@@ -207,48 +209,46 @@ if st.session_state.page != 'home':
             if st.button("📊 報表", use_container_width=True): st.session_state.page = 'report'; st.rerun()
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-# === 🏠 首頁 (完美對齊版) ===
+# === 🏠 首頁 (向右對齊修正版) ===
 if st.session_state.page == 'home':
+    # 標題
+    st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
     
-    # 🔥 使用外層 Columns 來強制整體置中 (左空1, 中間佔8, 右空1)
-    outer_c1, outer_c2, outer_c3 = st.columns([1, 8, 1])
+    # 🔥🔥🔥 關鍵排版調整：
+    # 原本是 [1, 2, 2, 2, 1] (左右對稱)
+    # 現在改為 [1.2, 2, 2, 2, 0.8] -> 左邊空位多一點(1.2)，右邊少一點(0.8)，整體就會往右移
     
-    with outer_c2:
-        # 標題 (已去除愛心)
-        st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
+    col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1.2, 2, 2, 2, 0.8])
+    
+    # 🔥 1. 智能打卡
+    with c1:
+        if os.path.exists("icon_checkin.png"):
+            st.image("icon_checkin.png", width=120)
+        else:
+            st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
         
-        # 內層 Columns 放三個卡片
-        c1, c2, c3 = st.columns(3)
+        if st.button("智能打卡站", key="home_btn1"):
+            st.session_state.page = 'checkin'; st.rerun()
+
+    # 🔥 2. 志工名冊
+    with c2:
+        if os.path.exists("icon_members.png"):
+            st.image("icon_members.png", width=120)
+        else:
+            st.error("缺 icon_members.png")
         
-        # 🔥 1. 智能打卡
-        with c1:
-            if os.path.exists("icon_checkin.png"):
-                st.image("icon_checkin.png", width=120)
-            else:
-                st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
-            
-            if st.button("智能打卡站", key="home_btn1"):
-                st.session_state.page = 'checkin'; st.rerun()
+        if st.button("志工名冊", key="home_btn2"):
+            st.session_state.page = 'members'; st.rerun()
 
-        # 🔥 2. 志工名冊
-        with c2:
-            if os.path.exists("icon_members.png"):
-                st.image("icon_members.png", width=120)
-            else:
-                st.error("找不到 icon_members.png")
-            
-            if st.button("志工名冊", key="home_btn2"):
-                st.session_state.page = 'members'; st.rerun()
-
-        # 🔥 3. 數據分析
-        with c3:
-            if os.path.exists("icon_report.png"):
-                st.image("icon_report.png", width=120)
-            else:
-                st.markdown("<div style='text-align:center; font-size:60px;'>📊</div>", unsafe_allow_html=True)
-            
-            if st.button("數據分析", key="home_btn3"):
-                st.session_state.page = 'report'; st.rerun()
+    # 🔥 3. 數據分析
+    with c3:
+        if os.path.exists("icon_report.png"):
+            st.image("icon_report.png", width=120)
+        else:
+            st.markdown("<div style='text-align:center; font-size:60px;'>📊</div>", unsafe_allow_html=True)
+        
+        if st.button("數據分析", key="home_btn3"):
+            st.session_state.page = 'report'; st.rerun()
     
     st.markdown("---")
     st.markdown(f"### 📊 {datetime.now().year} 年度即時概況")
