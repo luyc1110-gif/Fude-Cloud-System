@@ -18,20 +18,20 @@ st.set_page_config(
 TW_TZ = timezone(timedelta(hours=8))
 
 # 配色變數
-PRIMARY = "#4A148C"   # 尊爵紫 (文字/邊框)
-ACCENT  = "#7B1FA2"   # 亮紫 (圖表/重點)
-BG_MAIN = "#F0F2F5"   # 灰藍底 (現代感背景)
-TEXT    = "#212121"   # 深黑字 (確保清晰)
+PRIMARY = "#4A148C"   # 尊爵紫
+ACCENT  = "#7B1FA2"   # 亮紫
+BG_MAIN = "#F0F2F5"   # 灰藍底
+TEXT    = "#212121"   # 深黑字
 
 # =========================================================
-# 1) CSS 樣式 (V15.0 顯色終極版 + 導航回歸)
+# 1) CSS 樣式 (V15.1 完整修復版)
 # =========================================================
 st.markdown(
     f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
 
-/* 1. 全域字體強制深色 (解決字體看不到的問題) */
+/* 1. 全域字體強制深色 */
 html, body, [class*="css"], div, p, span, li, ul {{
     font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     color: {TEXT} !important;
@@ -42,7 +42,7 @@ html, body, [class*="css"], div, p, span, li, ul {{
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 2. 輸入框與下拉選單顯色 (強制白底黑字) */
+/* 2. 輸入框與下拉選單顯色 */
 .stTextInput input, .stDateInput input, .stTimeInput input {{
     background-color: #FFFFFF !important;
     color: #000000 !important;
@@ -50,7 +50,6 @@ html, body, [class*="css"], div, p, span, li, ul {{
     border-radius: 10px;
     font-weight: 700;
 }}
-/* 下拉選單文字 */
 div[data-baseweb="select"] > div {{
     background-color: #FFFFFF !important;
     color: #000000 !important;
@@ -61,14 +60,13 @@ div[data-baseweb="select"] span {{ color: #000000 !important; }}
 div[role="listbox"] ul {{ background-color: #FFFFFF !important; }}
 div[role="option"] {{ color: #000000 !important; }}
 
-/* 標籤文字 */
 label {{
     color: {PRIMARY} !important;
     font-weight: 900 !important;
     font-size: 1.05rem !important;
 }}
 
-/* 3. 按鈕美化 (大卡片風格回歸) */
+/* 3. 導航按鈕 (首頁與上方) */
 div[data-testid="stButton"] > button {{
     width: 100%;
     background-color: white !important;
@@ -87,21 +85,21 @@ div[data-testid="stButton"] > button:hover {{
 }}
 div[data-testid="stButton"] > button:active {{ transform: translateY(2px); box-shadow: none; }}
 
-/* 表單送出按鈕 (實心紫 + 強制白字) */
-div[data-testid="stFormSubmitButton"] > button {
+/* 🔥 關鍵修改：表單送出按鈕 (加強設計感) */
+div[data-testid="stFormSubmitButton"] > button {{
     background: linear-gradient(135deg, {PRIMARY}, {ACCENT}) !important;
     color: #FFFFFF !important;      /* 強制亮白字 */
     font-weight: 900 !important;    /* 最粗體 */
     font-size: 1.2rem !important;   /* 字變大 */
     border: none !important;
     box-shadow: 0 4px 15px rgba(123, 31, 162, 0.3) !important; /* 增加立體感 */
-}
-div[data-testid="stFormSubmitButton"] > button:hover {
+}}
+div[data-testid="stFormSubmitButton"] > button:hover {{
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(123, 31, 162, 0.5) !important;
-}
+}}
 
-/* 4. 萬物皆卡片 (Forms, Dataframes, Expanders) */
+/* 4. 萬物皆卡片 */
 div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderContent, div[data-testid="stExpander"] details {{
     background-color: white;
     border-radius: 20px;
@@ -111,7 +109,7 @@ div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderCo
     border: 1px solid white;
 }}
 
-/* 5. 戰情室小卡 (Home Stats) */
+/* 5. 戰情室小卡 */
 .dash-card {{
     background-color: white;
     padding: 15px;
@@ -124,24 +122,7 @@ div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderCo
 .dash-value {{ font-size: 1.8rem; color: {PRIMARY} !important; font-weight: 900; margin: 5px 0; }}
 .dash-sub {{ font-size: 0.9rem; color: #888 !important; }}
 
-/* 6. 名冊檢視按鈕 (Pills) */
-div[data-testid="stRadio"] label {{
-    background-color: white;
-    border: 1px solid #ddd;
-    padding: 10px 20px;
-    border-radius: 20px;
-    margin-right: 10px;
-    cursor: pointer;
-    font-weight: bold;
-    color: {TEXT} !important;
-    transition: all 0.2s;
-}}
-div[data-testid="stRadio"] label:hover {{
-    border-color: {PRIMARY};
-    color: {PRIMARY} !important;
-}}
-
-/* 7. 導航列容器 */
+/* 6. 導航列容器 */
 .nav-container {{
     background-color: white;
     padding: 15px;
@@ -156,6 +137,23 @@ div[data-testid="stImage"] {{
     justify-content: center;
     align-items: flex-end;
     height: 120px;
+}}
+
+/* 🔥 分頁籤 (Tabs) 美化 */
+div[data-baseweb="tab-list"] {{
+    gap: 10px;
+}}
+div[data-baseweb="tab"] {{
+    background-color: white;
+    border-radius: 30px;
+    padding: 10px 20px;
+    border: 1px solid #E0E0E0;
+    font-weight: bold;
+}}
+div[data-baseweb="tab"][aria-selected="true"] {{
+    background-color: {PRIMARY} !important;
+    color: white !important;
+    border: 1px solid {PRIMARY};
 }}
 
 </style>
@@ -255,13 +253,40 @@ def calculate_hours_year(logs_df, year):
             else: i += 1
     return total_seconds
 
+# 计算报表统计
+def calculate_stats(logs_df):
+    if logs_df.empty: return 0, 0
+    logs_df['dt'] = pd.to_datetime(logs_df['日期'] + ' ' + logs_df['時間'], errors='coerce')
+    logs_df = logs_df.dropna(subset=['dt']).sort_values(['姓名', 'dt'])
+    total_seconds = 0
+    total_sessions = 0
+    for (name, date_val), group in logs_df.groupby(['姓名', '日期']):
+        actions = group['動作'].tolist()
+        times = group['dt'].tolist()
+        i = 0
+        while i < len(actions):
+            if actions[i] == '簽到':
+                for j in range(i + 1, len(actions)):
+                    if actions[j] == '簽退':
+                        total_seconds += (times[j] - times[i]).total_seconds()
+                        total_sessions += 1
+                        i = j
+                        break
+                i += 1
+            else: i += 1
+    return total_sessions, total_seconds
+
+def format_seconds(seconds):
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    return f"{h}小時 {m}分", h + round(m/60, 1)
+
 # =========================================================
-# 3) Navigation (導航列 - 在內頁顯示)
+# 3) Navigation
 # =========================================================
 if 'page' not in st.session_state: st.session_state.page = 'home'
 
 def render_nav():
-    # 使用白色卡片區塊包住導航按鈕，更有質感
     st.markdown('<div class="nav-container">', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -280,7 +305,6 @@ def render_nav():
 if st.session_state.page == 'home':
     st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px; margin-top: 20px;'>福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
     
-    # 卡片區 (排版：左1.5, 中2,2,2, 右0.5)
     col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1.5, 2, 2, 2, 0.5])
     
     with c1:
@@ -300,7 +324,7 @@ if st.session_state.page == 'home':
     
     st.markdown("---")
     
-    # 1. 總時數大卡片
+    # 總時數大卡片
     logs = load_data_from_sheet("logs")
     members = load_data_from_sheet("members")
     this_year = datetime.now().year
@@ -320,7 +344,7 @@ if st.session_state.page == 'home':
     </div>
     """, unsafe_allow_html=True)
     
-    # 2. 各分類統計卡片 (修復回歸！)
+    # 🔥 恢復首頁下方統計數據 (V15 回歸)
     if not members.empty:
         active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy()
         active_m['age'] = active_m['生日'].apply(calculate_age)
@@ -358,24 +382,21 @@ elif st.session_state.page == 'checkin':
     
     with tab1:
         st.markdown('<div style="background:white; padding:20px; border-radius:20px; border:1px solid white; margin-bottom:20px;">', unsafe_allow_html=True)
-        
         c_act, c_note = st.columns([1, 2])
         with c_act:
             raw_act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES)
         
-        # 專案活動邏輯
         note = ""
         with c_note:
             if raw_act in ["專案活動", "教育訓練"]:
-                note = st.text_input("📝 請輸入活動名稱 (必填)", placeholder="例如：大掃除")
+                note = st.text_input("📝 請輸入活動名稱 (必填)", placeholder="例如：社區大掃除")
             else:
-                st.write("") # 佔位
+                st.write("") 
 
         def process_scan():
             pid = st.session_state.input_pid.strip().upper()
             if not pid: return
 
-            # 檢查專案名稱
             final_act = raw_act
             if raw_act in ["專案活動", "教育訓練"]:
                 if not note.strip():
@@ -392,7 +413,6 @@ elif st.session_state.page == 'checkin':
 
             df_m = load_data_from_sheet("members")
             df_l = load_data_from_sheet("logs")
-            
             if df_m.empty: st.error("❌ 無法讀取名單"); return
             
             person = df_m[df_m['身分證字號'] == pid]
@@ -400,13 +420,12 @@ elif st.session_state.page == 'checkin':
                 row = person.iloc[0]
                 name = row['姓名']
                 if check_is_fully_retired(row):
-                    st.error(f"❌ {name} 已退出")
+                    st.error(f"❌ {name} 已退出，無法打卡。")
                 else:
                     today = now.strftime("%Y-%m-%d")
                     t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
                     action = "簽到"
                     if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": action = "簽退"
-                    
                     new_log = pd.DataFrame([{
                         '姓名': name, '身分證字號': pid, '電話': row['電話'], '志工分類': row['志工分類'],
                         '動作': action, '時間': now.strftime("%H:%M:%S"), '日期': today, '活動內容': final_act
@@ -414,8 +433,7 @@ elif st.session_state.page == 'checkin':
                     save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
                     st.session_state['scan_cooldowns'][pid] = now
                     st.success(f"✅ {name} {action} 成功！")
-            else:
-                st.error("❌ 查無此人")
+            else: st.error("❌ 查無此人")
             
             st.session_state.input_pid = ""
 
@@ -424,32 +442,49 @@ elif st.session_state.page == 'checkin':
 
     with tab2:
         df_m = load_data_from_sheet("members")
-        if not df.empty:
-        st.write("")
-        # 計算狀態與年齡
-        df['狀態'] = df.apply(lambda r: '已退隊' if check_is_fully_retired(r) else '服務中', axis=1)
-        df['年齡'] = df['生日'].apply(calculate_age)
-        
-        # 欄位設定
-        cols = ['姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
-        cols = [c for c in cols if c in df.columns]
+        if not df_m.empty:
+            active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)]
+            name_list = active_m['姓名'].tolist()
+            with st.form("manual_entry"):
+                st.markdown("### 🛠️ 補登操作")
+                entry_mode = st.radio("模式", ["單筆補登", "整批補登"], horizontal=True)
+                c1, c2, c3, c4 = st.columns(4)
+                d_date = c1.date_input("日期", value=date.today())
+                d_time = c2.time_input("時間", value=get_tw_time().time())
+                d_action = c3.selectbox("動作", ["簽到", "簽退"])
+                d_act = c4.selectbox("活動", DEFAULT_ACTIVITIES)
+                
+                names = []
+                if entry_mode == "單筆補登":
+                    n = st.selectbox("選擇志工", name_list)
+                    names = [n]
+                else:
+                    names = st.multiselect("選擇多位志工", name_list)
+                
+                if st.form_submit_button("確認補登"):
+                    logs = load_data_from_sheet("logs")
+                    new_rows = []
+                    for n in names:
+                        row = df_m[df_m['姓名'] == n].iloc[0]
+                        new_rows.append({
+                            '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
+                            '志工分類': row['志工分類'], '動作': d_action, 
+                            '時間': d_time.strftime("%H:%M:%S"), '日期': d_date.strftime("%Y-%m-%d"), 
+                            '活動內容': d_act
+                        })
+                    save_data_to_sheet(pd.concat([logs, pd.DataFrame(new_rows)], ignore_index=True), "logs")
+                    st.success(f"已補登 {len(names)} 筆資料")
 
-        # 改用有設計感的 Tabs 分頁切換
-        tab_active, tab_retired = st.tabs(["🔥 服務中", "🍂 已退隊"])
-        
-        with tab_active:
-            active_df = df[df['狀態'] == '服務中']
-            st.data_editor(active_df[cols], use_container_width=True, num_rows="dynamic", key="editor_active")
-            
-        with tab_retired:
-            retired_df = df[df['狀態'] == '已退隊']
-            st.data_editor(retired_df[cols], use_container_width=True, num_rows="dynamic", key="editor_retired")
+    with tab3:
+        logs = load_data_from_sheet("logs")
+        if not logs.empty:
+            edited = st.data_editor(logs, num_rows="dynamic", use_container_width=True)
             if st.button("💾 儲存修改"):
                 save_data_to_sheet(edited, "logs")
                 st.success("已更新")
 
 # =========================================================
-# 6) Page: Members (名冊)
+# 6) Page: Members (名冊 - 分頁 Tab 修復)
 # =========================================================
 elif st.session_state.page == 'members':
     render_nav()
@@ -460,16 +495,12 @@ elif st.session_state.page == 'members':
         with st.form("add_m"):
             c1, c2, c3 = st.columns(3)
             n = c1.text_input("姓名")
-            p = c2.text_input("身分證")
+            p = c2.text_input("身分證字號")
             b = c3.text_input("生日 (YYYY-MM-DD)")
             c4, c5 = st.columns([2, 1])
             addr = c4.text_input("地址")
             ph = c5.text_input("電話")
-            
             st.markdown("---")
-            st.markdown("**2. 志工分類與加入日期 (勾選後自動出現日期欄)**")
-            
-            # 卡片式條列設計
             col_l, col_r = st.columns([1, 2])
             with col_l:
                 st.markdown("###### 勾選分類")
@@ -477,10 +508,8 @@ elif st.session_state.page == 'members':
                 is_t = st.checkbox("據點週二志工")
                 is_w = st.checkbox("據點週三志工")
                 is_e = st.checkbox("環保志工")
-            
             with col_r:
                 st.markdown("###### 填寫加入日期")
-                # 只有勾選才顯示，但為了排版穩定，這裡全部顯示，沒勾的存空值
                 d_x = st.date_input("祥和加入日", value=date.today())
                 d_t = st.date_input("週二加入日", value=date.today())
                 d_w = st.date_input("週三加入日", value=date.today())
@@ -495,7 +524,6 @@ elif st.session_state.page == 'members':
                     if is_t: cats.append("關懷據點週二志工")
                     if is_w: cats.append("關懷據點週三志工")
                     if is_e: cats.append("環保志工")
-                    
                     new_data = {
                         '姓名':n, '身分證字號':p, '生日':b, '電話':ph, '地址':addr, 
                         '志工分類':",".join(cats),
@@ -510,33 +538,37 @@ elif st.session_state.page == 'members':
                     save_data_to_sheet(pd.concat([df, new], ignore_index=True), "members")
                     st.success("新增成功"); time.sleep(1); st.rerun()
 
+    # 🔥🔥 關鍵修改：使用 st.tabs 替代 st.radio 🔥🔥
     if not df.empty:
         st.write("")
-        mode = st.radio("名單檢視", ["🟢 在職志工", "📋 所有名單"], horizontal=True)
-        
-        df['狀態'] = df.apply(lambda r: '已退出' if check_is_fully_retired(r) else '在職', axis=1)
+        df['狀態'] = df.apply(lambda r: '已退隊' if check_is_fully_retired(r) else '服務中', axis=1)
         df['年齡'] = df['生日'].apply(calculate_age)
         
-        show_df = df[df['狀態'] == '在職'] if "在職" in mode else df
-        
-        cols = ['狀態', '姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
+        cols = ['姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
         cols = [c for c in cols if c in df.columns]
-        st.data_editor(show_df[cols], use_container_width=True, num_rows="dynamic", key="m_edit")
+
+        tab_active, tab_retired = st.tabs(["🔥 服務中", "🍂 已退隊"])
+        
+        with tab_active:
+            active_df = df[df['狀態'] == '服務中']
+            st.data_editor(active_df[cols], use_container_width=True, num_rows="dynamic", key="editor_active")
+            
+        with tab_retired:
+            retired_df = df[df['狀態'] == '已退隊']
+            st.data_editor(retired_df[cols], use_container_width=True, num_rows="dynamic", key="editor_retired")
 
 # =========================================================
-# 7) Page: Report (儀表板化 - 日期區間分析)
+# 7) Page: Report (儀表板 - 標題修改)
 # =========================================================
 elif st.session_state.page == 'report':
     render_nav()
-    st.markdown("## 📊 數據分析")
+    st.markdown("## 📊 數據分析") # 🔥🔥 標題已修改
     
     logs = load_data_from_sheet("logs")
     
-    # 儀表板篩選器
     st.markdown('<div style="background:white; padding:20px; border-radius:15px; border:1px solid #ddd; margin-bottom:20px;">', unsafe_allow_html=True)
     c_date, c_mode = st.columns([1, 1])
     with c_date:
-        # 日期區間
         d_range = st.date_input("📅 選擇日期區間", value=(date(date.today().year, 1, 1), date.today()))
     with c_mode:
         report_mode = st.radio("分析模式", ["依活動查詢", "依志工查詢"], horizontal=True)
@@ -545,11 +577,9 @@ elif st.session_state.page == 'report':
     if logs.empty:
         st.info("無打卡資料")
     else:
-        # 資料預處理
         logs['dt'] = pd.to_datetime(logs['日期'] + ' ' + logs['時間'], errors='coerce')
         logs = logs.dropna(subset=['dt'])
         
-        # 1. 篩選日期
         if isinstance(d_range, tuple) and len(d_range) == 2:
             start_d, end_d = d_range
             mask = (logs['dt'].dt.date >= start_d) & (logs['dt'].dt.date <= end_d)
@@ -560,7 +590,6 @@ elif st.session_state.page == 'report':
         if filtered_logs.empty:
             st.warning("此區間無資料")
         else:
-            # 計算函數
             def calc_stats_display(df_in):
                 total_seconds = 0
                 total_sessions = 0
@@ -583,38 +612,29 @@ elif st.session_state.page == 'report':
                 m = int((total_seconds % 3600) // 60)
                 return total_sessions, f"{h}小時 {m}分", round(total_seconds/3600, 2)
 
-            # === 依活動查詢 ===
             if report_mode == "依活動查詢":
                 all_acts = filtered_logs['活動內容'].unique().tolist()
                 target_act = st.selectbox("選擇活動", ["全部"] + all_acts)
-                
                 view_df = filtered_logs if target_act == "全部" else filtered_logs[filtered_logs['活動內容'] == target_act]
                 
-                # 計算總體
                 tot_sess, tot_time_str, _ = calc_stats_display(view_df)
                 
-                # 顯示卡片
                 m1, m2, m3 = st.columns(3)
                 with m1: st.markdown(f"""<div class="metric-card"><div class="metric-label">總人次</div><div class="metric-value">{tot_sess}</div></div>""", unsafe_allow_html=True)
                 with m2: st.markdown(f"""<div class="metric-card"><div class="metric-label">總時數</div><div class="metric-value">{tot_time_str}</div></div>""", unsafe_allow_html=True)
                 with m3: st.markdown(f"""<div class="metric-card"><div class="metric-label">參與志工數</div><div class="metric-value">{view_df['姓名'].nunique()}</div></div>""", unsafe_allow_html=True)
                 
                 st.markdown("### 📋 人員明細表")
-                # 計算每個人的
                 summary = []
                 for name, g in view_df.groupby('姓名'):
                     c, s_str, s_num = calc_stats_display(g)
                     summary.append({'姓名': name, '次數': c, '時數': s_str, '排序用時數': s_num})
-                
                 st.dataframe(pd.DataFrame(summary).sort_values('排序用時數', ascending=False)[['姓名', '次數', '時數']], use_container_width=True)
 
-            # === 依志工查詢 ===
             else:
                 all_names = filtered_logs['姓名'].unique().tolist()
                 target_name = st.selectbox("選擇志工", all_names)
-                
                 view_df = filtered_logs[filtered_logs['姓名'] == target_name]
-                
                 tot_sess, tot_time_str, _ = calc_stats_display(view_df)
                 
                 m1, m2 = st.columns(2)
