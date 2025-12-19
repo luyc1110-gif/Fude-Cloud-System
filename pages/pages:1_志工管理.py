@@ -87,12 +87,19 @@ div[data-testid="stButton"] > button:hover {{
 }}
 div[data-testid="stButton"] > button:active {{ transform: translateY(2px); box-shadow: none; }}
 
-/* 表單送出按鈕 (實心紫) */
-div[data-testid="stFormSubmitButton"] > button {{
+/* 表單送出按鈕 (實心紫 + 強制白字) */
+div[data-testid="stFormSubmitButton"] > button {
     background: linear-gradient(135deg, {PRIMARY}, {ACCENT}) !important;
-    color: white !important;
+    color: #FFFFFF !important;      /* 強制亮白字 */
+    font-weight: 900 !important;    /* 最粗體 */
+    font-size: 1.2rem !important;   /* 字變大 */
     border: none !important;
-}}
+    box-shadow: 0 4px 15px rgba(123, 31, 162, 0.3) !important; /* 增加立體感 */
+}
+div[data-testid="stFormSubmitButton"] > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(123, 31, 162, 0.5) !important;
+}
 
 /* 4. 萬物皆卡片 (Forms, Dataframes, Expanders) */
 div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderContent, div[data-testid="stExpander"] details {{
@@ -417,45 +424,26 @@ elif st.session_state.page == 'checkin':
 
     with tab2:
         df_m = load_data_from_sheet("members")
-        if not df_m.empty:
-            active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)]
-            name_list = active_m['姓名'].tolist()
-            
-            with st.form("manual_entry"):
-                st.markdown("### 🛠️ 補登操作")
-                entry_mode = st.radio("模式", ["單筆補登", "整批補登"], horizontal=True)
-                
-                c1, c2, c3, c4 = st.columns(4)
-                d_date = c1.date_input("日期", value=date.today())
-                d_time = c2.time_input("時間", value=get_tw_time().time())
-                d_action = c3.selectbox("動作", ["簽到", "簽退"])
-                d_act = c4.selectbox("活動", DEFAULT_ACTIVITIES)
-                
-                names = []
-                if entry_mode == "單筆補登":
-                    n = st.selectbox("選擇志工", name_list)
-                    names = [n]
-                else:
-                    names = st.multiselect("選擇多位志工", name_list)
-                
-                if st.form_submit_button("確認補登"):
-                    logs = load_data_from_sheet("logs")
-                    new_rows = []
-                    for n in names:
-                        row = df_m[df_m['姓名'] == n].iloc[0]
-                        new_rows.append({
-                            '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
-                            '志工分類': row['志工分類'], '動作': d_action, 
-                            '時間': d_time.strftime("%H:%M:%S"), '日期': d_date.strftime("%Y-%m-%d"), 
-                            '活動內容': d_act
-                        })
-                    save_data_to_sheet(pd.concat([logs, pd.DataFrame(new_rows)], ignore_index=True), "logs")
-                    st.success(f"已補登 {len(names)} 筆資料")
+        if not df.empty:
+        st.write("")
+        # 計算狀態與年齡
+        df['狀態'] = df.apply(lambda r: '已退隊' if check_is_fully_retired(r) else '服務中', axis=1)
+        df['年齡'] = df['生日'].apply(calculate_age)
+        
+        # 欄位設定
+        cols = ['姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
+        cols = [c for c in cols if c in df.columns]
 
-    with tab3:
-        logs = load_data_from_sheet("logs")
-        if not logs.empty:
-            edited = st.data_editor(logs, num_rows="dynamic", use_container_width=True)
+        # 改用有設計感的 Tabs 分頁切換
+        tab_active, tab_retired = st.tabs(["🔥 服務中", "🍂 已退隊"])
+        
+        with tab_active:
+            active_df = df[df['狀態'] == '服務中']
+            st.data_editor(active_df[cols], use_container_width=True, num_rows="dynamic", key="editor_active")
+            
+        with tab_retired:
+            retired_df = df[df['狀態'] == '已退隊']
+            st.data_editor(retired_df[cols], use_container_width=True, num_rows="dynamic", key="editor_retired")
             if st.button("💾 儲存修改"):
                 save_data_to_sheet(edited, "logs")
                 st.success("已更新")
@@ -540,7 +528,7 @@ elif st.session_state.page == 'members':
 # =========================================================
 elif st.session_state.page == 'report':
     render_nav()
-    st.markdown("## 📊 數據分析 (儀表板)")
+    st.markdown("## 📊 數據分析")
     
     logs = load_data_from_sheet("logs")
     
