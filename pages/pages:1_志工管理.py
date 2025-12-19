@@ -27,9 +27,11 @@ CARD_BG = "#FFFFFF"
 
 # =========================================================
 # 1) Styles
-#   ✅ 你要求的兩件事：
-#   (1) 首頁三個白底「空白條狀物」拿掉 → 本質是 tile 上方留白太大 → 縮小 tile padding / icon 高度
-#   (2) 首頁三個圖示與按鈕往上移 → 減少首頁 spacer + 縮短 tile-icon 高度
+#   ✅ 修正你提出的四件事：
+#   1) 「新增區」字被擋住 + 出現 keyboard_arrow_down 文字：是全域字體把 Material Icons 蓋掉 → 還原 icons 字體
+#   2) 「新增」按鈕看不到字：針對 stFormSubmitButton 做成紫底白字
+#   3) 在職/全部改成「在職/退隊」且卡片式：用 st.radio 但 CSS 變卡片、移除點點、無圖示
+#   4) 那條白色長條：主要來自 expander header / icon 異常 → 直接移除 expander，改用卡片區塊呈現
 # =========================================================
 st.markdown(
     f"""
@@ -50,10 +52,37 @@ st.markdown(
 /* 隱藏 Streamlit 原生側欄 */
 [data-testid="stSidebar"] {{ display: none; }}
 
-/* 全域字體 */
-[data-testid="stAppViewContainer"] * {{
-  font-family: "Noto Sans TC", "Microsoft JhengHei", "微軟正黑體", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+/* ✅ 文字字體（不要用 * 全灑，會把 Material Icons 變成 keyboard_arrow_down） */
+html, body {{
+  font-family: "Noto Sans TC","Microsoft JhengHei","微軟正黑體",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
   color: var(--text);
+}}
+[data-testid="stAppViewContainer"] p,
+[data-testid="stAppViewContainer"] div,
+[data-testid="stAppViewContainer"] span,
+[data-testid="stAppViewContainer"] label,
+[data-testid="stAppViewContainer"] button,
+[data-testid="stAppViewContainer"] input,
+[data-testid="stAppViewContainer"] textarea {{
+  font-family: "Noto Sans TC","Microsoft JhengHei","微軟正黑體",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  color: var(--text);
+}}
+
+/* ✅ 還原 Material Icons（避免 keyboard_arrow_down 文字跑出來） */
+.material-icons, .material-icons-outlined, .material-symbols-outlined,
+[data-testid="stIconMaterial"] span,
+span[translate="no"] {{
+  font-family: "Material Icons" !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  display: inline-block !important;
+  white-space: nowrap !important;
+  word-wrap: normal !important;
+  direction: ltr !important;
+  -webkit-font-feature-settings: "liga" !important;
+  -webkit-font-smoothing: antialiased !important;
 }}
 
 /* 主容器 */
@@ -65,7 +94,7 @@ st.markdown(
 
 /* ===== Top Bar ===== */
 .topbar {{
-  background: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.88);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.8);
   border-radius: 999px;
@@ -106,14 +135,13 @@ st.markdown(
   color: var(--muted) !important;
 }}
 
-/* ===== Buttons：字體好看 + 更粗 ===== */
+/* ===== 一般按鈕（導覽/一般操作）：白底紫字 ===== */
 div[data-testid="stButton"] > button {{
   width: 100%;
   border-radius: 999px !important;
   border: 1.5px solid rgba(74, 20, 140, 0.28) !important;
   background: white !important;
   color: var(--primary) !important;
-  font-family: "Noto Sans TC", "Microsoft JhengHei", "微軟正黑體", sans-serif !important;
   font-weight: 900 !important;
   font-size: 1.05rem !important;
   letter-spacing: 0.6px !important;
@@ -131,6 +159,28 @@ div[data-testid="stButton"] > button:active {{
   box-shadow: 0 5px 12px rgba(0,0,0,0.07);
 }}
 
+/* ✅ 表單送出按鈕（新增/補登/儲存）：紫底白字，解決「看不到字」 */
+div[data-testid="stFormSubmitButton"] > button {{
+  width: 100% !important;
+  border-radius: 999px !important;
+  border: none !important;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%) !important;
+  color: #FFFFFF !important;
+  font-weight: 900 !important;
+  font-size: 1.05rem !important;
+  letter-spacing: 0.6px !important;
+  padding: 12px 16px !important;
+  box-shadow: 0 12px 26px rgba(81,45,168,0.25);
+}}
+div[data-testid="stFormSubmitButton"] > button:hover {{
+  transform: translateY(-1px);
+  box-shadow: 0 16px 34px rgba(81,45,168,0.30);
+}}
+div[data-testid="stFormSubmitButton"] > button:active {{
+  transform: translateY(1px);
+  box-shadow: 0 8px 18px rgba(81,45,168,0.20);
+}}
+
 /* ===== Card ===== */
 .card {{
   background: var(--card);
@@ -138,26 +188,26 @@ div[data-testid="stButton"] > button:active {{
   border-radius: 22px;
   box-shadow: 0 14px 34px rgba(0,0,0,0.06);
   padding: 18px 18px;
+  margin-bottom: 16px;
 }}
 .card-tight {{ padding: 14px 16px; }}
 .card-title {{
   font-weight: 900;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   color: var(--primary) !important;
   margin: 0 0 6px 0;
 }}
 .card-sub {{
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   color: var(--muted) !important;
-  margin: 0 0 10px 0;
+  margin: 0 0 12px 0;
 }}
 
 /* ===== Home Tile（首頁三張卡）===== */
-/* ✅ 關鍵：把上方留白縮掉，避免你看到三條「白底空白」 */
 .tile {{
   background: white;
   border-radius: 26px;
-  padding: 14px 18px 16px;          /* 原本 22px 太高 → 改小 */
+  padding: 14px 18px 16px;
   box-shadow: 0 18px 38px rgba(0,0,0,0.07);
   border: 1px solid rgba(255,255,255,0.85);
   text-align: center;
@@ -166,50 +216,51 @@ div[data-testid="stButton"] > button:active {{
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 120px;                    /* 原本 150px → 改小，圖示往上 */
-  margin: 0 0 4px;                  /* 移除多餘空白 */
+  height: 120px;
+  margin: 0 0 4px;
 }}
 .tile-title {{
   font-weight: 900;
   font-size: 1.22rem;
   color: var(--primary) !important;
-  margin: 0 0 12px;                 /* 原本有多餘 margin → 改小 */
+  margin: 0 0 12px;
   letter-spacing: 0.6px;
 }}
+div[data-testid="stImage"] {{ margin: 0 !important; }}
+div[data-testid="stImage"] img {{ margin: 0 !important; padding: 0 !important; }}
 
-/* 把 st.image 自帶的上下空白壓掉（避免 tile-icon 變「空白條」） */
-div[data-testid="stImage"] {{
-  margin: 0 !important;
+/* ===== 讓 radio 變成卡片切換（在職 / 退隊），無點點、無圖示 ===== */
+div[data-testid="stRadio"] div[role="radiogroup"] {{
+  display: flex !important;
+  gap: 12px !important;
+  flex-wrap: wrap;
 }}
-div[data-testid="stImage"] img {{
-  margin: 0 !important;
-  padding: 0 !important;
-}}
-
-/* Dashboard Stat */
-.stat {{
-  background: white;
+/* 每個選項卡片 */
+div[data-testid="stRadio"] div[role="radio"] {{
+  border: 1.5px solid rgba(74, 20, 140, 0.18);
+  background: #FFFFFF;
   border-radius: 18px;
-  padding: 16px 16px;
-  border-left: 7px solid var(--accent);
+  padding: 14px 16px;
+  min-width: 180px;
   box-shadow: 0 10px 22px rgba(0,0,0,0.06);
+  cursor: pointer;
 }}
-.stat-label {{
-  font-size: 0.95rem;
-  color: var(--muted) !important;
-  font-weight: 800;
+/* 隱藏原本的小圓點 */
+div[data-testid="stRadio"] svg {{
+  display: none !important;
 }}
-.stat-value {{
-  font-size: 2.1rem;
+/* 被選中的卡片 */
+div[data-testid="stRadio"] div[role="radio"][aria-checked="true"] {{
+  background: #F6EAF8;
+  border: 1.8px solid rgba(74, 20, 140, 0.35);
+  box-shadow: 0 14px 30px rgba(0,0,0,0.08);
+}}
+/* radio 文案更漂亮 */
+div[data-testid="stRadio"] div[role="radio"] > div {{
   font-weight: 900;
   color: var(--primary) !important;
-  line-height: 1.1;
-  margin-top: 6px;
-}}
-.stat-sub {{
-  font-size: 0.9rem;
-  color: #888 !important;
-  margin-top: 2px;
+  letter-spacing: 0.6px;
+  font-size: 1.02rem;
 }}
 
 /* Form inputs */
@@ -230,17 +281,13 @@ label {{
   color: var(--primary) !important;
 }}
 
-/* Expander 變卡片 */
-div[data-testid="stExpander"] details {{
+/* Dataframe/Editor 看起來像卡片 */
+div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {{
   background: white;
   border-radius: 22px;
   border: 1px solid rgba(255,255,255,0.85);
   box-shadow: 0 14px 34px rgba(0,0,0,0.06);
-  padding: 10px 10px;
-}}
-div[data-testid="stExpander"] summary {{
-  font-weight: 900;
-  color: var(--primary) !important;
+  padding: 10px;
 }}
 
 #MainMenu {{ visibility: hidden; }}
@@ -473,11 +520,10 @@ def render_nav():
         if st.button("📊 報表分析", use_container_width=True):
             goto("report")
 
-    spacer(18)
+    spacer(14)
 
 # =========================================================
 # 6) HOME
-#   ✅ 這裡也把「首頁標題到三張卡」的空白縮小，讓整體往上
 # =========================================================
 def page_home():
     st.markdown(
@@ -489,7 +535,7 @@ def page_home():
 """,
         unsafe_allow_html=True,
     )
-    spacer(12)   # 原本 26 → ✅ 改小，三張 tile 往上
+    spacer(12)
 
     c1, c2, c3 = st.columns(3)
 
@@ -519,7 +565,6 @@ def page_home():
 
     spacer(22)
 
-    # 即時概況
     logs = load_data_from_sheet("logs")
     members = load_data_from_sheet("members")
 
@@ -545,43 +590,6 @@ def page_home():
 """,
         unsafe_allow_html=True,
     )
-    spacer(14)
-
-    if members.empty:
-        card_open("⚠️ 無法讀取名冊", "請確認 Google Sheets / 服務帳號權限。", tight=True)
-        card_close()
-        return
-
-    dfm = members.copy()
-    dfm["狀態"] = dfm.apply(lambda r: "已退出" if check_is_fully_retired(r) else "在職", axis=1)
-    active = dfm[dfm["狀態"] == "在職"].copy()
-    active["年齡"] = active["生日"].apply(calculate_age)
-    valid_age = active[active["年齡"] > 0].copy()
-
-    card_open("📌 在職志工概況", "人數與平均年齡（依分類）", tight=False)
-    cols = st.columns(4)
-    idx = 0
-    for cat in ALL_CATEGORIES:
-        if cat == "臨時志工":
-            continue
-        subset = active[active["志工分類"].astype(str).str.contains(cat, na=False)]
-        age_subset = valid_age[valid_age["志工分類"].astype(str).str.contains(cat, na=False)]
-        count = len(subset)
-        avg_age = round(age_subset["年齡"].mean(), 1) if not age_subset.empty else 0
-
-        with cols[idx % 4]:
-            st.markdown(
-                f"""
-<div class="stat">
-  <div class="stat-label">{cat.replace('志工','')}</div>
-  <div class="stat-value">{count}<span style="font-size:1rem; color:#888; font-weight:900;"> 人</span></div>
-  <div class="stat-sub">平均 {avg_age} 歲</div>
-</div>
-""",
-                unsafe_allow_html=True,
-            )
-        idx += 1
-    card_close()
 
 # =========================================================
 # 7) CHECKIN
@@ -599,8 +607,7 @@ def page_checkin():
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
 
     with tab1:
-        card_open("⚡️ 現場打卡", "輸入身分證或刷卡；系統會自動判斷簽到/簽退", tight=False)
-
+        card_open("⚡️ 現場打卡", "輸入身分證或刷卡；系統會自動判斷簽到/簽退")
         raw_act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES, key="act_select")
         final_act = raw_act
         if raw_act in ["專案活動", "教育訓練"]:
@@ -653,20 +660,17 @@ def page_checkin():
             if not t_logs.empty and str(t_logs.iloc[-1].get("動作", "")) == "簽到":
                 action = "簽退"
 
-            new_log = pd.DataFrame(
-                [
-                    {
-                        "姓名": name,
-                        "身分證字號": pid,
-                        "電話": row.get("電話", ""),
-                        "志工分類": row.get("志工分類", ""),
-                        "動作": action,
-                        "時間": now.strftime("%H:%M:%S"),
-                        "日期": today,
-                        "活動內容": final_act,
-                    }
-                ]
-            )
+            new_log = pd.DataFrame([{
+                "姓名": name,
+                "身分證字號": pid,
+                "電話": row.get("電話", ""),
+                "志工分類": row.get("志工分類", ""),
+                "動作": action,
+                "時間": now.strftime("%H:%M:%S"),
+                "日期": today,
+                "活動內容": final_act,
+            }])
+
             df_out = pd.concat([df_l, new_log], ignore_index=True) if not df_l.empty else new_log
             save_data_to_sheet(df_out, "logs")
 
@@ -675,7 +679,6 @@ def page_checkin():
             st.session_state["scan_box"] = ""
 
         st.text_input("請輸入身分證（或掃描）", key="scan_box", on_change=process_scan, placeholder="例如：A123456789")
-        spacer(10)
         st.caption("提示：同一張卡 2 分鐘內重複刷會被擋掉（防誤刷）。")
         card_close()
 
@@ -689,7 +692,7 @@ def page_checkin():
             active_m = df_m2[df_m2["狀態"] == "在職"].copy()
             name_list = active_m["姓名"].dropna().astype(str).tolist()
 
-            card_open("🛠️ 補登作業", "可單筆補登或整批補登", tight=False)
+            card_open("🛠️ 補登作業", "可單筆補登或整批補登")
             with st.form("manual_form"):
                 entry_mode = st.radio("模式", ["單筆補登", "整批補登"], horizontal=True)
                 c1, c2, c3, c4 = st.columns(4)
@@ -713,18 +716,16 @@ def page_checkin():
                     new_rows = []
                     for n in names:
                         row = active_m[active_m["姓名"].astype(str) == str(n)].iloc[0]
-                        new_rows.append(
-                            {
-                                "姓名": n,
-                                "身分證字號": row.get("身分證字號", ""),
-                                "電話": row.get("電話", ""),
-                                "志工分類": row.get("志工分類", ""),
-                                "動作": d_action,
-                                "時間": d_time.strftime("%H:%M:%S"),
-                                "日期": d_date.strftime("%Y-%m-%d"),
-                                "活動內容": d_act,
-                            }
-                        )
+                        new_rows.append({
+                            "姓名": n,
+                            "身分證字號": row.get("身分證字號", ""),
+                            "電話": row.get("電話", ""),
+                            "志工分類": row.get("志工分類", ""),
+                            "動作": d_action,
+                            "時間": d_time.strftime("%H:%M:%S"),
+                            "日期": d_date.strftime("%Y-%m-%d"),
+                            "活動內容": d_act,
+                        })
                     out = pd.concat([logs, pd.DataFrame(new_rows)], ignore_index=True) if not logs.empty else pd.DataFrame(new_rows)
                     save_data_to_sheet(out, "logs")
                     st.success("✅ 已補登")
@@ -732,7 +733,7 @@ def page_checkin():
 
     with tab3:
         logs = load_data_from_sheet("logs")
-        card_open("✏️ 紀錄修改", "直接編修 logs（小心：這裡是強力模式）", tight=False)
+        card_open("✏️ 紀錄修改", "直接編修 logs（小心：這裡是強力模式）")
         if logs.empty:
             st.info("無資料")
         else:
@@ -743,7 +744,7 @@ def page_checkin():
         card_close()
 
 # =========================================================
-# 8) MEMBERS
+# 8) MEMBERS  ✅（重做：移除 expander、修正新增區、卡片式在職/退隊）
 # =========================================================
 def page_members():
     render_nav()
@@ -751,79 +752,78 @@ def page_members():
 
     df = load_data_from_sheet("members")
 
-    with st.expander("➕ 新增志工", expanded=True):
-        card_open("新增志工", "請填寫基本資料與分類加入日期", tight=False)
-        with st.form("add_member_form"):
-            c1, c2, c3 = st.columns(3)
-            n = c1.text_input("姓名")
-            p = c2.text_input("身分證")
-            b = c3.text_input("生日（YYYY-MM-DD）")
+    # ---- 新增志工（不再用 expander，避免白長條與 icon 亂碼）----
+    card_open("新增志工", "請填寫基本資料與分類加入日期")
+    with st.form("add_member_form"):
+        c1, c2, c3 = st.columns(3)
+        n = c1.text_input("姓名")
+        p = c2.text_input("身分證")
+        b = c3.text_input("生日（YYYY-MM-DD）")
 
-            c4, c5 = st.columns([2, 1])
-            addr = c4.text_input("地址")
-            ph = c5.text_input("電話")
+        c4, c5 = st.columns([2, 1])
+        addr = c4.text_input("地址")
+        ph = c5.text_input("電話")
 
-            spacer(8)
-            st.markdown("**志工分類與加入日期**")
-            cats = []
+        spacer(6)
+        st.markdown("**志工分類與加入日期**")
+        cats = []
 
-            left, right = st.columns(2)
-            is_x = left.checkbox("祥和")
-            d_x = right.text_input("祥和加入日", value=str(date.today()) if is_x else "")
+        left, right = st.columns(2)
+        is_x = left.checkbox("祥和")
+        d_x = right.text_input("祥和加入日", value=str(date.today()) if is_x else "")
 
-            is_t = left.checkbox("週二據點")
-            d_t = right.text_input("週二加入日", value=str(date.today()) if is_t else "")
+        is_t = left.checkbox("週二據點")
+        d_t = right.text_input("週二加入日", value=str(date.today()) if is_t else "")
 
-            is_w = left.checkbox("週三據點")
-            d_w = right.text_input("週三加入日", value=str(date.today()) if is_w else "")
+        is_w = left.checkbox("週三據點")
+        d_w = right.text_input("週三加入日", value=str(date.today()) if is_w else "")
 
-            is_e = left.checkbox("環保")
-            d_e = right.text_input("環保加入日", value=str(date.today()) if is_e else "")
+        is_e = left.checkbox("環保")
+        d_e = right.text_input("環保加入日", value=str(date.today()) if is_e else "")
 
-            submitted = st.form_submit_button("✅ 新增")
+        submitted = st.form_submit_button("✅ 新增志工")
 
-        if submitted:
-            if not p:
-                st.error("身分證必填")
+    if submitted:
+        if not p:
+            st.error("身分證必填")
+        else:
+            df_check = df.copy() if not df.empty else pd.DataFrame(columns=DISPLAY_ORDER)
+            if (df_check["身分證字號"].astype(str).str.upper() == str(p).upper()).any():
+                st.error("重複：此身分證已存在")
             else:
-                df_check = df.copy() if not df.empty else pd.DataFrame(columns=DISPLAY_ORDER)
-                if (df_check["身分證字號"].astype(str).str.upper() == str(p).upper()).any():
-                    st.error("重複：此身分證已存在")
-                else:
-                    if is_x: cats.append("祥和志工")
-                    if is_t: cats.append("關懷據點週二志工")
-                    if is_w: cats.append("關懷據點週三志工")
-                    if is_e: cats.append("環保志工")
+                if is_x: cats.append("祥和志工")
+                if is_t: cats.append("關懷據點週二志工")
+                if is_w: cats.append("關懷據點週三志工")
+                if is_e: cats.append("環保志工")
 
-                    new_data = {
-                        "姓名": n,
-                        "身分證字號": str(p).upper(),
-                        "生日": b,
-                        "電話": ph,
-                        "地址": addr,
-                        "志工分類": ",".join(cats),
-                        "祥和_加入日期": d_x if is_x else "",
-                        "據點週二_加入日期": d_t if is_t else "",
-                        "據點週三_加入日期": d_w if is_w else "",
-                        "環保_加入日期": d_e if is_e else "",
-                    }
-                    new = pd.DataFrame([new_data])
-                    for c in DISPLAY_ORDER:
-                        if c not in new.columns:
-                            new[c] = ""
-                    for c in DISPLAY_ORDER:
-                        if c not in df_check.columns:
-                            df_check[c] = ""
+                new_data = {
+                    "姓名": n,
+                    "身分證字號": str(p).upper(),
+                    "生日": b,
+                    "電話": ph,
+                    "地址": addr,
+                    "志工分類": ",".join(cats),
+                    "祥和_加入日期": d_x if is_x else "",
+                    "據點週二_加入日期": d_t if is_t else "",
+                    "據點週三_加入日期": d_w if is_w else "",
+                    "環保_加入日期": d_e if is_e else "",
+                }
+                new = pd.DataFrame([new_data])
+                for c in DISPLAY_ORDER:
+                    if c not in new.columns:
+                        new[c] = ""
+                for c in DISPLAY_ORDER:
+                    if c not in df_check.columns:
+                        df_check[c] = ""
 
-                    out = pd.concat([df_check, new[DISPLAY_ORDER]], ignore_index=True)
-                    save_data_to_sheet(out, "members")
-                    st.success("✅ 新增成功")
-                    time.sleep(0.6)
-                    st.rerun()
-        card_close()
+                out = pd.concat([df_check, new[DISPLAY_ORDER]], ignore_index=True)
+                save_data_to_sheet(out, "members")
+                st.success("✅ 新增成功")
+                time.sleep(0.5)
+                st.rerun()
+    card_close()
 
-    spacer(10)
-
+    # ---- 名冊檢視 ----
     if df.empty:
         st.info("目前無名冊資料")
         return
@@ -832,12 +832,23 @@ def page_members():
     df2["狀態"] = df2.apply(lambda r: "已退出" if check_is_fully_retired(r) else "在職", axis=1)
     df2["年齡"] = df2["生日"].apply(calculate_age)
 
-    card_open("名冊檢視", "可切換在職/全部，並直接編輯後儲存", tight=False)
-    mode = st.radio("檢視模式", ["🟢 在職", "📋 全部"], horizontal=True, key="members_view_mode")
-    show_df = df2[df2["狀態"] == "在職"].copy() if mode == "🟢 在職" else df2.copy()
+    card_open("名冊檢視", "切換在職 / 退隊，並可直接編輯後儲存")
 
-    cols = ["身分證字號", "狀態", "姓名", "年齡", "電話", "地址", "志工分類"] + \
-           [c for c in df2.columns if "日期" in c] + ["備註"]
+    # ✅ 只要「在職 / 退隊」，卡片式（radio 但看起來是卡片）
+    view_mode = st.radio(
+        "檢視模式",
+        ["在職", "退隊"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="members_mode_cards",
+    )
+
+    show_df = df2[df2["狀態"] == "在職"].copy() if view_mode == "在職" else df2[df2["狀態"] == "已退出"].copy()
+
+    # 讓編輯表更合理：退隊名單通常不需要改「加入/退出日期」但你要改也可以
+    cols = [
+        "身分證字號", "狀態", "姓名", "年齡", "電話", "地址", "志工分類"
+    ] + [c for c in df2.columns if "日期" in c] + ["備註"]
     cols = [c for c in cols if c in show_df.columns]
 
     edited = st.data_editor(
@@ -848,30 +859,28 @@ def page_members():
         key="members_editor",
     )
 
-    if st.button("💾 儲存名冊", use_container_width=True):
+    if st.button("💾 儲存名冊修改", use_container_width=True):
         base = df2.copy()
-        key = "身分證字號"
+        key_col = "身分證字號"
 
-        base[key] = base[key].astype(str).str.upper()
+        base[key_col] = base[key_col].astype(str).str.upper()
         ed = edited.copy()
-        ed[key] = ed[key].astype(str).str.upper()
+        ed[key_col] = ed[key_col].astype(str).str.upper()
 
         for col in ed.columns:
-            if col in [key, "狀態", "年齡"]:
+            if col in [key_col, "狀態", "年齡"]:
                 continue
             if col not in base.columns:
                 base[col] = ""
-            base = base.merge(ed[[key, col]], on=key, how="left", suffixes=("", "_new"))
+            base = base.merge(ed[[key_col, col]], on=key_col, how="left", suffixes=("", "_new"))
             base[col] = base[f"{col}_new"].where(base[f"{col}_new"].notna(), base[col])
             base.drop(columns=[f"{col}_new"], inplace=True)
 
         base = base.drop(columns=["狀態", "年齡"], errors="ignore")
-
         for c in DISPLAY_ORDER:
             if c not in base.columns:
                 base[c] = ""
-        base_out = base[DISPLAY_ORDER].copy()
-        save_data_to_sheet(base_out, "members")
+        save_data_to_sheet(base[DISPLAY_ORDER].copy(), "members")
         st.success("✅ 名冊已更新")
 
     card_close()
@@ -891,7 +900,7 @@ def page_report():
     sessions = build_sessions(logs)
     if sessions.empty:
         st.info("目前沒有可配對的簽到/簽退（無法計算工時）。")
-        card_open("📝 原始出勤紀錄", "仍可查看 logs", tight=False)
+        card_open("📝 原始出勤紀錄", "仍可查看 logs")
         st.dataframe(logs, use_container_width=True, height=420)
         card_close()
         return
@@ -906,30 +915,30 @@ def page_report():
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(
-            f"<div class='stat'><div class='stat-label'>{this_year} 總工時</div><div class='stat-value'>{total_h}h {total_m}m</div><div class='stat-sub'>簽到/簽退配對計算</div></div>",
+            f"<div class='card-tight card'><div class='card-title'>{this_year} 總工時</div><div style='font-size:2.2rem;font-weight:900;color:{PRIMARY};'>{total_h}h {total_m}m</div><div class='card-sub'>簽到/簽退配對計算</div></div>",
             unsafe_allow_html=True,
         )
     with c2:
         st.markdown(
-            f"<div class='stat'><div class='stat-label'>今年出勤筆數</div><div class='stat-value'>{len(y)}</div><div class='stat-sub'>session 數</div></div>",
+            f"<div class='card-tight card'><div class='card-title'>今年出勤筆數</div><div style='font-size:2.2rem;font-weight:900;color:{PRIMARY};'>{len(y)}</div><div class='card-sub'>session 數</div></div>",
             unsafe_allow_html=True,
         )
     with c3:
         uniq = y["姓名"].nunique() if not y.empty else 0
         st.markdown(
-            f"<div class='stat'><div class='stat-label'>今年服務人數</div><div class='stat-value'>{uniq}</div><div class='stat-sub'>不重複姓名</div></div>",
+            f"<div class='card-tight card'><div class='card-title'>今年服務人數</div><div style='font-size:2.2rem;font-weight:900;color:{PRIMARY};'>{uniq}</div><div class='card-sub'>不重複姓名</div></div>",
             unsafe_allow_html=True,
         )
     with c4:
         avg = y["hours"].mean() if not y.empty else 0
         st.markdown(
-            f"<div class='stat'><div class='stat-label'>平均每次工時</div><div class='stat-value'>{avg:.2f}h</div><div class='stat-sub'>session 平均</div></div>",
+            f"<div class='card-tight card'><div class='card-title'>平均每次工時</div><div style='font-size:2.2rem;font-weight:900;color:{PRIMARY};'>{avg:.2f}h</div><div class='card-sub'>session 平均</div></div>",
             unsafe_allow_html=True,
         )
 
-    spacer(16)
+    spacer(14)
 
-    card_open("📈 趨勢與分佈", "你可以用下面的篩選器快速看重點", tight=False)
+    card_open("📈 趨勢與分佈", "用篩選器快速看重點")
 
     c1, c2, c3 = st.columns([1.2, 1.2, 1.6])
     with c1:
@@ -945,21 +954,19 @@ def page_report():
         agg = sf.groupby("month", as_index=False)["hours"].sum().sort_values("month")
         fig = px.bar(agg, x="month", y="hours", title=f"{year_sel} 每月總工時")
         st.plotly_chart(fig, use_container_width=True)
-
     elif group_by == "活動內容":
         agg = sf.groupby("活動內容", as_index=False)["hours"].sum().sort_values("hours", ascending=False).head(topn)
         fig = px.bar(agg, x="活動內容", y="hours", title=f"{year_sel} 活動別總工時（Top {topn}）")
         st.plotly_chart(fig, use_container_width=True)
-
     else:
         agg = sf.groupby("姓名", as_index=False)["hours"].sum().sort_values("hours", ascending=False).head(topn)
         fig = px.bar(agg, x="姓名", y="hours", title=f"{year_sel} 志工別總工時（Top {topn}）")
         st.plotly_chart(fig, use_container_width=True)
 
     card_close()
-    spacer(14)
 
-    card_open("📝 近期出勤（logs）", "原始打卡紀錄", tight=False)
+    spacer(14)
+    card_open("📝 近期出勤（logs）", "原始打卡紀錄")
     st.dataframe(logs, use_container_width=True, height=420)
     card_close()
 
