@@ -6,13 +6,13 @@ import time
 import plotly.express as px
 import os
 
-# --- 1. 🎨 視覺美學設定 (V11.0 全站儀表板化) ---
-st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
+# --- 1. 🎨 視覺美學設定 (V12.0 無邊界懸浮儀表板) ---
+st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide", initial_sidebar_state="collapsed")
 
 TW_TZ = timezone(timedelta(hours=8))
 PRIMARY = "#4A148C"    # 尊爵紫
 ACCENT = "#7B1FA2"     # 亮紫
-BG_MAIN = "#F3F4F6"    # 極淺灰
+BG_MAIN = "#F0F2F5"    # 現代化灰藍底 (比純灰更有質感)
 
 st.markdown(f"""
     <style>
@@ -21,71 +21,29 @@ st.markdown(f"""
         color: #212121 !important;
         font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
     }}
+    
+    /* 🔥 關鍵：隱藏死板的原生側邊欄，改用全螢幕 */
+    [data-testid="stSidebar"] {{
+        display: none;
+    }}
+    
+    /* 背景設定 */
     .stApp {{ background-color: {BG_MAIN}; }}
     
-    /* =============================================
-       🔥 核心升級：萬物皆卡片 (Card UI)
-       自動把 表單、展開區、表格 變成漂亮卡片
-       ============================================= */
-    
-    /* 1. 表單 (Forms) 變卡片 */
-    div[data-testid="stForm"] {{
+    /* 🔥 頂部導航列 (取代側邊欄) - 懸浮膠囊設計 */
+    .nav-container {{
         background-color: white;
-        padding: 25px;
-        border-radius: 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        padding: 15px 30px;
+        border-radius: 50px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
         border: 1px solid white;
-        margin-bottom: 20px;
     }}
     
-    /* 2. 展開區 (Expanders) 變卡片 */
-    .streamlit-expanderContent {{
-        background-color: white;
-        border-bottom-left-radius: 20px;
-        border-bottom-right-radius: 20px;
-        padding: 20px !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    }}
-    div[data-testid="stExpander"] details {{
-        background-color: white;
-        border-radius: 20px;
-        border: 1px solid white;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-        margin-bottom: 15px;
-    }}
-    
-    /* 3. 表格 (DataFrame) 變卡片 */
-    div[data-testid="stDataFrame"] {{
-        background-color: white;
-        padding: 15px;
-        border-radius: 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-        border: 1px solid white;
-        margin-top: 10px;
-    }}
-
-    /* 4. 分頁籤 (Tabs) 變膠囊按鈕 */
-    div[data-baseweb="tab-list"] {{
-        gap: 10px;
-    }}
-    div[data-baseweb="tab"] {{
-        background-color: white;
-        border-radius: 30px;
-        padding: 10px 20px;
-        border: 1px solid #E0E0E0;
-        transition: all 0.3s;
-    }}
-    div[data-baseweb="tab"][aria-selected="true"] {{
-        background-color: {PRIMARY} !important;
-        color: white !important;
-        border: 1px solid {PRIMARY};
-    }}
-    
-    /* =============================================
-       首頁與通用元件樣式 (保持 V10.2 設定)
-       ============================================= */
-    
-    /* 卡片按鈕 */
+    /* 卡片按鈕 (首頁) */
     .stButton>button {{
         width: 100%;
         background-color: white !important;
@@ -121,11 +79,21 @@ st.markdown(f"""
         background-color: #FFFFFF !important;
         color: #000000 !important;
         border: 1px solid #9FA8DA !important;
-        border-radius: 10px; /* 圓角加大 */
+        border-radius: 10px;
     }}
     .stTextInput label, .stSelectbox label, .stDateInput label {{
         color: {PRIMARY} !important;
         font-weight: bold;
+    }}
+    
+    /* 萬物皆卡片 (Card UI) */
+    div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderContent, div[data-testid="stExpander"] details {{
+        background-color: white;
+        border-radius: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        border: 1px solid white;
+        padding: 20px;
+        margin-bottom: 20px;
     }}
     
     /* 戰情室統計小卡 */
@@ -251,12 +219,15 @@ def calculate_hours_year(logs_df, year):
                 i += 1
     return total_seconds
 
-# --- 4. 🖥️ UI 導航 ---
+# --- 4. 🖥️ UI 導航與版面 ---
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
+# 如果不在首頁，顯示上方懸浮導航列 (取代側邊欄)
 if st.session_state.page != 'home':
+    # 使用白色卡片當作導航底座
     with st.container():
+        # 版面配置：置中
         c1, c2, c3, spacer = st.columns([1, 1, 1, 4])
         with c1:
             if st.button("🏠 首頁", use_container_width=True): st.session_state.page = 'home'; st.rerun()
@@ -264,11 +235,11 @@ if st.session_state.page != 'home':
             if st.button("⏰ 打卡", use_container_width=True): st.session_state.page = 'checkin'; st.rerun()
         with c3:
             if st.button("📊 報表", use_container_width=True): st.session_state.page = 'report'; st.rerun()
-    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True) # 增加呼吸空間
 
-# === 🏠 首頁 (不動，完美V10.2) ===
+# === 🏠 首頁 ===
 if st.session_state.page == 'home':
-    st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px; margin-top: 20px;'>福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
     
     col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1.5, 2, 2, 2, 0.5])
     
@@ -284,7 +255,7 @@ if st.session_state.page == 'home':
         if os.path.exists("icon_members.png"):
             st.image("icon_members.png", width=120)
         else:
-            st.error("缺圖")
+            st.markdown("<div style='text-align:center; font-size:60px;'>📋</div>", unsafe_allow_html=True)
         if st.button("志工名冊", key="home_btn2"):
             st.session_state.page = 'members'; st.rerun()
 
@@ -307,10 +278,11 @@ if st.session_state.page == 'home':
     total_hours = int(total_sec // 3600)
     total_mins = int((total_sec % 3600) // 60)
     
+    # 總時數大卡片
     st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #7E57C2 0%, #512DA8 100%); padding: 25px; border-radius: 15px; color: white; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(81, 45, 168, 0.3);">
+    <div style="background: linear-gradient(135deg, #7E57C2 0%, #512DA8 100%); padding: 30px; border-radius: 20px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(81, 45, 168, 0.25);">
         <div style="font-size: 1.2rem; opacity: 0.9;">📅 {this_year} 年度 - 全體志工總服務時數</div>
-        <div style="font-size: 3.5rem; font-weight: 900; margin: 10px 0;">{total_hours} <span style="font-size: 1.5rem;">小時</span> {total_mins} <span style="font-size: 1.5rem;">分</span></div>
+        <div style="font-size: 3.5rem; font-weight: 900; margin: 15px 0;">{total_hours} <span style="font-size: 1.5rem;">小時</span> {total_mins} <span style="font-size: 1.5rem;">分</span></div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -336,7 +308,7 @@ if st.session_state.page == 'home':
                 </div>
                 """, unsafe_allow_html=True)
 
-# === ⏰ 打卡頁 (儀表板化) ===
+# === ⏰ 打卡頁 ===
 elif st.session_state.page == 'checkin':
     st.markdown("## ⏰ 智能打卡站")
     tw_now = get_tw_time()
@@ -347,8 +319,8 @@ elif st.session_state.page == 'checkin':
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
     
     with tab1:
-        # 雖然不能直接包form，但我們可以創造一個視覺區塊
-        st.markdown('<div class="dash-card">', unsafe_allow_html=True) # 開始卡片
+        # 卡片化容器
+        st.markdown('<div class="dash-card">', unsafe_allow_html=True) 
         c_act, c_spacer = st.columns([1, 2])
         with c_act: 
             raw_act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES)
@@ -390,19 +362,16 @@ elif st.session_state.page == 'checkin':
             st.session_state.scan_box = ""
 
         st.text_input("請輸入身分證 (或掃描)", key="scan_box", on_change=process_scan)
-        st.markdown('</div>', unsafe_allow_html=True) # 結束卡片
+        st.markdown('</div>', unsafe_allow_html=True) 
 
     with tab2:
         df_m = load_data_from_sheet("members")
         if not df_m.empty:
             active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)]
             name_list = active_m['姓名'].tolist()
-            
-            # Form 會自動變成卡片 (CSS 魔法)
             with st.form("manual"):
                 st.write("### 🛠️ 補登操作")
                 entry_mode = st.radio("模式", ["單筆補登", "整批補登"], horizontal=True)
-                
                 c1, c2, c3, c4 = st.columns(4)
                 d_date = c1.date_input("日期")
                 d_time = c2.time_input("時間", value=get_tw_time().time())
@@ -414,7 +383,7 @@ elif st.session_state.page == 'checkin':
                 else:
                     names = st.multiselect("選擇多位", name_list)
                 
-                if st.form_submit_button("確認補登"):
+                if st.form_submit_button("補登"):
                     logs = load_data_from_sheet("logs")
                     new_rows = []
                     for n in names:
@@ -431,18 +400,16 @@ elif st.session_state.page == 'checkin':
     with tab3:
         logs = load_data_from_sheet("logs")
         if not logs.empty:
-            # DataEditor 會自動變成卡片
             edited = st.data_editor(logs, num_rows="dynamic", use_container_width=True)
             if st.button("💾 儲存"):
                 save_data_to_sheet(edited, "logs")
                 st.success("已更新")
 
-# === 📋 名冊頁 (儀表板化) ===
+# === 📋 名冊頁 ===
 elif st.session_state.page == 'members':
     st.markdown("## 📋 志工名冊管理")
     df = load_data_from_sheet("members")
     
-    # Expander 會自動變成卡片
     with st.expander("➕ 新增志工", expanded=True):
         with st.form("add_m"):
             c1, c2, c3 = st.columns(3)
@@ -452,12 +419,10 @@ elif st.session_state.page == 'members':
             c4, c5 = st.columns([2, 1])
             addr = c4.text_input("地址")
             ph = c5.text_input("電話")
-            
             st.markdown("---")
             st.write("**志工分類與加入日期**")
             cats = []
             col_d1, col_d2 = st.columns(2)
-            
             is_x = col_d1.checkbox("祥和")
             d_x = col_d2.text_input("祥和加入日", value=str(date.today()) if is_x else "")
             is_t = col_d1.checkbox("週二據點")
@@ -490,26 +455,19 @@ elif st.session_state.page == 'members':
                     st.success("新增成功"); time.sleep(1); st.rerun()
 
     if not df.empty:
-        st.write("") # 空行
+        st.write("")
         mode = st.radio("檢視模式", ["🟢 在職", "📋 全部"], horizontal=True)
         df['狀態'] = df.apply(lambda r: '已退出' if check_is_fully_retired(r) else '在職', axis=1)
         df['年齡'] = df['生日'].apply(calculate_age)
-        
         show_df = df[df['狀態'] == '在職'] if mode == "🟢 在職" else df
-        
         cols = ['狀態', '姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
         cols = [c for c in cols if c in df.columns]
-        
-        # DataFrame 會自動變成卡片
         st.data_editor(show_df[cols], use_container_width=True, num_rows="dynamic", key="m_edit")
 
 # === 📊 報表頁 ===
 elif st.session_state.page == 'report':
     st.markdown("## 📊 數據分析")
     logs = load_data_from_sheet("logs")
-    
     st.markdown("### 📝 近期出勤")
-    if not logs.empty: 
-        st.dataframe(logs, use_container_width=True, height=400)
-    else: 
-        st.info("無資料")
+    if not logs.empty: st.dataframe(logs, use_container_width=True, height=400)
+    else: st.info("無資料")
