@@ -4,58 +4,58 @@ from datetime import datetime, date, timedelta, timezone
 import gspread
 import time
 import plotly.express as px
+import os # 引入作業系統路徑模組
 
-# --- 1. 🎨 視覺美學設定 (V7.0 首頁戰情室版) ---
+# --- 1. 🎨 視覺美學設定 (V7.2 圖片圖示版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
-# 定義時區
 TW_TZ = timezone(timedelta(hours=8))
-
-# 配色變數 (高對比：深紫配純白)
-PRIMARY = "#4A148C"    # 尊爵紫 (文字/邊框)
-ACCENT = "#7B1FA2"     # 亮紫 (圖表)
-BG_MAIN = "#F3F4F6"    # 極淺灰 (背景保護眼睛)
+PRIMARY = "#4A148C"
+ACCENT = "#7B1FA2"
+BG_MAIN = "#F3F4F6"
 
 st.markdown(f"""
     <style>
-    /* 1. 全域字體設定 */
     html, body, [class*="css"], .stMarkdown, div, p {{
         color: #212121 !important;
         font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
     }}
-    .stApp {{
-        background-color: {BG_MAIN};
-    }}
+    .stApp {{ background-color: {BG_MAIN}; }}
     
-    /* 2. 🔥 首頁導航卡片按鈕 (方形大卡片) */
+    /* 膠囊按鈕 (放在圖片下方的) */
     .stButton>button {{
         width: 100%;
-        height: 120px; /* 方形高度 */
-        background-color: white !important;
-        color: {PRIMARY} !important;
-        border: 2px solid {PRIMARY} !important;
-        border-radius: 15px !important;
-        font-size: 22px !important;
-        font-weight: 900 !important;
-        box-shadow: 0 4px 0px rgba(74, 20, 140, 0.2);
+        background: linear-gradient(135deg, {PRIMARY} 0%, {ACCENT} 100%);
+        color: white !important;
+        border: none !important;
+        border-radius: 50px !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
+        padding: 10px 0;
+        box-shadow: 0 4px 10px rgba(74, 20, 140, 0.3);
         transition: transform 0.1s;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        white-space: pre-wrap !important; /* 允許換行 */
     }}
     .stButton>button:hover {{
-        transform: translateY(-3px);
-        background-color: #F3E5F5 !important;
-        box-shadow: 0 6px 0px rgba(74, 20, 140, 0.3);
-    }}
-    .stButton>button:active {{
-        transform: translateY(2px);
-        box-shadow: none;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(74, 20, 140, 0.4);
     }}
     
-    /* 3. 輸入框強制白底黑字 (防止國防布) */
+    /* 圖片容器樣式 */
+    .img-container {{
+        background-color: white;
+        padding: 15px;
+        border-radius: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        margin-bottom: 15px;
+        text-align: center;
+        border: 2px solid white;
+        transition: border 0.3s;
+    }}
+    .img-container:hover {{
+        border: 2px solid {ACCENT};
+    }}
+    
+    /* 輸入框樣式 */
     .stTextInput input, .stSelectbox div[data-baseweb="select"], .stDateInput input, .stTimeInput input {{
         background-color: #FFFFFF !important;
         color: #000000 !important;
@@ -67,7 +67,7 @@ st.markdown(f"""
         font-weight: bold;
     }}
     
-    /* 4. 統計數據小卡 (Dashboard Card) */
+    /* 統計小卡 */
     .dash-card {{
         background-color: white;
         padding: 15px;
@@ -80,7 +80,6 @@ st.markdown(f"""
     .dash-value {{ font-size: 1.8rem; color: {PRIMARY}; font-weight: 900; margin: 5px 0; }}
     .dash-sub {{ font-size: 0.9rem; color: #888; }}
 
-    /* 5. 隱藏 Streamlit 預設選單 */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     </style>
@@ -166,19 +165,13 @@ def check_is_fully_retired(row):
     return not is_active
 
 def calculate_hours_year(logs_df, year):
-    """計算指定年度的總時數"""
     if logs_df.empty: return 0
-    
-    # 篩選年度
     logs_df['dt'] = pd.to_datetime(logs_df['日期'] + ' ' + logs_df['時間'], errors='coerce')
     logs_df = logs_df.dropna(subset=['dt'])
     year_logs = logs_df[logs_df['dt'].dt.year == year].copy()
-    
     if year_logs.empty: return 0
-    
     total_seconds = 0
     year_logs = year_logs.sort_values(['姓名', 'dt'])
-    
     for (name, date_val), group in year_logs.groupby(['姓名', '日期']):
         actions = group['動作'].tolist()
         times = group['dt'].tolist()
@@ -199,7 +192,6 @@ def calculate_hours_year(logs_df, year):
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
-# 如果不在首頁，顯示上方導航條
 if st.session_state.page != 'home':
     with st.container():
         c1, c2, c3, spacer = st.columns([1, 1, 1, 4])
@@ -211,38 +203,55 @@ if st.session_state.page != 'home':
             if st.button("📊 報表", use_container_width=True): st.session_state.page = 'report'; st.rerun()
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-# === 🏠 首頁 (戰情室) ===
+# === 🏠 首頁 (圖片卡片版) ===
 if st.session_state.page == 'home':
     st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>💜 福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
     
-    # 1. 功能入口 (卡片式按鈕)
-    c1, c2, c3 = st.columns(3)
+    # 這裡調整卡片位置：置中模式
+    col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1, 2, 2, 2, 1])
+    
+    # 🔥 1. 智能打卡卡片
     with c1:
-        if st.button("⏰\n智能打卡站", key="home_btn1"):
+        # 嘗試讀取 icon_checkin.png，如果沒有就顯示 Emoji
+        if os.path.exists("icon_checkin.png"):
+            st.image("icon_checkin.png", use_container_width=True)
+        else:
+            st.markdown("<h1 style='text-align:center; font-size: 80px;'>⏰</h1>", unsafe_allow_html=True)
+            
+        if st.button("進入打卡", key="home_btn1"):
             st.session_state.page = 'checkin'; st.rerun()
+
+    # 🔥 2. 志工名冊卡片
     with c2:
-        if st.button("📋\n志工名冊", key="home_btn2"):
+        if os.path.exists("icon_members.png"):
+            st.image("icon_members.png", use_container_width=True)
+        else:
+            st.markdown("<h1 style='text-align:center; font-size: 80px;'>📋</h1>", unsafe_allow_html=True)
+            
+        if st.button("名冊管理", key="home_btn2"):
             st.session_state.page = 'members'; st.rerun()
+
+    # 🔥 3. 數據分析卡片
     with c3:
-        if st.button("📊\n數據分析", key="home_btn3"):
+        if os.path.exists("icon_report.png"):
+            st.image("icon_report.png", use_container_width=True)
+        else:
+            st.markdown("<h1 style='text-align:center; font-size: 80px;'>📊</h1>", unsafe_allow_html=True)
+            
+        if st.button("數據分析", key="home_btn3"):
             st.session_state.page = 'report'; st.rerun()
     
     st.markdown("---")
-    
-    # 2. 戰情數據看板 (Dashboard)
     st.markdown(f"### 📊 {datetime.now().year} 年度即時概況")
     
-    # 讀取資料
     logs = load_data_from_sheet("logs")
     members = load_data_from_sheet("members")
     
-    # 2.1 計算今年總時數
     this_year = datetime.now().year
     total_sec = calculate_hours_year(logs, this_year)
     total_hours = int(total_sec // 3600)
     total_mins = int((total_sec % 3600) // 60)
     
-    # 顯示總時數大卡片
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #7E57C2 0%, #512DA8 100%); padding: 25px; border-radius: 15px; color: white; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(81, 45, 168, 0.3);">
         <div style="font-size: 1.2rem; opacity: 0.9;">📅 {this_year} 年度 - 全體志工總服務時數</div>
@@ -250,23 +259,16 @@ if st.session_state.page == 'home':
     </div>
     """, unsafe_allow_html=True)
     
-    # 2.2 計算各隊數據
     if not members.empty:
-        # 篩選在職
         active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy()
         active_m['age'] = active_m['生日'].apply(calculate_age)
         valid_age = active_m[active_m['age'] > 0]
         
-        # 產生四個類別的卡片
         cols = st.columns(4)
         for idx, cat in enumerate(ALL_CATEGORIES):
-            if cat == "臨時志工": continue # 臨時志工通常不計入常態統計
-            
-            # 該類別的人數
+            if cat == "臨時志工": continue
             subset = active_m[active_m['志工分類'].astype(str).str.contains(cat, na=False)]
             count = len(subset)
-            
-            # 該類別的平均年齡
             age_subset = valid_age[valid_age['志工分類'].astype(str).str.contains(cat, na=False)]
             avg_age = round(age_subset['age'].mean(), 1) if not age_subset.empty else 0
             
@@ -431,7 +433,6 @@ elif st.session_state.page == 'members':
         
         show_df = df[df['狀態'] == '在職'] if mode == "🟢 在職" else df
         
-        # 欄位順序
         cols = ['狀態', '姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
         cols = [c for c in cols if c in df.columns]
         st.data_editor(show_df[cols], use_container_width=True, num_rows="dynamic", key="m_edit")
@@ -440,13 +441,7 @@ elif st.session_state.page == 'members':
 elif st.session_state.page == 'report':
     st.markdown("## 📊 數據分析")
     logs = load_data_from_sheet("logs")
-    members = load_data_from_sheet("members")
     
-    if not logs.empty:
-        # 計算總時數 (不分年度，或預設今年，這裡先做歷史總計)
-        # 為了效能，這裡只做簡單 demo，詳細可再加
-        pass
-
     st.markdown("### 📝 近期出勤")
     if not logs.empty: st.dataframe(logs, use_container_width=True, height=400)
     else: st.info("無資料")
