@@ -4,45 +4,58 @@ from datetime import datetime, date
 import gspread
 import time
 import plotly.express as px
-import plotly.graph_objects as go # 引入進階繪圖
 
-# --- 1. 🎨 薰衣草紫主題 (V4.0 去除方框修正版) ---
+# --- 1. 🎨 薰衣草紫主題 (V4.1 輸入框顯色修復版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
 # 定義顏色
 THEME_COLOR = "#673AB7"
 BG_COLOR = "#F3E5F5"
-TEXT_COLOR = "#4527A0" # 更深一點的紫，增加閱讀性
+TEXT_COLOR = "#4527A0"
 
 st.markdown(f"""
     <style>
-    /* 全域字體 */
+    /* 1. 全域字體強制深色 */
     html, body, [class*="css"] {{
-        color: #333333;
+        color: #212121 !important;
         font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
     }}
     
-    /* 背景設定 */
+    /* 2. 背景設定 */
     .stApp {{
         background-color: {BG_COLOR};
         background-image: linear-gradient(180deg, #F3E5F5 0%, #E1BEE7 100%);
     }}
     
-    /* 🔥 修正：只針對「表格」和「輸入框」加陰影，不針對所有區塊 (解決按鈕方框問題) */
-    .stDataFrame, .stTextInput, .stSelectbox, .stDateInput {{
-        background-color: white;
-        border-radius: 15px;
-        padding: 10px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    /* 3. 🔥【關鍵修復】輸入框與標籤強制顯色 */
+    /* 輸入框上方的文字標籤 (Label) */
+    .stTextInput label, .stSelectbox label, .stMultiSelect label, .stDateInput label {{
+        color: {TEXT_COLOR} !important;
+        font-weight: bold !important;
+        font-size: 1rem !important;
     }}
-
-    /* 標題優化 */
+    
+    /* 輸入框本體 (Input Box) */
+    .stTextInput input {{
+        color: #000000 !important;        /* 輸入的字變黑色 */
+        background-color: #FFFFFF !important; /* 背景變白色 */
+        border: 1px solid #B39DDB !important; /* 加個紫框比較明顯 */
+    }}
+    
+    /* 下拉選單本體 */
+    div[data-baseweb="select"] > div {{
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 1px solid #B39DDB !important;
+    }}
+    
+    /* 4. 標題優化 */
     h1, h2, h3 {{
         color: {TEXT_COLOR} !important;
         font-weight: 800 !important;
     }}
 
-    /* 🎯 按鈕樣式 (懸浮膠囊) */
+    /* 5. 按鈕樣式 (懸浮膠囊) */
     .stButton>button {{
         background: linear-gradient(90deg, #7E57C2 0%, #673AB7 100%);
         color: white !important; 
@@ -51,7 +64,7 @@ st.markdown(f"""
         padding: 10px 24px;
         font-size: 16px !important;
         font-weight: bold !important;
-        white-space: nowrap !important; /* 禁止斷行 */
+        white-space: nowrap !important;
         box-shadow: 0 4px 10px rgba(103, 58, 183, 0.3);
         transition: all 0.3s ease;
         min-width: 120px;
@@ -62,7 +75,7 @@ st.markdown(f"""
         box-shadow: 0 6px 15px rgba(103, 58, 183, 0.5);
     }}
     
-    /* 首頁大卡片 */
+    /* 6. 首頁大卡片 */
     .big-card-text {{
         font-size: 1.3rem;
         color: {TEXT_COLOR};
@@ -148,9 +161,7 @@ def check_is_fully_retired(row):
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
-# 導航列 (確保按鈕沒有外框)
 if st.session_state.page != 'home':
-    # 使用 container 來避免被全域樣式影響
     with st.container():
         c1, c2, c3, spacer = st.columns([1, 1, 1, 4])
         with c1:
@@ -159,7 +170,7 @@ if st.session_state.page != 'home':
             if st.button("⏰ 智能打卡"): st.session_state.page = 'checkin'; st.rerun()
         with c3:
             if st.button("📊 數據分析"): st.session_state.page = 'report'; st.rerun()
-    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True) # 增加一點間距
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
 # === 🏠 首頁 ===
 if st.session_state.page == 'home':
@@ -186,7 +197,6 @@ elif st.session_state.page == 'checkin':
     st.markdown("## ⏰ 智能打卡站")
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
     
-    # 這裡還是用 Tabs 因為功能區分明確，但去掉了外框
     tab1, tab2 = st.tabs(["⚡️ 快速打卡區", "🛠️ 補登與維護"])
     
     with tab1:
@@ -250,15 +260,19 @@ elif st.session_state.page == 'members':
     st.markdown("## 📋 志工名冊管理")
     df = load_data_from_sheet("members")
     
-    with st.expander("➕ 新增志工", expanded=False):
+    with st.expander("➕ 新增志工 (點擊展開)", expanded=True):
+        st.write("請輸入以下資料：")
         c1, c2, c3 = st.columns(3)
-        n = c1.text_input("姓名")
-        p = c2.text_input("身分證字號")
-        b = c3.text_input("生日 (YYYY-MM-DD)")
+        with c1: n = st.text_input("姓名")
+        with c2: p = st.text_input("身分證字號")
+        with c3: b = st.text_input("生日 (YYYY-MM-DD)")
+        
         c4, c5 = st.columns([2, 1])
-        addr = c4.text_input("地址")
-        ph = c5.text_input("電話")
-        cats = st.multiselect("分類", ALL_CATEGORIES)
+        with c4: addr = st.text_input("地址")
+        with c5: ph = st.text_input("電話")
+        
+        cats = st.multiselect("志工分類", ALL_CATEGORIES)
+        
         if st.button("新增資料"):
             if not p: st.error("身分證必填");
             elif not df.empty and p in df['身分證字號'].values: st.error("重複")
@@ -277,6 +291,7 @@ elif st.session_state.page == 'members':
                 st.success("新增成功"); time.sleep(1); st.rerun()
 
     if not df.empty:
+        st.write("---")
         df['年齡'] = df['生日'].apply(calculate_age)
         special_cols = ['姓名', '年齡', '電話', '地址', '志工分類']
         date_cols = [c for c in df.columns if '日期' in c]
@@ -285,22 +300,19 @@ elif st.session_state.page == 'members':
         final_cols = [c for c in final_cols if c in df.columns]
         st.data_editor(df[final_cols], use_container_width=True, num_rows="dynamic", key="member_editor")
 
-# === 📊 報表頁 (一頁式設計) ===
+# === 📊 報表頁 ===
 elif st.session_state.page == 'report':
     st.markdown("## 📊 數據分析")
     
     logs = load_data_from_sheet("logs")
     members = load_data_from_sheet("members")
     
-    # 1. 出勤紀錄區塊
     st.markdown("### 📝 近期出勤紀錄")
     if logs.empty: st.info("尚無出勤資料")
-    else: 
-        st.dataframe(logs, use_container_width=True, height=300) # 限制高度讓畫面更緊湊
+    else: st.dataframe(logs, use_container_width=True, height=300)
         
-    st.divider() # 分隔線
+    st.divider()
     
-    # 2. 年齡分析區塊
     st.markdown("### 🎂 志工年齡結構")
     if members.empty: st.info("尚無志工資料")
     else:
@@ -310,7 +322,6 @@ elif st.session_state.page == 'report':
         if valid_ages.empty:
             st.warning("⚠️ 無有效生日資料，無法計算年齡。")
         else:
-            # 各類別平均年齡 Metric
             cat_stats = []
             for cat in ALL_CATEGORIES:
                 subset = valid_ages[valid_ages['志工分類'].astype(str).str.contains(cat, na=False)]
@@ -324,32 +335,24 @@ elif st.session_state.page == 'report':
                     with cols[idx]:
                         st.metric(label=f"{row['志工類別']}", value=f"{row['平均年齡']} 歲", delta=f"{row['人數']} 人")
 
-            st.write("") # 空行
+            st.write("")
             
-            # 🔥 美化版長條圖 (去除格線、使用漸層色)
             bins = [0, 20, 30, 40, 50, 60, 70, 80, 90, 100]
             labels = ['20歲↓', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90歲↑']
             valid_ages['Age_Group'] = pd.cut(valid_ages['Calculated_Age'], bins=bins, labels=labels, right=False)
             age_counts = valid_ages['Age_Group'].value_counts().sort_index().reset_index()
             age_counts.columns = ['年齡區間', '人數']
             
-            # 使用 Plotly 繪製更乾淨的圖
             fig = px.bar(
                 age_counts, x='年齡區間', y='人數', text='人數', 
-                title="", # 標題已在外面用 markdown 寫了
-                color='人數', # 讓顏色隨人數深淺變化
-                color_continuous_scale=['#D1C4E9', '#673AB7'] # 淺紫到深紫漸層
+                color='人數', color_continuous_scale=['#D1C4E9', '#673AB7']
             )
-            
             fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)', # 背景透明
-                paper_bgcolor='rgba(0,0,0,0)',
-                font_color=THEME_COLOR,
-                xaxis=dict(showgrid=False),
-                yaxis=dict(showgrid=False, visible=False), # 隱藏 Y 軸格線和數字(因為Bar上有數字了)
-                margin=dict(t=10, b=10, l=10, r=10), # 縮減邊距
-                coloraxis_showscale=False # 隱藏右邊的顏色條
+                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                font_color=THEME_COLOR, xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=False, visible=False),
+                margin=dict(t=10, b=10, l=10, r=10),
+                coloraxis_showscale=False
             )
-            fig.update_traces(textposition='outside', marker_line_width=0) # 數字顯示在Bar外面
-            
+            fig.update_traces(textposition='outside', marker_line_width=0)
             st.plotly_chart(fig, use_container_width=True)
