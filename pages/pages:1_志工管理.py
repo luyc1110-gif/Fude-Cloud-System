@@ -6,7 +6,7 @@ import time
 import plotly.express as px
 import os
 
-# --- 1. 🎨 視覺美學設定 (V10.1 向右微調+字體加粗版) ---
+# --- 1. 🎨 視覺美學設定 (V10.2 向右修正+字體增厚版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
 TW_TZ = timezone(timedelta(hours=8))
@@ -31,13 +31,15 @@ st.markdown(f"""
         border: 2px solid {PRIMARY} !important;
         border-radius: 15px !important;
         
-        /* ✨ 字體優化區 */
-        font-size: 22px !important;
-        font-weight: 900 !important;      /* 最粗體 */
-        letter-spacing: 1.5px !important; /* 字距 */
+        /* ✨ 字體加厚工程 */
+        font-size: 24px !important;       /* 字再大一點 */
+        font-weight: 900 !important;      /* 最粗 */
+        letter-spacing: 1px !important;
+        /* 使用陰影模擬更粗的筆畫 */
+        text-shadow: 0.5px 0px 0px {PRIMARY}, -0.5px 0px 0px {PRIMARY}; 
         
-        /* 📐 排版優化區 */
-        padding: 15px 30px !important;    /* 上下15, 左右30 (避免貼邊) */
+        /* 📐 排版 */
+        padding: 15px 30px !important;
         margin-top: 10px;
         
         box-shadow: 0 4px 0px rgba(74, 20, 140, 0.2);
@@ -209,16 +211,13 @@ if st.session_state.page != 'home':
             if st.button("📊 報表", use_container_width=True): st.session_state.page = 'report'; st.rerun()
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-# === 🏠 首頁 (向右對齊修正版) ===
+# === 🏠 首頁 (向右平移版) ===
 if st.session_state.page == 'home':
-    # 標題
     st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
     
-    # 🔥🔥🔥 關鍵排版調整：
-    # 原本是 [1, 2, 2, 2, 1] (左右對稱)
-    # 現在改為 [1.2, 2, 2, 2, 0.8] -> 左邊空位多一點(1.2)，右邊少一點(0.8)，整體就會往右移
-    
-    col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1.2, 2, 2, 2, 0.8])
+    # 🔥🔥🔥 關鍵修正：左邊空間加大 (1.5)，右邊空間縮小 (0.5)
+    # 這樣整個區塊會明顯向右移動
+    col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1.5, 2, 2, 2, 0.5])
     
     # 🔥 1. 智能打卡
     with c1:
@@ -235,7 +234,7 @@ if st.session_state.page == 'home':
         if os.path.exists("icon_members.png"):
             st.image("icon_members.png", width=120)
         else:
-            st.error("缺 icon_members.png")
+            st.error("缺圖")
         
         if st.button("志工名冊", key="home_btn2"):
             st.session_state.page = 'members'; st.rerun()
