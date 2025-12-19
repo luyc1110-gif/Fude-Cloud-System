@@ -5,41 +5,53 @@ import gspread
 import time
 import plotly.express as px
 
-# --- 1. 🎨 高級薰衣草主題 (V5.0 旗艦配色版) ---
+# --- 1. 🎨 視覺美學設定 (V5.1 高對比修正版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
 # 視覺設計變數
-PRIMARY_COLOR = "#7E57C2"   # 主色：深薰衣草紫 (用於按鈕、標題)
-LIGHT_BG = "#F3E5F5"        # 淺紫 (用於裝飾)
-MAIN_BG = "#F8F9FA"         # 背景：極淺灰白 (保護眼睛，不再整片紫)
-CARD_BG = "#FFFFFF"         # 卡片白
-TEXT_COLOR = "#333333"      # 深灰黑字
+PRIMARY_COLOR = "#673AB7"   # 主色：深紫
+TEXT_COLOR = "#212121"      # 文字：深黑 (確保清晰)
+BG_COLOR = "#F3E5F5"        # 背景：淺紫
 
 st.markdown(f"""
     <style>
-    /* 全域設定 */
-    html, body, [class*="css"] {{
-        color: {TEXT_COLOR};
+    /* 1. 強制全站字體顏色 (解決字體不清楚) */
+    html, body, [class*="css"], .stMarkdown, .stText, p, div {{
+        color: {TEXT_COLOR} !important;
         font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
     }}
+    
+    /* 2. 背景設定 */
     .stApp {{
-        background-color: {MAIN_BG};
+        background-color: #F8F9FA; /* 改用極淺灰白，讓閱讀更舒適 */
+        background-image: linear-gradient(180deg, #F3E5F5 0%, #FFFFFF 100%); /* 頂部一點點紫 */
     }}
     
-    /* 輸入框優化 (白底黑字) */
+    /* 3. 輸入元件優化 (白底黑字 + 深色標籤) */
+    .stTextInput label, .stSelectbox label, .stMultiSelect label, .stDateInput label, .stRadio label, .stTimeInput label {{
+        color: {PRIMARY_COLOR} !important;
+        font-weight: bold !important;
+        font-size: 1.05rem !important;
+    }}
     .stTextInput input, .stSelectbox div[data-baseweb="select"], .stDateInput input, .stTimeInput input {{
         background-color: #FFFFFF !important;
         color: #000000 !important;
-        border: 1px solid #D1C4E9 !important;
+        border: 1px solid #9575CD !important;
         border-radius: 8px;
     }}
-    /* 標籤文字 */
-    .stTextInput label, .stSelectbox label, .stMultiSelect label, .stDateInput label {{
-        color: {PRIMARY_COLOR} !important;
-        font-weight: bold;
+    
+    /* 單選與複選框的選項文字 */
+    .stRadio div[role="radiogroup"] label p, .stCheckbox label p {{
+        color: #333333 !important;
+        font-weight: 600 !important;
     }}
 
-    /* 🎯 卡片式按鈕 (首頁與篩選用) */
+    /* 4. 提示框優化 (Info/Warning/Error) - 確保文字深色 */
+    .stAlert div[data-testid="stMarkdownContainer"] p {{
+        color: #000000 !important;
+    }}
+
+    /* 5. 卡片式按鈕 (首頁與篩選用) */
     .card-btn {{
         background-color: white;
         border: 2px solid {PRIMARY_COLOR};
@@ -49,19 +61,13 @@ st.markdown(f"""
         cursor: pointer;
         transition: all 0.3s;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin: 10px;
-        color: {PRIMARY_COLOR};
-    }}
-    .card-btn:hover {{
-        background-color: {PRIMARY_COLOR};
-        color: white;
-        transform: translateY(-5px);
-        box-shadow: 0 8px 15px rgba(126, 87, 194, 0.3);
+        color: {PRIMARY_COLOR} !important;
+        font-weight: bold;
     }}
     
-    /* 一般按鈕 (膠囊狀) */
+    /* 6. 一般按鈕 (膠囊狀) */
     .stButton>button {{
-        background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, #673AB7 100%);
+        background: linear-gradient(135deg, {PRIMARY_COLOR} 0%, #512DA8 100%);
         color: white !important;
         border-radius: 50px;
         border: none;
@@ -74,12 +80,13 @@ st.markdown(f"""
         box-shadow: 0 6px 12px rgba(103, 58, 183, 0.4);
     }}
 
-    /* 表格樣式 */
+    /* 7. 表格樣式 */
     .stDataFrame {{
         background-color: white;
         padding: 15px;
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border: 1px solid #E0E0E0;
     }}
     
     /* 標題樣式 */
@@ -90,7 +97,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. 🔗 Google Sheets 連線 ---
+# --- 2. 🔗 Google Sheets 連線 (效能優化版) ---
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 
 ALL_CATEGORIES = ['祥和志工', '關懷據點週二志工', '關懷據點週三志工', '環保志工', '臨時志工']
@@ -107,6 +114,8 @@ DISPLAY_ORDER = [
 def get_google_sheet_client():
     return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
 
+# 🔥 關鍵修正：加入 ttl=60 (快取 60 秒)，解決 API Error 429 問題
+@st.cache_data(ttl=60)
 def load_data_from_sheet(sheet_name):
     try:
         client = get_google_sheet_client()
@@ -123,7 +132,8 @@ def load_data_from_sheet(sheet_name):
                 if c not in df.columns: df[c] = ""
         return df
     except Exception as e:
-        st.error(f"資料讀取錯誤 ({sheet_name})：{e}")
+        # 如果真的出錯，顯示友善訊息
+        st.warning(f"連線繁忙中，請稍候再試 ({e})")
         return pd.DataFrame()
 
 def save_data_to_sheet(df, sheet_name):
@@ -132,6 +142,10 @@ def save_data_to_sheet(df, sheet_name):
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
         sheet.update([df.columns.values.tolist()] + df.values.tolist())
+        
+        # 🔥 關鍵：寫入資料後，馬上清除快取，這樣下次讀取才會是新的
+        load_data_from_sheet.clear()
+        
     except Exception as e:
         st.error(f"寫入失敗：{e}")
 
@@ -179,14 +193,13 @@ if st.session_state.page != 'home':
             if st.button("⏰ 打卡", use_container_width=True): st.session_state.page = 'checkin'; st.rerun()
         with c3:
             if st.button("📊 報表", use_container_width=True): st.session_state.page = 'report'; st.rerun()
-    st.markdown("<hr style='margin: 10px 0; border-top: 1px solid #E0E0E0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin: 10px 0; border-top: 1px solid #D1C4E9;'>", unsafe_allow_html=True)
 
 # === 🏠 首頁 ===
 if st.session_state.page == 'home':
     st.markdown(f"<h1 style='text-align: center; margin-top: 40px;'>💜 福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; color: #666; margin-bottom: 50px;'>請選擇功能模組</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: #555; font-weight:bold; margin-bottom: 50px;'>請選擇功能模組</p>", unsafe_allow_html=True)
     
-    # 修正：縮短按鈕，置中顯示，使用卡片風格
     c_spacer_l, c1, c2, c3, c_spacer_r = st.columns([1, 2, 2, 2, 1])
     
     with c1:
@@ -202,7 +215,7 @@ if st.session_state.page == 'home':
         if st.button("📊 數據分析", key="btn_h3", use_container_width=True):
             st.session_state.page = 'report'; st.rerun()
 
-# === ⏰ 打卡頁 (功能大補強) ===
+# === ⏰ 打卡頁 ===
 elif st.session_state.page == 'checkin':
     st.markdown("## ⏰ 智能打卡站")
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
@@ -253,26 +266,23 @@ elif st.session_state.page == 'checkin':
 
         st.text_input("請輸入身分證 (或掃描)", key="scan_box", on_change=process_scan)
 
-    # --- Tab 2: 補登 (整批/單筆) ---
+    # --- Tab 2: 補登 ---
     with tab2:
         st.info("💡 此處可補登過去遺漏的紀錄")
         entry_mode = st.radio("補登模式", ["單筆補登", "整批補登 (多人)"], horizontal=True)
         
         df_m = load_data_from_sheet("members")
         if not df_m.empty:
-            # 取得在職志工名單
             active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)]
             name_list = active_m['姓名'].tolist()
             
             with st.form("manual_entry_form"):
-                # 共用欄位
                 c1, c2, c3, c4 = st.columns(4)
                 d_date = c1.date_input("日期")
                 d_time = c2.time_input("時間", value=datetime.now().time())
                 d_action = c3.selectbox("動作", ["簽到", "簽退"])
                 d_act = c4.selectbox("活動內容", DEFAULT_ACTIVITIES)
                 
-                # 選擇志工
                 target_names = []
                 if entry_mode == "單筆補登":
                     sel = st.selectbox("選擇志工", name_list)
@@ -299,23 +309,21 @@ elif st.session_state.page == 'checkin':
         else:
             st.warning("無法載入志工名單")
 
-    # --- Tab 3: 紀錄維護 (編輯) ---
+    # --- Tab 3: 維護 ---
     with tab3:
         st.warning("⚠️ 注意：此處修改將直接覆寫雲端資料庫")
         logs = load_data_from_sheet("logs")
         if not logs.empty:
-            # 使用 Data Editor 讓使用者直接改
             edited_logs = st.data_editor(logs, num_rows="dynamic", use_container_width=True)
             if st.button("💾 儲存修改 (出勤紀錄)"):
                 save_data_to_sheet(edited_logs, "logs")
                 st.success("✅ 出勤紀錄已更新！")
 
-# === 📋 名冊頁 (加入日期修正 + 卡片篩選) ===
+# === 📋 名冊頁 ===
 elif st.session_state.page == 'members':
     st.markdown("## 📋 志工名冊管理")
     df = load_data_from_sheet("members")
     
-    # --- 新增志工區塊 ---
     with st.expander("➕ 新增志工 (展開填寫)", expanded=True):
         with st.form("add_member_form"):
             c1, c2, c3 = st.columns(3)
@@ -329,23 +337,18 @@ elif st.session_state.page == 'members':
             st.markdown("---")
             st.markdown("###### 志工分類與加入日期 (有勾選才填寫)")
             
-            # 🔥 新增：各類別加入日期欄位
             cats_selected = []
             col_d1, col_d2 = st.columns(2)
             
-            # 祥和
             is_xiang = col_d1.checkbox("祥和志工")
             d_xiang = col_d2.text_input("祥和加入日期 (YYYY-MM-DD)", value=str(date.today()) if is_xiang else "")
             
-            # 據點週二
             is_tue = col_d1.checkbox("據點週二志工")
             d_tue = col_d2.text_input("週二加入日期", value=str(date.today()) if is_tue else "")
             
-            # 據點週三
             is_wed = col_d1.checkbox("據點週三志工")
             d_wed = col_d2.text_input("週三加入日期", value=str(date.today()) if is_wed else "")
             
-            # 環保
             is_env = col_d1.checkbox("環保志工")
             d_env = col_d2.text_input("環保加入日期", value=str(date.today()) if is_env else "")
 
@@ -353,7 +356,6 @@ elif st.session_state.page == 'members':
                 if not p: st.error("身分證必填");
                 elif not df.empty and p in df['身分證字號'].values: st.error("身分證重複")
                 else:
-                    # 彙整分類字串
                     if is_xiang: cats_selected.append("祥和志工")
                     if is_tue: cats_selected.append("關懷據點週二志工")
                     if is_wed: cats_selected.append("關懷據點週三志工")
@@ -367,7 +369,6 @@ elif st.session_state.page == 'members':
                         '據點週三_加入日期': d_wed if is_wed else "",
                         '環保_加入日期': d_env if is_env else ""
                     }
-                    
                     new = pd.DataFrame([new_data])
                     for c in DISPLAY_ORDER: 
                         if c not in new.columns: new[c] = ""
@@ -377,7 +378,6 @@ elif st.session_state.page == 'members':
     if not df.empty:
         st.markdown("### 🔍 名單檢視")
         
-        # 🔥 改用「卡片式按鈕」切換檢視模式
         if 'view_mode' not in st.session_state: st.session_state.view_mode = 'active'
         
         col_btn1, col_btn2, spacer = st.columns([1, 1, 3])
@@ -386,7 +386,6 @@ elif st.session_state.page == 'members':
         with col_btn2:
             if st.button("📋 查看所有名單 (含退出)", use_container_width=True): st.session_state.view_mode = 'all'; st.rerun()
             
-        # 邏輯過濾
         df['狀態'] = df.apply(lambda row: '已退出' if check_is_fully_retired(row) else '在職', axis=1)
         df['年齡'] = df['生日'].apply(calculate_age)
         
@@ -397,7 +396,6 @@ elif st.session_state.page == 'members':
             display_df = df
             st.caption("目前顯示：📋 所有歷史名單")
         
-        # 欄位整理
         special_cols = ['狀態', '姓名', '年齡', '電話', '地址', '志工分類']
         date_cols = [c for c in df.columns if '日期' in c]
         other_cols = [c for c in df.columns if c not in special_cols and c not in date_cols and c != '年齡' and c != '狀態']
@@ -440,18 +438,16 @@ elif st.session_state.page == 'report':
                 cols = st.columns(len(cat_stats))
                 for idx, row in df_stats.iterrows():
                     with cols[idx]:
-                        # 漂亮的卡片統計
                         st.markdown(f"""
-                        <div style="background:white; padding:15px; border-radius:10px; border:1px solid #E1BEE7; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                        <div style="background:white; padding:15px; border-radius:10px; border:1px solid #D1C4E9; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
                             <div style="color:#7E57C2; font-weight:bold;">{row['志工類別']}</div>
                             <div style="font-size:2rem; font-weight:900; color:#4527A0;">{row['平均年齡']} <span style="font-size:1rem;">歲</span></div>
-                            <div style="color:#666; font-size:1.1rem;">共 {row['人數']} 人</div>
+                            <div style="color:#666; font-size:1.1rem; font-weight:bold;">共 {row['人數']} 人</div>
                         </div>
                         """, unsafe_allow_html=True)
 
             st.write("")
             
-            # 甜甜圈圖
             bins = [0, 20, 30, 40, 50, 60, 70, 80, 90, 100]
             labels = ['20歲↓', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90歲↑']
             valid_ages['Age_Group'] = pd.cut(valid_ages['Calculated_Age'], bins=bins, labels=labels, right=False)
@@ -465,7 +461,7 @@ elif st.session_state.page == 'report':
             fig.update_traces(textposition='outside', textinfo='label+percent+value')
             fig.update_layout(
                 plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color=TEXT_COLOR, size=14),
+                font=dict(color='#333333', size=14),
                 margin=dict(t=20, b=20, l=20, r=20),
                 showlegend=False
             )
