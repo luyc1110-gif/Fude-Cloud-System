@@ -4,76 +4,71 @@ from datetime import datetime, date
 import gspread
 import time
 import plotly.express as px
+import plotly.graph_objects as go # 引入進階繪圖
 
-# --- 1. 🎨 薰衣草紫主題 (V3.0 美化修復版) ---
+# --- 1. 🎨 薰衣草紫主題 (V4.0 去除方框修正版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
-# 定義顏色變數 (加強對比度)
-THEME_COLOR = "#673AB7"  # 深紫色 (按鈕背景)
-BUTTON_TEXT_COLOR = "#FFFFFF" # 按鈕文字 (純白)
-BG_COLOR = "#F3E5F5"     # 淺紫背景
-TEXT_COLOR = "#311B92"   # 標題深藍紫
-BODY_TEXT = "#000000"    # 內文全黑 (最清晰)
+# 定義顏色
+THEME_COLOR = "#673AB7"
+BG_COLOR = "#F3E5F5"
+TEXT_COLOR = "#4527A0" # 更深一點的紫，增加閱讀性
 
 st.markdown(f"""
     <style>
-    /* 全域字體與顏色 */
+    /* 全域字體 */
     html, body, [class*="css"] {{
-        color: {BODY_TEXT};
+        color: #333333;
         font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
     }}
     
+    /* 背景設定 */
     .stApp {{
         background-color: {BG_COLOR};
         background-image: linear-gradient(180deg, #F3E5F5 0%, #E1BEE7 100%);
     }}
     
-    /* 卡片優化 */
-    .stDataFrame, .stTab, div[data-testid="stVerticalBlock"] > div {{
+    /* 🔥 修正：只針對「表格」和「輸入框」加陰影，不針對所有區塊 (解決按鈕方框問題) */
+    .stDataFrame, .stTextInput, .stSelectbox, .stDateInput {{
         background-color: white;
         border-radius: 15px;
-        padding: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        border: 1px solid #E1BEE7;
+        padding: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }}
 
     /* 標題優化 */
     h1, h2, h3 {{
         color: {TEXT_COLOR} !important;
-        font-weight: 900 !important;
-        letter-spacing: 1px;
+        font-weight: 800 !important;
     }}
 
-    /* 🎯 按鈕終極美化 (解決斷行與配色問題) */
+    /* 🎯 按鈕樣式 (懸浮膠囊) */
     .stButton>button {{
-        background: linear-gradient(135deg, {THEME_COLOR} 0%, #512DA8 100%);
-        color: {BUTTON_TEXT_COLOR} !important; 
-        border-radius: 50px; /* 更圓潤 */
+        background: linear-gradient(90deg, #7E57C2 0%, #673AB7 100%);
+        color: white !important; 
+        border-radius: 50px;
         border: none;
-        padding: 12px 28px; /* 增加內距 */
+        padding: 10px 24px;
         font-size: 16px !important;
         font-weight: bold !important;
-        white-space: nowrap !important; /* 🔥 關鍵：禁止文字斷行 */
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        transition: transform 0.2s, box-shadow 0.2s;
-        min-width: 140px; /* 保證最小寬度 */
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+        white-space: nowrap !important; /* 禁止斷行 */
+        box-shadow: 0 4px 10px rgba(103, 58, 183, 0.3);
+        transition: all 0.3s ease;
+        min-width: 120px;
+        margin: 5px;
     }}
     .stButton>button:hover {{
         transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.25);
-        background: linear-gradient(135deg, #7E57C2 0%, #673AB7 100%);
+        box-shadow: 0 6px 15px rgba(103, 58, 183, 0.5);
     }}
     
-    /* 首頁大卡片文字 */
+    /* 首頁大卡片 */
     .big-card-text {{
         font-size: 1.3rem;
         color: {TEXT_COLOR};
         text-align: center;
         font-weight: bold;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -83,8 +78,6 @@ SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 
 ALL_CATEGORIES = ['祥和志工', '關懷據點週二志工', '關懷據點週三志工', '環保志工', '臨時志工']
 DEFAULT_ACTIVITIES = ['關懷據點週二活動', '關懷據點週三活動', '環保清潔', '專案活動', '教育訓練']
-
-# 🔥 這裡定義欄位順序 (您要的地址和日期都在這)
 DISPLAY_ORDER = [
     '姓名', '身分證字號', '性別', '電話', '志工分類', '生日', '地址', '備註',
     '祥和_加入日期', '祥和_退出日期', 
@@ -103,9 +96,7 @@ def load_data_from_sheet(sheet_name):
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         data = sheet.get_all_records()
         df = pd.DataFrame(data)
-        df = df.astype(str) # 全部轉字串防呆
-        
-        # 補齊所有定義好的欄位，確保不缺漏
+        df = df.astype(str)
         if sheet_name == 'members':
             for c in DISPLAY_ORDER:
                 if c not in df.columns: df[c] = ""
@@ -157,21 +148,23 @@ def check_is_fully_retired(row):
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
-# 導航按鈕列 (使用 columns 讓按鈕排排站，不擁擠)
+# 導航列 (確保按鈕沒有外框)
 if st.session_state.page != 'home':
-    c1, c2, c3, c4 = st.columns([1, 1, 1, 5]) # 調整比例讓按鈕靠左
-    with c1:
-        if st.button("🏠 回首頁"): st.session_state.page = 'home'; st.rerun()
-    with c2:
-        if st.button("⏰ 智能打卡"): st.session_state.page = 'checkin'; st.rerun()
-    with c3:
-        if st.button("📊 數據報表"): st.session_state.page = 'report'; st.rerun()
-    st.write("") # 空一行
+    # 使用 container 來避免被全域樣式影響
+    with st.container():
+        c1, c2, c3, spacer = st.columns([1, 1, 1, 4])
+        with c1:
+            if st.button("🏠 回首頁"): st.session_state.page = 'home'; st.rerun()
+        with c2:
+            if st.button("⏰ 智能打卡"): st.session_state.page = 'checkin'; st.rerun()
+        with c3:
+            if st.button("📊 數據分析"): st.session_state.page = 'report'; st.rerun()
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True) # 增加一點間距
 
 # === 🏠 首頁 ===
 if st.session_state.page == 'home':
-    st.markdown(f"<h1 style='text-align: center; margin-bottom: 10px;'>💜 福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; color: #666; margin-bottom: 40px;'>請點擊下方卡片進入功能</p>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center; margin-top: 20px;'>💜 福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: #666; margin-bottom: 50px;'>請點擊下方卡片進入功能</p>", unsafe_allow_html=True)
     
     with st.container():
         c1, c2, c3 = st.columns(3)
@@ -184,7 +177,7 @@ if st.session_state.page == 'home':
             if st.button("管理名單", key="h2", use_container_width=True):
                 st.session_state.page = 'members'; st.rerun()
         with c3:
-            st.markdown(f'<div class="big-card-text">📊 數據與年齡分析</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="big-card-text">📊 數據分析</div>', unsafe_allow_html=True)
             if st.button("查看報表", key="h3", use_container_width=True):
                 st.session_state.page = 'report'; st.rerun()
 
@@ -193,6 +186,7 @@ elif st.session_state.page == 'checkin':
     st.markdown("## ⏰ 智能打卡站")
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
     
+    # 這裡還是用 Tabs 因為功能區分明確，但去掉了外框
     tab1, tab2 = st.tabs(["⚡️ 快速打卡區", "🛠️ 補登與維護"])
     
     with tab1:
@@ -210,7 +204,6 @@ elif st.session_state.page == 'checkin':
             df_m = load_data_from_sheet("members")
             df_l = load_data_from_sheet("logs")
             if df_m.empty: st.error("❌ 無法讀取名單"); return
-            
             person = df_m[df_m['身分證字號'] == pid]
             if not person.empty:
                 row = person.iloc[0]
@@ -266,20 +259,17 @@ elif st.session_state.page == 'members':
         addr = c4.text_input("地址")
         ph = c5.text_input("電話")
         cats = st.multiselect("分類", ALL_CATEGORIES)
-        
         if st.button("新增資料"):
             if not p: st.error("身分證必填");
             elif not df.empty and p in df['身分證字號'].values: st.error("重複")
             else:
                 new_data = {'姓名':n, '身分證字號':p, '生日':b, '電話':ph, '地址':addr, '志工分類':",".join(cats)}
-                # 自動填入加入日期為今天 (預設)
                 today_str = date.today().strftime("%Y-%m-%d")
                 for cat in cats:
                     if "祥和" in cat: new_data['祥和_加入日期'] = today_str
                     if "週二" in cat: new_data['據點週二_加入日期'] = today_str
                     if "週三" in cat: new_data['據點週三_加入日期'] = today_str
                     if "環保" in cat: new_data['環保_加入日期'] = today_str
-                
                 new = pd.DataFrame([new_data])
                 for c in DISPLAY_ORDER: 
                     if c not in new.columns: new[c] = ""
@@ -287,83 +277,79 @@ elif st.session_state.page == 'members':
                 st.success("新增成功"); time.sleep(1); st.rerun()
 
     if not df.empty:
-        # 🔥 這裡強制欄位順序，並確保地址和日期出現
         df['年齡'] = df['生日'].apply(calculate_age)
-        
-        # 顯示欄位：姓名, 年齡, 電話, 地址, 分類, ...然後是各個日期
         special_cols = ['姓名', '年齡', '電話', '地址', '志工分類']
         date_cols = [c for c in df.columns if '日期' in c]
         other_cols = [c for c in df.columns if c not in special_cols and c not in date_cols and c != '年齡']
-        
         final_cols = special_cols + date_cols + other_cols
-        # 確保所有欄位都在 df 裡 (防呆)
         final_cols = [c for c in final_cols if c in df.columns]
-        
         st.data_editor(df[final_cols], use_container_width=True, num_rows="dynamic", key="member_editor")
 
-# === 📊 報表頁 ===
+# === 📊 報表頁 (一頁式設計) ===
 elif st.session_state.page == 'report':
-    st.markdown("## 📊 數據與年齡分析")
+    st.markdown("## 📊 數據分析")
+    
     logs = load_data_from_sheet("logs")
     members = load_data_from_sheet("members")
     
-    tab_work, tab_age = st.tabs(["📈 出勤統計", "🎂 各類志工平均年齡"])
+    # 1. 出勤紀錄區塊
+    st.markdown("### 📝 近期出勤紀錄")
+    if logs.empty: st.info("尚無出勤資料")
+    else: 
+        st.dataframe(logs, use_container_width=True, height=300) # 限制高度讓畫面更緊湊
+        
+    st.divider() # 分隔線
     
-    with tab_work:
-        if logs.empty: st.info("尚無出勤資料")
-        else: st.dataframe(logs, use_container_width=True)
-            
-    with tab_age:
-        if members.empty: st.info("尚無志工資料")
+    # 2. 年齡分析區塊
+    st.markdown("### 🎂 志工年齡結構")
+    if members.empty: st.info("尚無志工資料")
+    else:
+        members['Calculated_Age'] = members['生日'].apply(calculate_age)
+        valid_ages = members[members['Calculated_Age'] > 0]
+        
+        if valid_ages.empty:
+            st.warning("⚠️ 無有效生日資料，無法計算年齡。")
         else:
-            members['Calculated_Age'] = members['生日'].apply(calculate_age)
-            valid_ages = members[members['Calculated_Age'] > 0]
+            # 各類別平均年齡 Metric
+            cat_stats = []
+            for cat in ALL_CATEGORIES:
+                subset = valid_ages[valid_ages['志工分類'].astype(str).str.contains(cat, na=False)]
+                if not subset.empty:
+                    cat_stats.append({'志工類別': cat, '平均年齡': round(subset['Calculated_Age'].mean(), 1), '人數': len(subset)})
             
-            if valid_ages.empty:
-                st.warning("⚠️ 無有效生日資料，無法計算年齡。")
-            else:
-                st.markdown("### 📊 各類別平均年齡統計")
-                
-                # 🔥 計算各類別平均年齡 (拆解多重身分)
-                cat_stats = []
-                for cat in ALL_CATEGORIES:
-                    # 篩選出包含該類別的志工
-                    subset = valid_ages[valid_ages['志工分類'].astype(str).str.contains(cat, na=False)]
-                    if not subset.empty:
-                        avg = subset['Calculated_Age'].mean()
-                        count = len(subset)
-                        cat_stats.append({'志工類別': cat, '平均年齡': round(avg, 1), '人數': count})
-                
-                if cat_stats:
-                    df_stats = pd.DataFrame(cat_stats)
-                    
-                    # 顯示漂亮的 Metric 卡片
-                    cols = st.columns(len(cat_stats))
-                    for idx, row in df_stats.iterrows():
-                        with cols[idx % 3]: # 每行最多3個，超過換行
-                             st.metric(label=f"{row['志工類別']} (共{row['人數']}人)", value=f"{row['平均年齡']} 歲")
-                    
-                    st.divider()
-                    
-                    # 畫長條圖比較
-                    fig = px.bar(df_stats, x='志工類別', y='平均年齡', text='平均年齡', 
-                                 title="各隊志工平均年齡比較", color='志工類別',
-                                 color_discrete_sequence=px.colors.qualitative.Bold)
-                    fig.update_layout(yaxis_title="歲數", plot_bgcolor="white")
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                else:
-                    st.info("目前沒有志工被歸類在已知類別中。")
+            if cat_stats:
+                df_stats = pd.DataFrame(cat_stats)
+                cols = st.columns(len(cat_stats))
+                for idx, row in df_stats.iterrows():
+                    with cols[idx]:
+                        st.metric(label=f"{row['志工類別']}", value=f"{row['平均年齡']} 歲", delta=f"{row['人數']} 人")
 
-                st.divider()
-                st.markdown("### 全體年齡分佈")
-                # 原本的總表保留
-                bins = [0, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-                labels = ['20歲以下', '20-30歲', '30-40歲', '40-50歲', '50-60歲', '60-70歲', '70-80歲', '80-90歲', '90歲以上']
-                valid_ages['Age_Group'] = pd.cut(valid_ages['Calculated_Age'], bins=bins, labels=labels, right=False)
-                age_counts = valid_ages['Age_Group'].value_counts().sort_index().reset_index()
-                age_counts.columns = ['年齡區間', '人數']
-                
-                fig2 = px.bar(age_counts, x='年齡區間', y='人數', text='人數', color_discrete_sequence=['#7E57C2'])
-                fig2.update_layout(plot_bgcolor="white")
-                st.plotly_chart(fig2, use_container_width=True)
+            st.write("") # 空行
+            
+            # 🔥 美化版長條圖 (去除格線、使用漸層色)
+            bins = [0, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+            labels = ['20歲↓', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90歲↑']
+            valid_ages['Age_Group'] = pd.cut(valid_ages['Calculated_Age'], bins=bins, labels=labels, right=False)
+            age_counts = valid_ages['Age_Group'].value_counts().sort_index().reset_index()
+            age_counts.columns = ['年齡區間', '人數']
+            
+            # 使用 Plotly 繪製更乾淨的圖
+            fig = px.bar(
+                age_counts, x='年齡區間', y='人數', text='人數', 
+                title="", # 標題已在外面用 markdown 寫了
+                color='人數', # 讓顏色隨人數深淺變化
+                color_continuous_scale=['#D1C4E9', '#673AB7'] # 淺紫到深紫漸層
+            )
+            
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)', # 背景透明
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color=THEME_COLOR,
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=False, visible=False), # 隱藏 Y 軸格線和數字(因為Bar上有數字了)
+                margin=dict(t=10, b=10, l=10, r=10), # 縮減邊距
+                coloraxis_showscale=False # 隱藏右邊的顏色條
+            )
+            fig.update_traces(textposition='outside', marker_line_width=0) # 數字顯示在Bar外面
+            
+            st.plotly_chart(fig, use_container_width=True)
