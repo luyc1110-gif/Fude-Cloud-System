@@ -5,7 +5,7 @@ import gspread
 import time
 import plotly.express as px
 
-# --- 1. 🎨 薰衣草紫主題 (V4.1 輸入框顯色修復版) ---
+# --- 1. 🎨 薰衣草紫主題 (V4.2 終極整合版) ---
 st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide")
 
 # 定義顏色
@@ -15,7 +15,7 @@ TEXT_COLOR = "#4527A0"
 
 st.markdown(f"""
     <style>
-    /* 1. 全域字體強制深色 */
+    /* 1. 全域字體強制深色 (解決看不見字的問題) */
     html, body, [class*="css"] {{
         color: #212121 !important;
         font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
@@ -27,26 +27,24 @@ st.markdown(f"""
         background-image: linear-gradient(180deg, #F3E5F5 0%, #E1BEE7 100%);
     }}
     
-    /* 3. 🔥【關鍵修復】輸入框與標籤強制顯色 */
-    /* 輸入框上方的文字標籤 (Label) */
-    .stTextInput label, .stSelectbox label, .stMultiSelect label, .stDateInput label {{
+    /* 3. 輸入框與標籤顯色設定 (白底黑字) */
+    .stTextInput label, .stSelectbox label, .stMultiSelect label, .stDateInput label, .stRadio label {{
         color: {TEXT_COLOR} !important;
         font-weight: bold !important;
         font-size: 1rem !important;
     }}
     
-    /* 輸入框本體 (Input Box) */
-    .stTextInput input {{
-        color: #000000 !important;        /* 輸入的字變黑色 */
-        background-color: #FFFFFF !important; /* 背景變白色 */
-        border: 1px solid #B39DDB !important; /* 加個紫框比較明顯 */
+    /* 輸入框本體 */
+    .stTextInput input, .stSelectbox div[data-baseweb="select"] {{
+        color: #000000 !important;
+        background-color: #FFFFFF !important;
+        border: 1px solid #B39DDB !important;
+        border-radius: 10px;
     }}
-    
-    /* 下拉選單本體 */
-    div[data-baseweb="select"] > div {{
+    /* 下拉選單的選項文字 */
+    div[role="listbox"] ul {{
         background-color: #FFFFFF !important;
         color: #000000 !important;
-        border: 1px solid #B39DDB !important;
     }}
     
     /* 4. 標題優化 */
@@ -82,6 +80,14 @@ st.markdown(f"""
         text-align: center;
         font-weight: bold;
         margin-bottom: 10px;
+    }}
+    
+    /* 7. 表格樣式優化 */
+    .stDataFrame {{
+        background-color: white;
+        padding: 10px;
+        border-radius: 15px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -131,7 +137,7 @@ def save_data_to_sheet(df, sheet_name):
     except Exception as e:
         st.error(f"寫入失敗：{e}")
 
-# --- 3. 🧮 邏輯運算 ---
+# --- 3. 🧮 邏輯運算 (包含狀態判斷與年齡) ---
 def calculate_age(birthday_str):
     if not birthday_str or len(birthday_str) < 4: return 0
     try:
@@ -149,13 +155,23 @@ def calculate_age(birthday_str):
     except: return 0
 
 def check_is_fully_retired(row):
+    # 只要有加入日期，且該加入日期對應的退出日期是空的，就算是在職
+    # 相反：如果所有有加入的類別都退出了，才算完全退出
     roles = [('祥和_加入日期', '祥和_退出日期'), ('據點週二_加入日期', '據點週二_退出日期'),
              ('據點週三_加入日期', '據點週三_退出日期'), ('環保_加入日期', '環保_退出日期')]
+    
+    has_any_role = False
     is_active = False
+    
     for join_col, exit_col in roles:
-        if join_col in row and row[join_col]: 
-            if not (exit_col in row and row[exit_col]): is_active = True
-    return not is_active
+        if join_col in row and str(row[join_col]).strip() != "":
+            has_any_role = True
+            # 有加入，且沒退出 => 在職
+            if not (exit_col in row and str(row[exit_col]).strip() != ""):
+                is_active = True
+                
+    if not has_any_role: return False # 沒資料算在職(或新進)
+    return not is_active # 如果不是 active 就是 retired
 
 # --- 4. 🖥️ UI 導航 ---
 if 'page' not in st.session_state:
@@ -192,7 +208,7 @@ if st.session_state.page == 'home':
             if st.button("查看報表", key="h3", use_container_width=True):
                 st.session_state.page = 'report'; st.rerun()
 
-# === ⏰ 打卡頁 ===
+# === ⏰ 打卡頁 (包含專案說明欄位) ===
 elif st.session_state.page == 'checkin':
     st.markdown("## ⏰ 智能打卡站")
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
@@ -201,8 +217,15 @@ elif st.session_state.page == 'checkin':
     
     with tab1:
         c_act, c_input = st.columns([1, 2])
-        with c_act: act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES)
-        
+        with c_act: 
+            raw_act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES)
+            # 🔥【功能補回】如果是專案活動或教育訓練，跳出輸入框
+            final_act = raw_act
+            if raw_act in ["專案活動", "教育訓練"]:
+                note = st.text_input("📝 請輸入活動名稱/說明", placeholder="例如：社區大掃除、消防講習...")
+                if note:
+                    final_act = f"{raw_act}：{note}"
+
         def process_scan():
             pid = st.session_state.scan_box.strip().upper()
             if not pid: return
@@ -214,11 +237,12 @@ elif st.session_state.page == 'checkin':
             df_m = load_data_from_sheet("members")
             df_l = load_data_from_sheet("logs")
             if df_m.empty: st.error("❌ 無法讀取名單"); return
+            
             person = df_m[df_m['身分證字號'] == pid]
             if not person.empty:
                 row = person.iloc[0]
                 name = row['姓名']
-                if check_is_fully_retired(row): st.error(f"❌ {name} 已退出")
+                if check_is_fully_retired(row): st.error(f"❌ {name} 已顯示為「退出」，無法打卡。")
                 else:
                     today = now.strftime("%Y-%m-%d")
                     t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
@@ -226,11 +250,11 @@ elif st.session_state.page == 'checkin':
                     if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": action = "簽退"
                     new_log = pd.DataFrame([{
                         '姓名': name, '身分證字號': pid, '電話': row['電話'], '志工分類': row['志工分類'],
-                        '動作': action, '時間': now.strftime("%H:%M:%S"), '日期': today, '活動內容': act
+                        '動作': action, '時間': now.strftime("%H:%M:%S"), '日期': today, '活動內容': final_act
                     }])
                     save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
                     st.session_state['scan_cooldowns'][pid] = now
-                    st.success(f"✅ {name} {action} 成功！")
+                    st.success(f"✅ {name} {action} 成功！ ({final_act})")
             else: st.error("❌ 查無此人")
             st.session_state.scan_box = ""
 
@@ -255,7 +279,7 @@ elif st.session_state.page == 'checkin':
                 save_data_to_sheet(pd.concat([logs, new], ignore_index=True), "logs")
                 st.success("已補登")
 
-# === 📋 名冊頁 ===
+# === 📋 名冊頁 (包含狀態篩選) ===
 elif st.session_state.page == 'members':
     st.markdown("## 📋 志工名冊管理")
     df = load_data_from_sheet("members")
@@ -292,13 +316,33 @@ elif st.session_state.page == 'members':
 
     if not df.empty:
         st.write("---")
+        
+        # 🔥【功能補回】自動判斷狀態，並提供篩選
+        df['狀態'] = df.apply(lambda row: '已退出' if check_is_fully_retired(row) else '在職', axis=1)
         df['年齡'] = df['生日'].apply(calculate_age)
-        special_cols = ['姓名', '年齡', '電話', '地址', '志工分類']
+        
+        # 篩選器
+        col_filter, col_spacer = st.columns([1, 3])
+        with col_filter:
+            status_filter = st.radio("名單檢視模式", ["只看在職", "查看所有 (含已退出)"], horizontal=True)
+        
+        # 根據篩選過濾
+        if status_filter == "只看在職":
+            display_df = df[df['狀態'] == '在職']
+        else:
+            display_df = df
+            
+        # 欄位排序：把「狀態」放在最前面，方便查看
+        special_cols = ['狀態', '姓名', '年齡', '電話', '地址', '志工分類']
         date_cols = [c for c in df.columns if '日期' in c]
-        other_cols = [c for c in df.columns if c not in special_cols and c not in date_cols and c != '年齡']
+        other_cols = [c for c in df.columns if c not in special_cols and c not in date_cols and c != '年齡' and c != '狀態']
+        
         final_cols = special_cols + date_cols + other_cols
         final_cols = [c for c in final_cols if c in df.columns]
-        st.data_editor(df[final_cols], use_container_width=True, num_rows="dynamic", key="member_editor")
+        
+        # 顯示人數
+        st.markdown(f"**共 {len(display_df)} 筆資料**")
+        st.data_editor(display_df[final_cols], use_container_width=True, num_rows="dynamic", key="member_editor")
 
 # === 📊 報表頁 ===
 elif st.session_state.page == 'report':
@@ -313,14 +357,16 @@ elif st.session_state.page == 'report':
         
     st.divider()
     
-    st.markdown("### 🎂 志工年齡結構")
+    st.markdown("### 🎂 志工年齡結構 (在職志工)")
     if members.empty: st.info("尚無志工資料")
     else:
-        members['Calculated_Age'] = members['生日'].apply(calculate_age)
-        valid_ages = members[members['Calculated_Age'] > 0]
+        # 只統計在職志工
+        active_members = members[~members.apply(check_is_fully_retired, axis=1)]
+        active_members['Calculated_Age'] = active_members['生日'].apply(calculate_age)
+        valid_ages = active_members[active_members['Calculated_Age'] > 0]
         
         if valid_ages.empty:
-            st.warning("⚠️ 無有效生日資料，無法計算年齡。")
+            st.warning("⚠️ 無有效生日資料 (在職志工)，無法計算年齡。")
         else:
             cat_stats = []
             for cat in ALL_CATEGORIES:
