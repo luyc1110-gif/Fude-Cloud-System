@@ -19,17 +19,17 @@ st.set_page_config(
 TW_TZ = timezone(timedelta(hours=8))
 
 PRIMARY = "#4A148C"   # 尊爵紫
-ACCENT = "#7B1FA2"    # 亮紫
+ACCENT  = "#7B1FA2"   # 亮紫
 BG_MAIN = "#F0F2F5"   # 灰藍底
-TEXT = "#212121"
-MUTED = "#666666"
+TEXT    = "#212121"
+MUTED   = "#666666"
 CARD_BG = "#FFFFFF"
 
 # =========================================================
 # 1) Styles
-#   - 首頁：移除三張卡「上方說明區」→ 改成乾淨 tile
-#   - 三個按鈕字體：更好看、更粗
-#   - topbar 避開 Streamlit 上方黑條：top: 72px
+#   ✅ 你要求的兩件事：
+#   (1) 首頁三個白底「空白條狀物」拿掉 → 本質是 tile 上方留白太大 → 縮小 tile padding / icon 高度
+#   (2) 首頁三個圖示與按鈕往上移 → 減少首頁 spacer + 縮短 tile-icon 高度
 # =========================================================
 st.markdown(
     f"""
@@ -58,7 +58,7 @@ st.markdown(
 
 /* 主容器 */
 .block-container {{
-  padding-top: 2.2rem;
+  padding-top: 2.0rem;
   padding-bottom: 2rem;
   max-width: 1250px;
 }}
@@ -77,7 +77,7 @@ st.markdown(
   gap: 12px;
 
   position: sticky;
-  top: 72px;        /* ✅ 避開上方黑色固定列 */
+  top: 72px;        /* 避開 Streamlit 上方黑色固定列 */
   z-index: 999;
 }}
 
@@ -106,7 +106,7 @@ st.markdown(
   color: var(--muted) !important;
 }}
 
-/* ===== Buttons：字體更好看 + 更粗 ===== */
+/* ===== Buttons：字體好看 + 更粗 ===== */
 div[data-testid="stButton"] > button {{
   width: 100%;
   border-radius: 999px !important;
@@ -114,8 +114,8 @@ div[data-testid="stButton"] > button {{
   background: white !important;
   color: var(--primary) !important;
   font-family: "Noto Sans TC", "Microsoft JhengHei", "微軟正黑體", sans-serif !important;
-  font-weight: 900 !important;              /* ✅ 更粗 */
-  font-size: 1.05rem !important;            /* ✅ 更好看 */
+  font-weight: 900 !important;
+  font-size: 1.05rem !important;
   letter-spacing: 0.6px !important;
   padding: 12px 16px !important;
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
@@ -152,11 +152,12 @@ div[data-testid="stButton"] > button:active {{
   margin: 0 0 10px 0;
 }}
 
-/* ===== Home Tile（首頁三張卡用）===== */
+/* ===== Home Tile（首頁三張卡）===== */
+/* ✅ 關鍵：把上方留白縮掉，避免你看到三條「白底空白」 */
 .tile {{
   background: white;
   border-radius: 26px;
-  padding: 22px 20px 18px;
+  padding: 14px 18px 16px;          /* 原本 22px 太高 → 改小 */
   box-shadow: 0 18px 38px rgba(0,0,0,0.07);
   border: 1px solid rgba(255,255,255,0.85);
   text-align: center;
@@ -165,15 +166,24 @@ div[data-testid="stButton"] > button:active {{
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 150px;
-  margin-bottom: 6px;
+  height: 120px;                    /* 原本 150px → 改小，圖示往上 */
+  margin: 0 0 4px;                  /* 移除多餘空白 */
 }}
 .tile-title {{
   font-weight: 900;
   font-size: 1.22rem;
   color: var(--primary) !important;
-  margin: 2px 0 14px;
+  margin: 0 0 12px;                 /* 原本有多餘 margin → 改小 */
   letter-spacing: 0.6px;
+}}
+
+/* 把 st.image 自帶的上下空白壓掉（避免 tile-icon 變「空白條」） */
+div[data-testid="stImage"] {{
+  margin: 0 !important;
+}}
+div[data-testid="stImage"] img {{
+  margin: 0 !important;
+  padding: 0 !important;
 }}
 
 /* Dashboard Stat */
@@ -466,19 +476,20 @@ def render_nav():
     spacer(18)
 
 # =========================================================
-# 6) HOME (✅ 移除三張卡上方說明與白色條狀物 → 改成乾淨 tile)
+# 6) HOME
+#   ✅ 這裡也把「首頁標題到三張卡」的空白縮小，讓整體往上
 # =========================================================
 def page_home():
     st.markdown(
         f"""
-<div style="text-align:center; margin-top: 10px;">
-  <div style="font-size: 2.2rem; font-weight: 900; color: {PRIMARY}; letter-spacing: 1px;">福德里 - 志工管理系統</div>
-  <div style="color: {MUTED}; margin-top: 8px; font-weight: 700;">打卡、名冊、報表，一套搞定。</div>
+<div style="text-align:center; margin-top: 2px;">
+  <div style="font-size: 2.15rem; font-weight: 900; color: {PRIMARY}; letter-spacing: 1px;">福德里 - 志工管理系統</div>
+  <div style="color: {MUTED}; margin-top: 6px; font-weight: 700;">打卡、名冊、報表，一套搞定。</div>
 </div>
 """,
         unsafe_allow_html=True,
     )
-    spacer(26)
+    spacer(12)   # 原本 26 → ✅ 改小，三張 tile 往上
 
     c1, c2, c3 = st.columns(3)
 
@@ -489,7 +500,7 @@ def page_home():
         if icon_path and os.path.exists(icon_path):
             st.image(icon_path, width=150)
         else:
-            st.markdown(f"<div style='font-size:88px; line-height:1;'>{emoji_fallback}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:86px; line-height:1;'>{emoji_fallback}</div>", unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
         st.markdown(f"<div class='tile-title'>{title}</div>", unsafe_allow_html=True)
@@ -506,7 +517,7 @@ def page_home():
     with c3:
         tile("icon_report.png", "📊", "數據分析", "進入報表分析", "home_btn_report", "report")
 
-    spacer(24)
+    spacer(22)
 
     # 即時概況
     logs = load_data_from_sheet("logs")
@@ -514,12 +525,11 @@ def page_home():
 
     this_year = datetime.now().year
     sessions = build_sessions(logs)
+    total_sec = 0
     if not sessions.empty:
         sessions["year"] = pd.to_datetime(sessions["start"]).dt.year
         y = sessions[sessions["year"] == this_year]
         total_sec = y["seconds"].sum()
-    else:
-        total_sec = 0
 
     total_h, total_m = seconds_to_hm(total_sec)
 
@@ -826,7 +836,6 @@ def page_members():
     mode = st.radio("檢視模式", ["🟢 在職", "📋 全部"], horizontal=True, key="members_view_mode")
     show_df = df2[df2["狀態"] == "在職"].copy() if mode == "🟢 在職" else df2.copy()
 
-    # ✅ 把 身分證字號放進來，才能安全對齊儲存
     cols = ["身分證字號", "狀態", "姓名", "年齡", "電話", "地址", "志工分類"] + \
            [c for c in df2.columns if "日期" in c] + ["備註"]
     cols = [c for c in cols if c in show_df.columns]
@@ -835,7 +844,7 @@ def page_members():
         show_df[cols],
         use_container_width=True,
         num_rows="dynamic",
-        disabled=["身分證字號", "狀態", "年齡"],  # ✅ 保護關鍵欄位
+        disabled=["身分證字號", "狀態", "年齡"],
         key="members_editor",
     )
 
@@ -847,7 +856,6 @@ def page_members():
         ed = edited.copy()
         ed[key] = ed[key].astype(str).str.upper()
 
-        # 以 key 更新 base 的可編欄位
         for col in ed.columns:
             if col in [key, "狀態", "年齡"]:
                 continue
@@ -857,10 +865,8 @@ def page_members():
             base[col] = base[f"{col}_new"].where(base[f"{col}_new"].notna(), base[col])
             base.drop(columns=[f"{col}_new"], inplace=True)
 
-        # 不把狀態/年齡寫回表
         base = base.drop(columns=["狀態", "年齡"], errors="ignore")
 
-        # 補齊欄位、依 DISPLAY_ORDER 儲存
         for c in DISPLAY_ORDER:
             if c not in base.columns:
                 base[c] = ""
