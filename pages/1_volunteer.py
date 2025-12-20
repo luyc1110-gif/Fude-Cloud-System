@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date, timedelta, timezone
@@ -25,14 +24,14 @@ BG_MAIN = "#F0F2F5"   # 灰藍底
 TEXT    = "#212121"   # 深黑字
 
 # =========================================================
-# 1) CSS 樣式 (V15.1 完整修復版)
+# 1) CSS 樣式 (V16.0 顯色強力修正 + 導航升級)
 # =========================================================
 st.markdown(
     f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
 
-/* 1. 全域字體強制深色 */
+/* 全域字體 */
 html, body, [class*="css"], div, p, span, li, ul {{
     font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     color: {TEXT} !important;
@@ -43,31 +42,46 @@ html, body, [class*="css"], div, p, span, li, ul {{
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 2. 輸入框與下拉選單顯色 */
+/* 🔥 強力顯色修復：下拉選單 (Selectbox) */
+div[data-baseweb="select"] > div {{
+    background-color: #FFFFFF !important;
+    border: 2px solid #9FA8DA !important;
+    border-radius: 10px !important;
+    color: #000000 !important; /* 強制黑字 */
+}}
+div[data-baseweb="select"] span {{
+    color: #000000 !important; /* 選單內的文字強制黑色 */
+    font-weight: 700 !important;
+}}
+/* 下拉後的選項清單 */
+ul[data-baseweb="menu"], div[role="listbox"] {{
+    background-color: #FFFFFF !important;
+}}
+li[role="option"], div[role="option"] {{
+    color: #000000 !important; /* 選項文字強制黑色 */
+    background-color: #FFFFFF !important;
+    font-weight: 700 !important;
+}}
+li[role="option"]:hover, div[role="option"]:hover {{
+    background-color: #E1BEE7 !important; /* 滑鼠移過去變淺紫 */
+}}
+
+/* 輸入框 */
 .stTextInput input, .stDateInput input, .stTimeInput input {{
     background-color: #FFFFFF !important;
     color: #000000 !important;
-    border: 1px solid #9FA8DA !important;
+    border: 2px solid #9FA8DA !important;
     border-radius: 10px;
     font-weight: 700;
 }}
-div[data-baseweb="select"] > div {{
-    background-color: #FFFFFF !important;
-    color: #000000 !important;
-    border-radius: 10px;
-    border: 1px solid #9FA8DA !important;
-}}
-div[data-baseweb="select"] span {{ color: #000000 !important; }}
-div[role="listbox"] ul {{ background-color: #FFFFFF !important; }}
-div[role="option"] {{ color: #000000 !important; }}
 
 label {{
     color: {PRIMARY} !important;
     font-weight: 900 !important;
-    font-size: 1.05rem !important;
+    font-size: 1.1rem !important;
 }}
 
-/* 3. 導航按鈕 (首頁與上方) */
+/* 導航按鈕 */
 div[data-testid="stButton"] > button {{
     width: 100%;
     background-color: white !important;
@@ -86,21 +100,21 @@ div[data-testid="stButton"] > button:hover {{
 }}
 div[data-testid="stButton"] > button:active {{ transform: translateY(2px); box-shadow: none; }}
 
-/* 🔥 關鍵修改：表單送出按鈕 (加強設計感) */
+/* 表單送出按鈕 */
 div[data-testid="stFormSubmitButton"] > button {{
     background: linear-gradient(135deg, {PRIMARY}, {ACCENT}) !important;
-    color: #FFFFFF !important;      /* 強制亮白字 */
-    font-weight: 900 !important;    /* 最粗體 */
-    font-size: 1.2rem !important;   /* 字變大 */
+    color: #FFFFFF !important;
+    font-weight: 900 !important;
+    font-size: 1.2rem !important;
     border: none !important;
-    box-shadow: 0 4px 15px rgba(123, 31, 162, 0.3) !important; /* 增加立體感 */
+    box-shadow: 0 4px 15px rgba(123, 31, 162, 0.3) !important;
 }}
 div[data-testid="stFormSubmitButton"] > button:hover {{
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(123, 31, 162, 0.5) !important;
 }}
 
-/* 4. 萬物皆卡片 */
+/* 卡片容器 */
 div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderContent, div[data-testid="stExpander"] details {{
     background-color: white;
     border-radius: 20px;
@@ -110,7 +124,7 @@ div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderCo
     border: 1px solid white;
 }}
 
-/* 5. 戰情室小卡 */
+/* 戰情室小卡 */
 .dash-card {{
     background-color: white;
     padding: 15px;
@@ -123,7 +137,7 @@ div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderCo
 .dash-value {{ font-size: 1.8rem; color: {PRIMARY} !important; font-weight: 900; margin: 5px 0; }}
 .dash-sub {{ font-size: 0.9rem; color: #888 !important; }}
 
-/* 6. 導航列容器 */
+/* 導航列容器 */
 .nav-container {{
     background-color: white;
     padding: 15px;
@@ -140,16 +154,15 @@ div[data-testid="stImage"] {{
     height: 120px;
 }}
 
-/* 🔥 分頁籤 (Tabs) 美化 */
-div[data-baseweb="tab-list"] {{
-    gap: 10px;
-}}
+/* 分頁籤 (Tabs) 美化 */
+div[data-baseweb="tab-list"] {{ gap: 10px; }}
 div[data-baseweb="tab"] {{
     background-color: white;
     border-radius: 30px;
     padding: 10px 20px;
     border: 1px solid #E0E0E0;
     font-weight: bold;
+    color: {TEXT} !important;
 }}
 div[data-baseweb="tab"][aria-selected="true"] {{
     background-color: {PRIMARY} !important;
@@ -254,54 +267,34 @@ def calculate_hours_year(logs_df, year):
             else: i += 1
     return total_seconds
 
-# 计算报表统计
-def calculate_stats(logs_df):
-    if logs_df.empty: return 0, 0
-    logs_df['dt'] = pd.to_datetime(logs_df['日期'] + ' ' + logs_df['時間'], errors='coerce')
-    logs_df = logs_df.dropna(subset=['dt']).sort_values(['姓名', 'dt'])
-    total_seconds = 0
-    total_sessions = 0
-    for (name, date_val), group in logs_df.groupby(['姓名', '日期']):
-        actions = group['動作'].tolist()
-        times = group['dt'].tolist()
-        i = 0
-        while i < len(actions):
-            if actions[i] == '簽到':
-                for j in range(i + 1, len(actions)):
-                    if actions[j] == '簽退':
-                        total_seconds += (times[j] - times[i]).total_seconds()
-                        total_sessions += 1
-                        i = j
-                        break
-                i += 1
-            else: i += 1
-    return total_sessions, total_seconds
-
-def format_seconds(seconds):
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    return f"{h}小時 {m}分", h + round(m/60, 1)
-
 # =========================================================
-# 3) Navigation
+# 3) Navigation (導航列 - 包含「回系統大廳」)
 # =========================================================
 if 'page' not in st.session_state: st.session_state.page = 'home'
 
 def render_nav():
     st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
+    # 🔥 修改版面配置，加入「回系統大廳」按鈕
+    c0, c1, c2, c3, c4 = st.columns([1.2, 1, 1, 1, 1])
+    
+    with c0:
+        # 🔥 按下這裡，就會跳轉回 Home.py (系統大廳)
+        if st.button("🚪 回系統大廳", use_container_width=True): 
+            st.switch_page("Home.py")
+            
     with c1:
-        if st.button("🏠 回首頁", use_container_width=True): st.session_state.page = 'home'; st.rerun()
+        if st.button("🏠 志工首頁", use_container_width=True): st.session_state.page = 'home'; st.rerun()
     with c2:
         if st.button("⏰ 智能打卡", use_container_width=True): st.session_state.page = 'checkin'; st.rerun()
     with c3:
         if st.button("📋 志工名冊", use_container_width=True): st.session_state.page = 'members'; st.rerun()
     with c4:
         if st.button("📊 數據分析", use_container_width=True): st.session_state.page = 'report'; st.rerun()
+        
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================
-# 4) Page: Home (首頁)
+# 4) Page: Home (志工系統首頁)
 # =========================================================
 if st.session_state.page == 'home':
     st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px; margin-top: 20px;'>福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
@@ -325,7 +318,6 @@ if st.session_state.page == 'home':
     
     st.markdown("---")
     
-    # 總時數大卡片
     logs = load_data_from_sheet("logs")
     members = load_data_from_sheet("members")
     this_year = datetime.now().year
@@ -345,7 +337,6 @@ if st.session_state.page == 'home':
     </div>
     """, unsafe_allow_html=True)
     
-    # 🔥 恢復首頁下方統計數據 (V15 回歸)
     if not members.empty:
         active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy()
         active_m['age'] = active_m['生日'].apply(calculate_age)
@@ -485,7 +476,7 @@ elif st.session_state.page == 'checkin':
                 st.success("已更新")
 
 # =========================================================
-# 6) Page: Members (名冊 - 分頁 Tab 修復)
+# 6) Page: Members (名冊)
 # =========================================================
 elif st.session_state.page == 'members':
     render_nav()
@@ -539,32 +530,27 @@ elif st.session_state.page == 'members':
                     save_data_to_sheet(pd.concat([df, new], ignore_index=True), "members")
                     st.success("新增成功"); time.sleep(1); st.rerun()
 
-    # 🔥🔥 關鍵修改：使用 st.tabs 替代 st.radio 🔥🔥
     if not df.empty:
         st.write("")
         df['狀態'] = df.apply(lambda r: '已退隊' if check_is_fully_retired(r) else '服務中', axis=1)
         df['年齡'] = df['生日'].apply(calculate_age)
-        
         cols = ['姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
         cols = [c for c in cols if c in df.columns]
 
         tab_active, tab_retired = st.tabs(["🔥 服務中", "🍂 已退隊"])
-        
         with tab_active:
             active_df = df[df['狀態'] == '服務中']
             st.data_editor(active_df[cols], use_container_width=True, num_rows="dynamic", key="editor_active")
-            
         with tab_retired:
             retired_df = df[df['狀態'] == '已退隊']
             st.data_editor(retired_df[cols], use_container_width=True, num_rows="dynamic", key="editor_retired")
 
 # =========================================================
-# 7) Page: Report (儀表板 - 標題修改)
+# 7) Page: Report (報表)
 # =========================================================
 elif st.session_state.page == 'report':
     render_nav()
-    st.markdown("## 📊 數據分析") # 🔥🔥 標題已修改
-    
+    st.markdown("## 📊 數據分析")
     logs = load_data_from_sheet("logs")
     
     st.markdown('<div style="background:white; padding:20px; border-radius:15px; border:1px solid #ddd; margin-bottom:20px;">', unsafe_allow_html=True)
@@ -575,21 +561,17 @@ elif st.session_state.page == 'report':
         report_mode = st.radio("分析模式", ["依活動查詢", "依志工查詢"], horizontal=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    if logs.empty:
-        st.info("無打卡資料")
+    if logs.empty: st.info("無打卡資料")
     else:
         logs['dt'] = pd.to_datetime(logs['日期'] + ' ' + logs['時間'], errors='coerce')
         logs = logs.dropna(subset=['dt'])
-        
         if isinstance(d_range, tuple) and len(d_range) == 2:
             start_d, end_d = d_range
             mask = (logs['dt'].dt.date >= start_d) & (logs['dt'].dt.date <= end_d)
             filtered_logs = logs[mask].copy()
-        else:
-            filtered_logs = logs.copy()
+        else: filtered_logs = logs.copy()
             
-        if filtered_logs.empty:
-            st.warning("此區間無資料")
+        if filtered_logs.empty: st.warning("此區間無資料")
         else:
             def calc_stats_display(df_in):
                 total_seconds = 0
@@ -608,7 +590,6 @@ elif st.session_state.page == 'report':
                                     break
                             i += 1
                         else: i += 1
-                
                 h = int(total_seconds // 3600)
                 m = int((total_seconds % 3600) // 60)
                 return total_sessions, f"{h}小時 {m}分", round(total_seconds/3600, 2)
@@ -617,7 +598,6 @@ elif st.session_state.page == 'report':
                 all_acts = filtered_logs['活動內容'].unique().tolist()
                 target_act = st.selectbox("選擇活動", ["全部"] + all_acts)
                 view_df = filtered_logs if target_act == "全部" else filtered_logs[filtered_logs['活動內容'] == target_act]
-                
                 tot_sess, tot_time_str, _ = calc_stats_display(view_df)
                 
                 m1, m2, m3 = st.columns(3)
