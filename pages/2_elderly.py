@@ -23,7 +23,7 @@ BG_MAIN = "#F0F2F5"
 TEXT    = "#212121"   
 
 # =========================================================
-# 1) CSS 樣式 (V23.0 高對比與對齊修復)
+# 1) CSS 樣式 (V24.0)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -37,13 +37,11 @@ html, body, [class*="css"], div, p, span, li, ul {{
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 輸入框顯色 */
 .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
     background-color: #FFFFFF !important; color: #000000 !important;
     border: 2px solid #9FA8DA !important; border-radius: 10px; font-weight: 700 !important;
 }}
 
-/* 下拉選單顯色 */
 div[data-baseweb="select"] > div {{
     background-color: #FFFFFF !important; border: 2px solid #9FA8DA !important;
     border-radius: 10px !important; color: #000000 !important;
@@ -52,7 +50,6 @@ div[data-baseweb="select"] span {{ color: #000000 !important; font-weight: 700 !
 div[role="listbox"], ul[data-baseweb="menu"] {{ background-color: #FFFFFF !important; }}
 div[role="option"], li[role="option"] {{ color: #000000 !important; font-weight: 700 !important; }}
 
-/* 導航按鈕 */
 div[data-testid="stButton"] > button {{
     width: 100%; background-color: white !important; color: {PRIMARY} !important;
     border: 2px solid {PRIMARY} !important; border-radius: 15px !important;
@@ -60,7 +57,6 @@ div[data-testid="stButton"] > button {{
     padding: 12px 0 !important; box-shadow: 0 4px 0px rgba(74, 20, 140, 0.2);
 }}
 
-/* 表單送出按鈕 */
 div[data-testid="stFormSubmitButton"] > button {{
     background: linear-gradient(135deg, {PRIMARY}, {ACCENT}) !important;
     color: #FFFFFF !important; font-weight: 900 !important; font-size: 1.2rem !important;
@@ -234,7 +230,7 @@ elif st.session_state.page == 'members':
         df['年齡'] = df['出生年月日'].apply(calculate_age)
         st.data_editor(df[["姓名", "性別", "年齡", "電話", "地址", "身分證字號", "出生年月日", "備註"]], use_container_width=True, num_rows="dynamic", key="elder_editor")
 
-# 🔥 報到頁面核心優化 (擋重複、去閃爍)
+# 🔥 據點報到優化頁面
 elif st.session_state.page == 'checkin':
     render_nav()
     st.markdown("## 🩸 據點報到站")
@@ -243,6 +239,7 @@ elif st.session_state.page == 'checkin':
     if 'sbp_val' not in st.session_state: st.session_state.sbp_val = 120
     if 'dbp_val' not in st.session_state: st.session_state.dbp_val = 80
     if 'pulse_val' not in st.session_state: st.session_state.pulse_val = 72
+    if 'checkin_msg' not in st.session_state: st.session_state.checkin_msg = (None, None)
 
     # 1. 課程設定
     st.markdown('<div class="stats-card" style="border-left: 6px solid #FF9800;">', unsafe_allow_html=True)
@@ -255,66 +252,61 @@ elif st.session_state.page == 'checkin':
     final_course_name = course_name if course_name.strip() else sub_cat
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # 2. 報到輸入區
+    # 2. 報到輸入區 (標題與提示並排)
     st.markdown('<div class="stats-card">', unsafe_allow_html=True)
-    st.markdown("#### 2. 長輩報到與健康量測")
-    
-    # 數值警示
-    alerts = []
-    if st.session_state.sbp_val >= 140: alerts.append("⚠️ 收縮壓高")
-    if st.session_state.sbp_val <= 90: alerts.append("⚠️ 收縮壓低")
-    if alerts: st.warning(" ".join(alerts))
+    c_title, c_msg = st.columns([2, 3])
+    with c_title:
+        st.markdown("#### 2. 長輩報到與健康量測")
+    with c_msg:
+        m_type, m_txt = st.session_state.checkin_msg
+        if m_type == "warning": st.warning(m_txt)
+        elif m_type == "success": st.success(m_txt)
+        elif m_type == "error": st.error(m_txt)
 
-    # 報到邏輯函數
     def process_checkin():
         pid = st.session_state.elder_pid.strip().upper()
         if not pid: return
-        
         df_m = load_data("elderly_members")
         df_l = load_data("elderly_logs")
         today = get_tw_time().strftime("%Y-%m-%d")
-        
         person = df_m[df_m['身分證字號'] == pid]
+        
         if person.empty:
-            st.error("❌ 查無此人，請先至名冊新增。")
+            st.session_state.checkin_msg = ("error", "❌ 查無此人，請先至名冊新增。")
         else:
             name = person.iloc[0]['姓名']
-            # 🔥 擋重複報到檢查
             duplicate = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today) & (df_l['課程名稱'] == final_course_name)]
-            
             if not duplicate.empty:
-                st.warning(f"🔔 {name} 今天已經完成「{final_course_name}」的報到囉！")
+                st.session_state.checkin_msg = ("warning", f"🔔 {name} 今天已完成「{final_course_name}」報到！")
             else:
                 now = get_tw_time()
-                new_log = {
-                    "姓名": name, "身分證字號": pid,
-                    "日期": today, "時間": now.strftime("%H:%M:%S"),
-                    "課程分類": final_course_cat, "課程名稱": final_course_name,
-                    "收縮壓": st.session_state.sbp_val, "舒張壓": st.session_state.dbp_val, "脈搏": st.session_state.pulse_val
-                }
+                new_log = {"姓名": name, "身分證字號": pid, "日期": today, "時間": now.strftime("%H:%M:%S"), "課程分類": final_course_cat, "課程名稱": final_course_name, "收縮壓": st.session_state.sbp_val, "舒張壓": st.session_state.dbp_val, "脈搏": st.session_state.pulse_val}
                 save_data(pd.concat([df_l, pd.DataFrame([new_log])], ignore_index=True), "elderly_logs")
-                st.success(f"✅ {name} 報到成功！")
-        
-        # 為了減少閃爍感，我們不手動清空 pid，讓 Streamlit 自動處理 next input
+                st.session_state.checkin_msg = ("success", f"✅ {name} 報到成功！")
         st.session_state.elder_pid = ""
 
     c_bp1, c_bp2, c_bp3 = st.columns(3)
     with c_bp1: st.number_input("收縮壓", min_value=50, max_value=250, key="sbp_val")
     with c_bp2: st.number_input("舒張壓", min_value=30, max_value=150, key="dbp_val")
     with c_bp3: st.number_input("脈搏", min_value=30, max_value=200, key="pulse_val")
-    
-    # 關鍵：使用 on_change 處理邏輯，減少頁面中間過程的閃爍
     st.text_input("輸入身分證字號 (Enter 報到)", key="elder_pid", on_change=process_checkin)
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # 3. 顯示今日名單
-    st.markdown("### 📋 今日已報到名單")
+    # 3. 今日名單 (可編輯)
+    st.markdown("### 📋 今日已報到名單 (點擊儲存格可直接修改)")
     logs_view = load_data("elderly_logs")
     today_check = get_tw_time().strftime("%Y-%m-%d")
     if not logs_view.empty:
-        today_logs = logs_view[logs_view['日期'] == today_check].sort_values('時間', ascending=False)
+        today_mask = (logs_view['日期'] == today_check)
+        today_logs = logs_view[today_mask].sort_values('時間', ascending=False)
         if not today_logs.empty:
-            st.dataframe(today_logs[['時間', '姓名', '課程名稱', '收縮壓', '舒張壓', '脈搏']], use_container_width=True)
+            # 🔥 改為可編輯表格
+            edited_today = st.data_editor(today_logs, use_container_width=True, num_rows="dynamic", key="checkin_editor")
+            if st.button("💾 儲存名單修改"):
+                # 更新總表並儲存
+                logs_view[today_mask] = edited_today
+                save_data(logs_view, "elderly_logs")
+                st.success("今日紀錄已更新完成！")
         else:
             st.info("目前尚無今日報到紀錄")
 
@@ -323,31 +315,25 @@ elif st.session_state.page == 'stats':
     st.markdown("## 📊 統計數據")
     members = load_data("elderly_members")
     logs = load_data("elderly_logs")
-    
     if members.empty or logs.empty: st.info("尚無數據")
     else:
         logs['dt'] = pd.to_datetime(logs['日期'], errors='coerce')
         logs['收縮壓'] = pd.to_numeric(logs['收縮壓'], errors='coerce')
         logs['舒張壓'] = pd.to_numeric(logs['舒張壓'], errors='coerce')
-        
         st.markdown('<div class="stats-card">', unsafe_allow_html=True)
         d_range = st.date_input("📅 選擇統計區間", value=(date(date.today().year, date.today().month, 1), date.today()))
         st.markdown('</div>', unsafe_allow_html=True)
-        
         if isinstance(d_range, tuple) and len(d_range) == 2:
             f_logs = logs[(logs['dt'].dt.date >= d_range[0]) & (logs['dt'].dt.date <= d_range[1])].copy()
             tab_c, tab_h = st.tabs(["📚 課程成效", "🏥 長輩健康"])
-            
             with tab_c:
                 merged = f_logs.merge(members[['姓名', '性別']], on='姓名', how='left')
                 m1, m2, m3 = st.columns(3)
                 with m1: st.markdown(f"""<div class="dash-card"><div class="dash-label">總參與人次</div><div class="dash-value">{len(merged)}</div></div>""", unsafe_allow_html=True)
                 with m2: st.markdown(f"""<div class="dash-card"><div class="dash-label">男性人次</div><div class="dash-value">{len(merged[merged['性別']=='男'])}</div></div>""", unsafe_allow_html=True)
                 with m3: st.markdown(f"""<div class="dash-card"><div class="dash-label">女性人次</div><div class="dash-value">{len(merged[merged['性別']=='女'])}</div></div>""", unsafe_allow_html=True)
-                
                 merged['大分類'] = merged['課程分類'].apply(lambda x: x.split('-')[0] if '-' in x else x)
                 merged['子分類'] = merged['課程分類'].apply(lambda x: x.split('-')[1] if '-' in x else x)
-                
                 c_tbl1, c_tbl2 = st.columns(2)
                 with c_tbl1:
                     st.markdown("#### 大分類")
@@ -359,14 +345,12 @@ elif st.session_state.page == 'stats':
                 with c_tbl2:
                     sub_h_col, sub_s_col = st.columns([1, 2])
                     with sub_h_col: st.markdown("#### 子分類")
-                    with sub_s_col:
-                        sel_main = st.selectbox("查看大分類", sorted(main_cts['類別'].unique()), label_visibility="collapsed")
+                    with sub_s_col: sel_main = st.selectbox("查看大分類", sorted(main_cts['類別'].unique()), label_visibility="collapsed")
                     sub_cts = merged[merged['大分類']==sel_main]['子分類'].value_counts().reset_index()
                     sub_cts.columns = ['子分類', '次數']
                     st.markdown('<div class="stats-card">', unsafe_allow_html=True)
                     st.dataframe(sub_cts, use_container_width=True, column_config={"次數": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(sub_cts['次數'].max() or 1))})
                     st.markdown('</div>', unsafe_allow_html=True)
-
             with tab_h:
                 target_elder = st.selectbox("選擇長輩", sorted(f_logs['姓名'].unique()))
                 e_logs = f_logs[f_logs['姓名']==target_elder].sort_values('dt')
