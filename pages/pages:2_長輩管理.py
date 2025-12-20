@@ -311,21 +311,31 @@ elif st.session_state.page == 'members':
 # =========================================================
 # 6) Page: Checkin (據點報到)
 # =========================================================
-elif st.session_state.page == 'checkin':
-    render_nav()
-    st.markdown("## 🩸 據點報到站")
-    st.caption(f"📅 現在時間：{get_tw_time().strftime('%Y-%m-%d %H:%M')}")
-    
-    if 'elder_pid' not in st.session_state: st.session_state.elder_pid = ""
-    
-    # 1. 課程設定 (全域)
+# 1. 課程設定 (全域) - V16.0 升級為大分類+子分類
     st.markdown('<div class="dash-card" style="border-left: 6px solid #FF9800;">', unsafe_allow_html=True)
     st.markdown("#### 1. 今日課程設定")
-    c_cat, c_name = st.columns([1, 2])
-    with c_cat:
-        course_cat = st.selectbox("課程分類", COURSE_CATS)
+    
+    # 改為三個欄位：大分類 | 子分類 | 課程名稱
+    c_main, c_sub, c_name = st.columns([1, 1, 1.5])
+    
+    with c_main:
+        # 選擇大分類
+        main_cat = st.selectbox("課程大分類", list(COURSE_HIERARCHY.keys()))
+    
+    with c_sub:
+        # 根據大分類，連動顯示子分類
+        sub_list = COURSE_HIERARCHY[main_cat]
+        sub_cat = st.selectbox("課程子分類", sub_list)
+        
     with c_name:
-        course_name = st.text_input("課程名稱", placeholder="例如：樂齡肌力訓練、手工藝DIY")
+        course_name = st.text_input("課程名稱 (選填說明)", placeholder="例如：端午節香包製作")
+        
+    # 自動組合成最終的分類字串，例如 "社會參與-手工藝創作"
+    final_course_cat = f"{main_cat}-{sub_cat}"
+    
+    # 如果有填寫課程名稱，就用課程名稱；如果沒填，就預設用子分類當作名稱，方便志工
+    final_course_name = course_name if course_name.strip() else sub_cat
+    
     st.markdown('</div>', unsafe_allow_html=True)
     
     # 2. 報到區
@@ -336,10 +346,8 @@ elif st.session_state.page == 'checkin':
         pid = st.session_state.elder_pid.strip().upper()
         if not pid: return
         
-        if not course_name:
-            st.error("⚠️ 請先填寫「課程名稱」！")
-            return
-
+        # 這裡不需要再檢查 course_name 是否必填，因為我們上面有做預設值防呆
+        
         df_m = load_data("elderly_members")
         df_l = load_data("elderly_logs")
         
@@ -355,13 +363,14 @@ elif st.session_state.page == 'checkin':
             new_log = {
                 "姓名": name, "身分證字號": pid,
                 "日期": now.strftime("%Y-%m-%d"), "時間": now.strftime("%H:%M:%S"),
-                "課程分類": course_cat, "課程名稱": course_name,
-                "收縮壓": st.session_state.sbp_val, # 從下方 slider 取得
+                "課程分類": final_course_cat,   # 存入組合後的分類 (例如: 健康促進-肌力強化)
+                "課程名稱": final_course_name,  # 存入名稱
+                "收縮壓": st.session_state.sbp_val,
                 "舒張壓": st.session_state.dbp_val,
                 "脈搏": st.session_state.pulse_val
             }
             save_data(pd.concat([df_l, pd.DataFrame([new_log])], ignore_index=True), "elderly_logs")
-            st.success(f"✅ {name} 報到成功！(血壓: {st.session_state.sbp_val}/{st.session_state.dbp_val})")
+            st.success(f"✅ {name} 報到成功！({final_course_cat})")
             
         # 清空
         st.session_state.elder_pid = ""
