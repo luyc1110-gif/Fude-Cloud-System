@@ -5,6 +5,7 @@ import gspread
 import time
 import os
 import plotly.express as px
+import random  # 🔥 用於生成隨機座標
 
 # =========================================================
 # 0) 系統設定
@@ -23,7 +24,7 @@ BG_MAIN = "#F0F2F5"
 TEXT    = "#212121"   
 
 # =========================================================
-# 1) CSS 樣式 (V28.0 補登專用版)
+# 1) CSS 樣式
 # =========================================================
 st.markdown(f"""
 <style>
@@ -37,7 +38,7 @@ html, body, [class*="css"], div, p, span, li, ul {{
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 🔥 強制所有輸入框、日期、時間選取器白底黑字 */
+/* 下拉選單與輸入框高對比 */
 .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input, div[data-baseweb="select"] > div {{
     background-color: #FFFFFF !important; 
     color: #000000 !important;
@@ -55,6 +56,7 @@ div[data-testid="stButton"] > button {{
     width: 100%; background-color: white !important; color: {PRIMARY} !important;
     border: 2px solid {PRIMARY} !important; border-radius: 15px !important;
     font-weight: 900 !important; font-size: 1.1rem !important;
+    padding: 12px 0 !important; box-shadow: 0 4px 0px rgba(74, 20, 140, 0.1);
 }}
 
 .custom-card {{
@@ -197,32 +199,25 @@ elif st.session_state.page == 'members':
         df['年齡'] = df['出生年月日'].apply(calculate_age)
         st.data_editor(df[["姓名", "性別", "年齡", "電話", "地址", "身分證字號", "出生年月日", "備註"]], use_container_width=True, num_rows="dynamic", key="elder_editor")
 
-# 🔥 報到頁面 V28.0 (新增補登時間、日期、批次功能)
 elif st.session_state.page == 'checkin':
     render_nav()
     st.markdown("## 🩸 據點報到站")
     if 'elder_pid' not in st.session_state: st.session_state.elder_pid = ""
     if 'checkin_msg' not in st.session_state: st.session_state.checkin_msg = (None, None)
 
-    # 1. 課程與日期時間設定 (補登核心)
     st.markdown('<div class="custom-card" style="border-left: 6px solid #FF9800;">', unsafe_allow_html=True)
-    st.markdown("#### 1. 設定報到活動與時間 (補登請先修改日期時間)")
-    
+    st.markdown("#### 1. 設定報到活動與時間")
     c1, c2, c3 = st.columns([1.5, 1.5, 2])
     with c1: main_cat = st.selectbox("課程大分類", list(COURSE_HIERARCHY.keys()))
     with c2: sub_cat = st.selectbox("課程子分類", COURSE_HIERARCHY[main_cat])
     with c3: course_name = st.text_input("課程名稱 (選填)", placeholder="例如：樂齡肌力訓練")
     final_course_cat, final_course_name = f"{main_cat}-{sub_cat}", (course_name if course_name.strip() else sub_cat)
-    
-    # 🔥 新增：補登日期與時間選取
     st.markdown("---")
     cd1, cd2, cd3 = st.columns([1, 1, 2])
     with cd1: target_date = st.date_input("報到日期", value=get_tw_time().date())
     with cd2: target_time = st.time_input("報到時間", value=get_tw_time().time())
-    with cd3: st.caption("💡 提示：若要補登之前的資料，請先在此修改日期與時間，再開始掃描身分證。")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 2. 報到輸入區
     st.markdown('<div class="custom-card">', unsafe_allow_html=True)
     c_title, c_msg = st.columns([2, 3])
     with c_title: st.markdown("#### 2. 長輩掃描報到 (支援條碼槍)")
@@ -235,50 +230,36 @@ elif st.session_state.page == 'checkin':
         pid = st.session_state.elder_pid.strip().upper()
         if not pid: return
         df_m, df_l = load_data("elderly_members"), load_data("elderly_logs")
-        
-        # 使用選定的日期進行檢查
-        sel_date_str = target_date.strftime("%Y-%m-%d")
-        sel_time_str = target_time.strftime("%H:%M:%S")
-        
+        sel_date_str, sel_time_str = target_date.strftime("%Y-%m-%d"), target_time.strftime("%H:%M:%S")
         person = df_m[df_m['身分證字號'] == pid]
         if person.empty: st.session_state.checkin_msg = ("error", "❌ 查無此人")
         else:
             name = person.iloc[0]['姓名']
-            # 重複檢查 (同日期+同課程)
             if not df_l.empty and not df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == sel_date_str) & (df_l['課程名稱'] == final_course_name)].empty:
-                st.session_state.checkin_msg = ("error", f"❌ 重複：{name} 在 {sel_date_str} 已報到過此活動")
+                st.session_state.checkin_msg = ("error", f"❌ 重複：{name} 今日已報到過此活動")
             else:
-                new_log = {
-                    "姓名": name, "身分證字號": pid, 
-                    "日期": sel_date_str, "時間": sel_time_str, 
-                    "課程分類": final_course_cat, "課程名稱": final_course_name, 
-                    "收縮壓": st.session_state.sbp_val, "舒張壓": st.session_state.dbp_val, "脈搏": st.session_state.pulse_val
-                }
+                new_log = {"姓名": name, "身分證字號": pid, "日期": sel_date_str, "時間": sel_time_str, "課程分類": final_course_cat, "課程名稱": final_course_name, "收縮壓": st.session_state.sbp_val, "舒張壓": st.session_state.dbp_val, "脈搏": st.session_state.pulse_val}
                 if save_data(pd.concat([df_l, pd.DataFrame([new_log])], ignore_index=True), "elderly_logs"):
-                    st.session_state.checkin_msg = ("success", f"✅ {name} 報到成功 ({sel_date_str})")
+                    st.session_state.checkin_msg = ("success", f"✅ {name} 報到成功")
         st.session_state.elder_pid = ""
 
     cb1, cb2, cb3 = st.columns(3)
     with cb1: st.number_input("收縮壓", min_value=50, max_value=250, value=120, key="sbp_val")
     with cb2: st.number_input("舒張壓", min_value=30, max_value=150, value=80, key="dbp_val")
     with cb3: st.number_input("脈搏", min_value=30, max_value=200, key="pulse_val")
-    
-    st.text_input("身分證字號掃描區 (條碼槍請對準此處)", key="elder_pid", on_change=process_checkin)
+    st.text_input("身分證字號掃描區", key="elder_pid", on_change=process_checkin)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 3. 今日名單 (依選定日期顯示)
-    st.markdown(f"### 📋 {target_date.strftime('%Y-%m-%d')} 報到名單管理")
+    st.markdown(f"### 📋 {target_date.strftime('%Y-%m-%d')} 報到名單")
     logs_view = load_data("elderly_logs")
     sel_date_str = target_date.strftime("%Y-%m-%d")
     date_mask = (logs_view['日期'] == sel_date_str)
     if not logs_view[date_mask].empty:
         today_df = logs_view[date_mask].sort_values('時間', ascending=False)
         edited = st.data_editor(today_df, use_container_width=True, num_rows="dynamic", key="checkin_editor")
-        if st.button("💾 儲存名單修改"):
+        if st.button("💾 儲存修改"):
             logs_view[date_mask] = edited
             if save_data(logs_view, "elderly_logs"): st.success("紀錄已更新！")
-    else:
-        st.info(f"{sel_date_str} 目前尚無報到紀錄")
 
 elif st.session_state.page == 'stats':
     render_nav()
@@ -305,24 +286,37 @@ elif st.session_state.page == 'stats':
                 unique_sessions['大分類'] = unique_sessions['課程分類'].apply(lambda x: x.split('-')[0] if '-' in x else x)
                 unique_sessions['子分類'] = unique_sessions['課程分類'].apply(lambda x: x.split('-')[1] if '-' in x else x)
 
-                st.markdown("### 2. 課程場次占比 (泡泡圖)")
+                # 🔥🔥 V29.0 靈動泡泡圖 (隨機散開 + 名稱在內) 🔥🔥
+                st.markdown("### 2. 課程場次占比 (靈動泡泡圖)")
                 main_cts = unique_sessions['大分類'].value_counts().reset_index()
                 main_cts.columns = ['類別', '場次']
                 
+                # 生成隨機座標
+                random.seed(42) # 固定種子讓每次重整位置不亂跳，但看起來是散的
+                main_cts['x_rnd'] = [random.uniform(0, 10) for _ in range(len(main_cts))]
+                main_cts['y_rnd'] = [random.uniform(0, 10) for _ in range(len(main_cts))]
+                main_cts['顯示標籤'] = main_cts['類別'] + '<br>' + main_cts['場次'].astype(str) + '次'
+                
                 fig_bubble = px.scatter(
-                    main_cts, x="類別", y=[1]*len(main_cts),
-                    size="場次", color="類別", text="場次",
-                    size_max=80, title="大分類場次占比 (圓圈愈大次數愈多)",
+                    main_cts, x="x_rnd", y="y_rnd",
+                    size="場次", color="類別", text="顯示標籤",
+                    size_max=100, 
                     color_discrete_sequence=px.colors.qualitative.Pastel
                 )
-                fig_bubble.update_layout(showlegend=False, height=300, margin=dict(t=50, b=0, l=0, r=0))
-                fig_bubble.update_yaxes(showticklabels=False, title="")
+                fig_bubble.update_traces(textposition='middle center', textfont=dict(size=14, color='black', family="Noto Sans TC"))
+                fig_bubble.update_layout(
+                    showlegend=False, height=450, 
+                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title=""),
+                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title=""),
+                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                    margin=dict(t=20, b=20, l=20, r=20)
+                )
                 st.plotly_chart(fig_bubble, use_container_width=True)
 
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("#### 大分類明細")
-                    st.dataframe(main_cts, use_container_width=True, column_config={"場次": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(main_cts['場次'].max() or 1))})
+                    st.dataframe(main_cts[['類別', '場次']], use_container_width=True, column_config={"場次": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(main_cts['場次'].max() or 1))})
                 with c2:
                     sc1, sc2 = st.columns([1.2, 2])
                     with sc1: st.markdown("#### 子分類鑽取")
@@ -332,7 +326,7 @@ elif st.session_state.page == 'stats':
                     st.dataframe(sub_cts, use_container_width=True, column_config={"場次": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(sub_cts['場次'].max() or 1))})
 
             with tab_h:
-                target_elder = st.selectbox("🔍 請選擇長輩查看健康趨勢", sorted(f_logs['姓名'].unique()), key="sel_elder_health")
+                target_elder = st.selectbox("🔍 請選擇長輩", sorted(f_logs['姓名'].unique()), key="sel_elder_health")
                 e_logs = f_logs[f_logs['姓名']==target_elder].sort_values('dt')
                 e_logs['收縮壓'] = pd.to_numeric(e_logs['收縮壓'], errors='coerce')
                 high_bp = len(e_logs[e_logs['收縮壓']>=140])
