@@ -23,7 +23,7 @@ BG_MAIN = "#F0F2F5"
 TEXT    = "#212121"   
 
 # =========================================================
-# 1) CSS 樣式 (V21.0 修復表格重疊版)
+# 1) CSS 樣式 (V22.0 強制顯色修復版)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -37,18 +37,50 @@ html, body, [class*="css"], div, p, span, li, ul {{
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 輸入框顯色 */
+/* 🔥 強制顯色：輸入框與日期選擇器 */
 .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
-    background-color: #FFFFFF !important; color: #000000 !important;
-    border: 2px solid #9FA8DA !important; border-radius: 10px; font-weight: 700;
+    background-color: #FFFFFF !important; 
+    color: #000000 !important; /* 強制黑字 */
+    border: 2px solid #9FA8DA !important; 
+    border-radius: 10px; 
+    font-weight: 700 !important;
 }}
-div[data-baseweb="select"] > div {{
-    background-color: #FFFFFF !important; border: 2px solid #9FA8DA !important;
-    border-radius: 10px !important; color: #000000 !important;
-}}
-div[data-baseweb="select"] span {{ color: #000000 !important; font-weight: 700 !important; }}
 
-/* 導航按鈕：文字版 */
+/* 🔥 強制顯色：下拉選單 (Selectbox) */
+div[data-baseweb="select"] > div {{
+    background-color: #FFFFFF !important; 
+    border: 2px solid #9FA8DA !important;
+    border-radius: 10px !important; 
+    color: #000000 !important;
+}}
+div[data-baseweb="select"] span {{ 
+    color: #000000 !important; 
+    font-weight: 700 !important; 
+}}
+
+/* 下拉選單展開後的選項清單 */
+div[role="listbox"], ul[data-baseweb="menu"] {{
+    background-color: #FFFFFF !important;
+}}
+div[role="option"], li[role="option"] {{
+    color: #000000 !important; 
+    background-color: #FFFFFF !important;
+    font-weight: 700 !important;
+}}
+
+/* 🔥 強制顯色：表單送出按鈕 (確認新增) */
+div[data-testid="stFormSubmitButton"] > button {{
+    background: linear-gradient(135deg, {PRIMARY}, {ACCENT}) !important;
+    color: #FFFFFF !important;      /* 強制亮白字 */
+    font-weight: 900 !important;    /* 最粗體 */
+    font-size: 1.2rem !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(123, 31, 162, 0.3) !important;
+}}
+
+label {{ color: {PRIMARY} !important; font-weight: 900 !important; font-size: 1.1rem !important; }}
+
+/* 導航按鈕 */
 div[data-testid="stButton"] > button {{
     width: 100%; background-color: white !important; color: {PRIMARY} !important;
     border: 2px solid {PRIMARY} !important; border-radius: 15px !important;
@@ -56,18 +88,11 @@ div[data-testid="stButton"] > button {{
     padding: 12px 0 !important; box-shadow: 0 4px 0px rgba(74, 20, 140, 0.2);
     transition: all 0.1s;
 }}
-div[data-testid="stButton"] > button:hover {{ transform: translateY(-2px); background-color: #F3E5F5 !important; }}
 
-/* 卡片容器 */
 .stats-card {{
-    background-color: white;
-    border-radius: 20px;
-    padding: 25px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    border: 1px solid white;
+    background-color: white; border-radius: 20px; padding: 25px;
+    margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid white;
 }}
-
 .dash-card {{
     background-color: white; padding: 15px; border-radius: 15px; border-left: 6px solid {ACCENT};
     box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px;
@@ -78,20 +103,6 @@ div[data-testid="stButton"] > button:hover {{ transform: translateY(-2px); backg
 .nav-container {{
     background-color: white; padding: 15px; border-radius: 20px;
     margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}}
-
-/* 修正表格與展開器不要全局 Card 化，改由 Container 控制 */
-div[data-testid="stForm"], .streamlit-expanderContent, div[data-testid="stExpander"] details {{
-    background-color: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    padding: 25px; margin-bottom: 20px; border: 1px solid white;
-}}
-
-div[data-baseweb="tab"] {{
-    background-color: white; border-radius: 30px; padding: 10px 20px; border: 1px solid #E0E0E0;
-    font-weight: bold; color: {TEXT} !important;
-}}
-div[data-baseweb="tab"][aria-selected="true"] {{
-    background-color: {PRIMARY} !important; color: white !important;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -151,7 +162,7 @@ def calculate_age(dob_str):
     except: return 0
 
 # =========================================================
-# 3) Navigation
+# 3) Navigation (圖示 + 文字)
 # =========================================================
 if 'page' not in st.session_state: st.session_state.page = 'home'
 
@@ -236,6 +247,7 @@ elif st.session_state.page == 'members':
             phone = c5.text_input("電話")
             addr = st.text_input("地址")
             note = st.text_input("備註")
+            # 🔥 確認新增按鈕顯色已修復
             if st.form_submit_button("確認新增"):
                 if not pid or not name: st.error("姓名與身分證字號為必填")
                 else:
@@ -322,14 +334,15 @@ elif st.session_state.page == 'stats':
                 with m2: st.markdown(f"""<div class="dash-card"><div class="dash-label">男性人次</div><div class="dash-value">{len(merged[merged['性別']=='男'])}</div></div>""", unsafe_allow_html=True)
                 with m3: st.markdown(f"""<div class="dash-card"><div class="dash-label">女性人次</div><div class="dash-value">{len(merged[merged['性別']=='女'])}</div></div>""", unsafe_allow_html=True)
                 
-                # 🔥 修復後的表格佈局
-                st.markdown("### 2. 課程分類統計 (進度條)")
+                # 🔥 修正標題：拿掉 (進度條)
+                st.markdown("### 2. 課程分類統計")
                 merged['大分類'] = merged['課程分類'].apply(lambda x: x.split('-')[0] if '-' in x else x)
                 merged['子分類'] = merged['課程分類'].apply(lambda x: x.split('-')[1] if '-' in x else x)
                 
                 c_tbl1, c_tbl2 = st.columns(2)
                 with c_tbl1:
-                    st.markdown("#### 🏆 熱門大分類")
+                    # 🔥 修正標題
+                    st.markdown("#### 大分類")
                     main_cts = merged['大分類'].value_counts().reset_index()
                     main_cts.columns = ['類別', '次數']
                     st.markdown('<div class="stats-card">', unsafe_allow_html=True)
@@ -337,7 +350,9 @@ elif st.session_state.page == 'stats':
                     st.markdown('</div>', unsafe_allow_html=True)
                     
                 with c_tbl2:
-                    st.markdown("#### 🔍 子分類鑽取")
+                    # 🔥 修正標題
+                    st.markdown("#### 子分類")
+                    # 🔥 下拉選單顯色已強制修正為白底黑字
                     sel_main = st.selectbox("查看哪個大分類？", sorted(main_cts['類別'].unique()))
                     sub_cts = merged[merged['大分類']==sel_main]['子分類'].value_counts().reset_index()
                     sub_cts.columns = ['子分類', '次數']
