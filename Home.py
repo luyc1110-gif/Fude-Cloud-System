@@ -4,7 +4,7 @@ import streamlit as st
 st.set_page_config(
     page_title="福德里社區管理系統",
     page_icon="🏘️",
-    layout="wide", # 🔥 改成寬版，容納三個卡片
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
@@ -23,7 +23,7 @@ st.markdown("""
     background-color: white;
     box-shadow: 0 10px 25px rgba(0,0,0,0.08);
     border: 3px solid white;
-    cursor: default; /* 純展示用，點擊靠下方的 button */
+    cursor: default;
     margin-bottom: 15px;
     height: 100%;
     transition: transform 0.3s;
@@ -76,8 +76,9 @@ with c1:
         <span class="btn-desc">志工打卡、時數統計<br>榮譽與名冊管理</span>
     </div>
     """, unsafe_allow_html=True)
+    # 🔥 修正：連結到英文檔名
     if st.button("進入【志工系統】", use_container_width=True):
-        st.switch_page("pages/1_志工管理.py")
+        st.switch_page("pages/1_volunteer.py")
 
 # 2. 長輩系統
 with c2:
@@ -88,8 +89,9 @@ with c2:
         <span class="btn-desc">據點報到、血壓量測<br>健康數據追蹤</span>
     </div>
     """, unsafe_allow_html=True)
+    # 🔥 修正：連結到英文檔名
     if st.button("進入【長輩系統】", use_container_width=True):
-        st.switch_page("pages/2_長輩管理.py")
+        st.switch_page("pages/2_elderly.py")
 
 # 3. 關懷戶系統 (預留)
 with c3:
@@ -100,8 +102,9 @@ with c3:
         <span class="btn-desc">弱勢家戶名冊、物資發放<br>訪視紀錄 (建置中)</span>
     </div>
     """, unsafe_allow_html=True)
+    # 🔥 修正：連結到英文檔名
     if st.button("進入【關懷戶系統】", use_container_width=True):
-        st.switch_page("pages/3_關懷戶管理.py")
+        st.switch_page("pages/3_care.py")
 
 st.markdown("---")
 st.markdown("<div style='text-align: center; color: #aaa; margin-top: 20px;'>福德里辦公處 © 2025 • 數位化服務</div>", unsafe_allow_html=True)
