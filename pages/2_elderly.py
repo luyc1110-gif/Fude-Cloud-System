@@ -18,10 +18,10 @@ st.set_page_config(
 )
 
 TW_TZ = timezone(timedelta(hours=8))
-PRIMARY = "#4A148C"   
-ACCENT  = "#FF9800"   
-BG_MAIN = "#F0F2F5"   
-TEXT    = "#212121"   
+PRIMARY = "#B5838D"   # 莫蘭迪暮色粉
+ACCENT  = "#6D597A"   # 灰紫色（點綴色）
+BG_MAIN = "#F8F9FA"   # 極淺灰底
+TEXT    = "#444444"   # 炭灰色字  
 
 # =========================================================
 # 1) CSS 樣式
