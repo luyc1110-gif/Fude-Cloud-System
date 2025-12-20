@@ -23,7 +23,7 @@ BG_MAIN = "#F0F2F5"
 TEXT    = "#212121"   
 
 # =========================================================
-# 1) CSS 樣式 (V22.0 強制顯色修復版)
+# 1) CSS 樣式 (V23.0 高對比與對齊修復)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -37,48 +37,20 @@ html, body, [class*="css"], div, p, span, li, ul {{
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 🔥 強制顯色：輸入框與日期選擇器 */
+/* 輸入框顯色 */
 .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
-    background-color: #FFFFFF !important; 
-    color: #000000 !important; /* 強制黑字 */
-    border: 2px solid #9FA8DA !important; 
-    border-radius: 10px; 
-    font-weight: 700 !important;
+    background-color: #FFFFFF !important; color: #000000 !important;
+    border: 2px solid #9FA8DA !important; border-radius: 10px; font-weight: 700 !important;
 }}
 
-/* 🔥 強制顯色：下拉選單 (Selectbox) */
+/* 下拉選單顯色 */
 div[data-baseweb="select"] > div {{
-    background-color: #FFFFFF !important; 
-    border: 2px solid #9FA8DA !important;
-    border-radius: 10px !important; 
-    color: #000000 !important;
+    background-color: #FFFFFF !important; border: 2px solid #9FA8DA !important;
+    border-radius: 10px !important; color: #000000 !important;
 }}
-div[data-baseweb="select"] span {{ 
-    color: #000000 !important; 
-    font-weight: 700 !important; 
-}}
-
-/* 下拉選單展開後的選項清單 */
-div[role="listbox"], ul[data-baseweb="menu"] {{
-    background-color: #FFFFFF !important;
-}}
-div[role="option"], li[role="option"] {{
-    color: #000000 !important; 
-    background-color: #FFFFFF !important;
-    font-weight: 700 !important;
-}}
-
-/* 🔥 強制顯色：表單送出按鈕 (確認新增) */
-div[data-testid="stFormSubmitButton"] > button {{
-    background: linear-gradient(135deg, {PRIMARY}, {ACCENT}) !important;
-    color: #FFFFFF !important;      /* 強制亮白字 */
-    font-weight: 900 !important;    /* 最粗體 */
-    font-size: 1.2rem !important;
-    border: none !important;
-    box-shadow: 0 4px 15px rgba(123, 31, 162, 0.3) !important;
-}}
-
-label {{ color: {PRIMARY} !important; font-weight: 900 !important; font-size: 1.1rem !important; }}
+div[data-baseweb="select"] span {{ color: #000000 !important; font-weight: 700 !important; }}
+div[role="listbox"], ul[data-baseweb="menu"] {{ background-color: #FFFFFF !important; }}
+div[role="option"], li[role="option"] {{ color: #000000 !important; font-weight: 700 !important; }}
 
 /* 導航按鈕 */
 div[data-testid="stButton"] > button {{
@@ -86,7 +58,12 @@ div[data-testid="stButton"] > button {{
     border: 2px solid {PRIMARY} !important; border-radius: 15px !important;
     font-weight: 900 !important; font-size: 1.1rem !important;
     padding: 12px 0 !important; box-shadow: 0 4px 0px rgba(74, 20, 140, 0.2);
-    transition: all 0.1s;
+}}
+
+/* 表單送出按鈕 */
+div[data-testid="stFormSubmitButton"] > button {{
+    background: linear-gradient(135deg, {PRIMARY}, {ACCENT}) !important;
+    color: #FFFFFF !important; font-weight: 900 !important; font-size: 1.2rem !important;
 }}
 
 .stats-card {{
@@ -162,7 +139,7 @@ def calculate_age(dob_str):
     except: return 0
 
 # =========================================================
-# 3) Navigation (圖示 + 文字)
+# 3) Navigation
 # =========================================================
 if 'page' not in st.session_state: st.session_state.page = 'home'
 
@@ -247,7 +224,6 @@ elif st.session_state.page == 'members':
             phone = c5.text_input("電話")
             addr = st.text_input("地址")
             note = st.text_input("備註")
-            # 🔥 確認新增按鈕顯色已修復
             if st.form_submit_button("確認新增"):
                 if not pid or not name: st.error("姓名與身分證字號為必填")
                 else:
@@ -258,14 +234,17 @@ elif st.session_state.page == 'members':
         df['年齡'] = df['出生年月日'].apply(calculate_age)
         st.data_editor(df[["姓名", "性別", "年齡", "電話", "地址", "身分證字號", "出生年月日", "備註"]], use_container_width=True, num_rows="dynamic", key="elder_editor")
 
+# 🔥 報到頁面核心優化 (擋重複、去閃爍)
 elif st.session_state.page == 'checkin':
     render_nav()
     st.markdown("## 🩸 據點報到站")
+    
     if 'elder_pid' not in st.session_state: st.session_state.elder_pid = ""
     if 'sbp_val' not in st.session_state: st.session_state.sbp_val = 120
     if 'dbp_val' not in st.session_state: st.session_state.dbp_val = 80
     if 'pulse_val' not in st.session_state: st.session_state.pulse_val = 72
-    
+
+    # 1. 課程設定
     st.markdown('<div class="stats-card" style="border-left: 6px solid #FF9800;">', unsafe_allow_html=True)
     st.markdown("#### 1. 今日課程設定")
     c_main, c_sub, c_name = st.columns([1, 1, 1.5])
@@ -276,35 +255,68 @@ elif st.session_state.page == 'checkin':
     final_course_name = course_name if course_name.strip() else sub_cat
     st.markdown('</div>', unsafe_allow_html=True)
     
+    # 2. 報到輸入區
     st.markdown('<div class="stats-card">', unsafe_allow_html=True)
-    st.markdown("#### 2. 長輩刷卡報到")
+    st.markdown("#### 2. 長輩報到與健康量測")
+    
+    # 數值警示
     alerts = []
-    if st.session_state.sbp_val >= 140: alerts.append("⚠️ 收縮壓偏高")
-    if st.session_state.sbp_val <= 90: alerts.append("⚠️ 收縮壓偏低")
-    if alerts: st.error(" ".join(alerts) + "，請休息 5 分鐘後重量！")
-    else: st.success("✅ 數值目前正常")
+    if st.session_state.sbp_val >= 140: alerts.append("⚠️ 收縮壓高")
+    if st.session_state.sbp_val <= 90: alerts.append("⚠️ 收縮壓低")
+    if alerts: st.warning(" ".join(alerts))
 
+    # 報到邏輯函數
     def process_checkin():
         pid = st.session_state.elder_pid.strip().upper()
         if not pid: return
+        
         df_m = load_data("elderly_members")
         df_l = load_data("elderly_logs")
+        today = get_tw_time().strftime("%Y-%m-%d")
+        
         person = df_m[df_m['身分證字號'] == pid]
-        if person.empty: st.error("❌ 查無此人")
+        if person.empty:
+            st.error("❌ 查無此人，請先至名冊新增。")
         else:
             name = person.iloc[0]['姓名']
-            now = get_tw_time()
-            new_log = {"姓名": name, "身分證字號": pid, "日期": now.strftime("%Y-%m-%d"), "時間": now.strftime("%H:%M:%S"), "課程分類": final_course_cat, "課程名稱": final_course_name, "收縮壓": st.session_state.sbp_val, "舒張壓": st.session_state.dbp_val, "脈搏": st.session_state.pulse_val}
-            save_data(pd.concat([df_l, pd.DataFrame([new_log])], ignore_index=True), "elderly_logs")
-            st.success(f"✅ {name} 報到成功！")
+            # 🔥 擋重複報到檢查
+            duplicate = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today) & (df_l['課程名稱'] == final_course_name)]
+            
+            if not duplicate.empty:
+                st.warning(f"🔔 {name} 今天已經完成「{final_course_name}」的報到囉！")
+            else:
+                now = get_tw_time()
+                new_log = {
+                    "姓名": name, "身分證字號": pid,
+                    "日期": today, "時間": now.strftime("%H:%M:%S"),
+                    "課程分類": final_course_cat, "課程名稱": final_course_name,
+                    "收縮壓": st.session_state.sbp_val, "舒張壓": st.session_state.dbp_val, "脈搏": st.session_state.pulse_val
+                }
+                save_data(pd.concat([df_l, pd.DataFrame([new_log])], ignore_index=True), "elderly_logs")
+                st.success(f"✅ {name} 報到成功！")
+        
+        # 為了減少閃爍感，我們不手動清空 pid，讓 Streamlit 自動處理 next input
         st.session_state.elder_pid = ""
 
     c_bp1, c_bp2, c_bp3 = st.columns(3)
     with c_bp1: st.number_input("收縮壓", min_value=50, max_value=250, key="sbp_val")
     with c_bp2: st.number_input("舒張壓", min_value=30, max_value=150, key="dbp_val")
     with c_bp3: st.number_input("脈搏", min_value=30, max_value=200, key="pulse_val")
-    st.text_input("輸入身分證 (Enter)", key="elder_pid", on_change=process_checkin)
+    
+    # 關鍵：使用 on_change 處理邏輯，減少頁面中間過程的閃爍
+    st.text_input("輸入身分證字號 (Enter 報到)", key="elder_pid", on_change=process_checkin)
     st.markdown('</div>', unsafe_allow_html=True)
+    
+    # 3. 顯示今日名單
+    st.markdown("### 📋 今日已報到名單")
+    logs_view = load_data("elderly_logs")
+    today_check = get_tw_time().strftime("%Y-%m-%d")
+    if not logs_view.empty:
+        today_logs = logs_view[logs_view['日期'] == today_check].sort_values('時間', ascending=False)
+        if not today_logs.empty:
+            st.dataframe(today_logs[['時間', '姓名', '課程名稱', '收縮壓', '舒張壓', '脈搏']], use_container_width=True)
+        else:
+            st.info("目前尚無今日報到紀錄")
 
 elif st.session_state.page == 'stats':
     render_nav()
@@ -324,7 +336,6 @@ elif st.session_state.page == 'stats':
         
         if isinstance(d_range, tuple) and len(d_range) == 2:
             f_logs = logs[(logs['dt'].dt.date >= d_range[0]) & (logs['dt'].dt.date <= d_range[1])].copy()
-            
             tab_c, tab_h = st.tabs(["📚 課程成效", "🏥 長輩健康"])
             
             with tab_c:
@@ -334,51 +345,26 @@ elif st.session_state.page == 'stats':
                 with m2: st.markdown(f"""<div class="dash-card"><div class="dash-label">男性人次</div><div class="dash-value">{len(merged[merged['性別']=='男'])}</div></div>""", unsafe_allow_html=True)
                 with m3: st.markdown(f"""<div class="dash-card"><div class="dash-label">女性人次</div><div class="dash-value">{len(merged[merged['性別']=='女'])}</div></div>""", unsafe_allow_html=True)
                 
-                # 🔥 修正標題：拿掉 (進度條)
-                st.markdown("### 2. 課程分類統計")
                 merged['大分類'] = merged['課程分類'].apply(lambda x: x.split('-')[0] if '-' in x else x)
                 merged['子分類'] = merged['課程分類'].apply(lambda x: x.split('-')[1] if '-' in x else x)
                 
                 c_tbl1, c_tbl2 = st.columns(2)
                 with c_tbl1:
-                    # 🔥 修正標題
                     st.markdown("#### 大分類")
                     main_cts = merged['大分類'].value_counts().reset_index()
                     main_cts.columns = ['類別', '次數']
                     st.markdown('<div class="stats-card">', unsafe_allow_html=True)
                     st.dataframe(main_cts, use_container_width=True, column_config={"次數": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(main_cts['次數'].max() or 1))})
                     st.markdown('</div>', unsafe_allow_html=True)
-                    
                 with c_tbl2:
-                    # 🔥 修改重點：建立兩小欄，讓標題與選單排在同一行
                     sub_h_col, sub_s_col = st.columns([1, 2])
-                    with sub_h_col:
-                        st.markdown("#### 子分類")
+                    with sub_h_col: st.markdown("#### 子分類")
                     with sub_s_col:
-                        # 加上 label_visibility="collapsed" 隱藏選單標題，達成水平對齊
-                        sel_main = st.selectbox(
-                            "查看哪個大分類？", 
-                            sorted(main_cts['類別'].unique()), 
-                            label_visibility="collapsed"
-                        )
-                    
+                        sel_main = st.selectbox("查看大分類", sorted(main_cts['類別'].unique()), label_visibility="collapsed")
                     sub_cts = merged[merged['大分類']==sel_main]['子分類'].value_counts().reset_index()
                     sub_cts.columns = ['子分類', '次數']
-                    
-                    # 這裡包裹在卡片容器內，確保圖表位置對齊
                     st.markdown('<div class="stats-card">', unsafe_allow_html=True)
-                    st.dataframe(
-                        sub_cts, 
-                        use_container_width=True, 
-                        column_config={
-                            "次數": st.column_config.ProgressColumn(
-                                "熱度", 
-                                format="%d", 
-                                min_value=0, 
-                                max_value=int(sub_cts['次數'].max() or 1)
-                            )
-                        }
-                    )
+                    st.dataframe(sub_cts, use_container_width=True, column_config={"次數": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(sub_cts['次數'].max() or 1))})
                     st.markdown('</div>', unsafe_allow_html=True)
 
             with tab_h:
