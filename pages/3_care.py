@@ -10,10 +10,10 @@ st.set_page_config(
 )
 
 TW_TZ = timezone(timedelta(hours=8))
-PRIMARY = "#00695C"   
-ACCENT  = "#26A69A"   
-BG_MAIN = "#F0F2F5"   
-TEXT    = "#212121"   
+PRIMARY = "#8E9775"   # 莫蘭迪鼠尾草綠
+ACCENT  = "#4F5D2F"   # 深苔蘚綠（點綴色）
+BG_MAIN = "#F8F9FA"   # 極淺灰底
+TEXT    = "#444444"   # 炭灰色字   
 
 # CSS (同步更新為 V17.0 顯色版)
 st.markdown(f"""
