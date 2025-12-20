@@ -350,14 +350,35 @@ elif st.session_state.page == 'stats':
                     st.markdown('</div>', unsafe_allow_html=True)
                     
                 with c_tbl2:
-                    # 🔥 修正標題
-                    st.markdown("#### 子分類")
-                    # 🔥 下拉選單顯色已強制修正為白底黑字
-                    sel_main = st.selectbox("查看哪個大分類？", sorted(main_cts['類別'].unique()))
+                    # 🔥 修改重點：建立兩小欄，讓標題與選單排在同一行
+                    sub_h_col, sub_s_col = st.columns([1, 2])
+                    with sub_h_col:
+                        st.markdown("#### 子分類")
+                    with sub_s_col:
+                        # 加上 label_visibility="collapsed" 隱藏選單標題，達成水平對齊
+                        sel_main = st.selectbox(
+                            "查看哪個大分類？", 
+                            sorted(main_cts['類別'].unique()), 
+                            label_visibility="collapsed"
+                        )
+                    
                     sub_cts = merged[merged['大分類']==sel_main]['子分類'].value_counts().reset_index()
                     sub_cts.columns = ['子分類', '次數']
+                    
+                    # 這裡包裹在卡片容器內，確保圖表位置對齊
                     st.markdown('<div class="stats-card">', unsafe_allow_html=True)
-                    st.dataframe(sub_cts, use_container_width=True, column_config={"次數": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(sub_cts['次數'].max() or 1))})
+                    st.dataframe(
+                        sub_cts, 
+                        use_container_width=True, 
+                        column_config={
+                            "次數": st.column_config.ProgressColumn(
+                                "熱度", 
+                                format="%d", 
+                                min_value=0, 
+                                max_value=int(sub_cts['次數'].max() or 1)
+                            )
+                        }
+                    )
                     st.markdown('</div>', unsafe_allow_html=True)
 
             with tab_h:
