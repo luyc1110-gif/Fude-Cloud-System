@@ -23,7 +23,7 @@ BG_MAIN = "#F0F2F5"
 TEXT    = "#212121"   
 
 # =========================================================
-# 1) CSS 樣式 (V19.0)
+# 1) CSS 樣式 (V20.0)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -54,12 +54,12 @@ li[role="option"]:hover, div[role="option"]:hover {{ background-color: #FFE0B2 !
 
 label {{ color: {PRIMARY} !important; font-weight: 900 !important; font-size: 1.1rem !important; }}
 
-/* 導航按鈕極簡化 (只顯示圖示) */
+/* 導航按鈕：文字版回歸 */
 div[data-testid="stButton"] > button {{
     width: 100%; background-color: white !important; color: {PRIMARY} !important;
     border: 2px solid {PRIMARY} !important; border-radius: 15px !important;
-    font-weight: 900 !important; font-size: 1.5rem !important; /* 圖示大一點 */
-    padding: 10px 0 !important; box-shadow: 0 4px 0px rgba(74, 20, 140, 0.2);
+    font-weight: 900 !important; font-size: 1.1rem !important; /* 字體大小適中 */
+    padding: 12px 0 !important; box-shadow: 0 4px 0px rgba(74, 20, 140, 0.2);
     transition: all 0.1s;
 }}
 div[data-testid="stButton"] > button:hover {{ transform: translateY(-2px); background-color: #F3E5F5 !important; }}
@@ -82,7 +82,7 @@ div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderCo
 .dash-value {{ font-size: 1.8rem; color: {PRIMARY} !important; font-weight: 900; margin: 5px 0; }}
 
 .nav-container {{
-    background-color: white; padding: 10px; border-radius: 20px;
+    background-color: white; padding: 15px; border-radius: 20px;
     margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }}
 div[data-baseweb="tab-list"] {{ gap: 10px; }}
@@ -151,7 +151,7 @@ def calculate_age(dob_str):
     except: return 0
 
 # =========================================================
-# 3) Navigation (極簡圖示版)
+# 3) Navigation (文字版)
 # =========================================================
 if 'page' not in st.session_state: st.session_state.page = 'home'
 
@@ -159,13 +159,13 @@ def render_nav():
     st.markdown('<div class="nav-container">', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        if st.button("🏠", help="長輩首頁", use_container_width=True): st.session_state.page = 'home'; st.rerun()
+        if st.button("🏠 長輩首頁", use_container_width=True): st.session_state.page = 'home'; st.rerun()
     with c2:
-        if st.button("📋", help="長輩名冊", use_container_width=True): st.session_state.page = 'members'; st.rerun()
+        if st.button("📋 長輩名冊", use_container_width=True): st.session_state.page = 'members'; st.rerun()
     with c3:
-        if st.button("🩸", help="據點報到", use_container_width=True): st.session_state.page = 'checkin'; st.rerun()
+        if st.button("🩸 據點報到", use_container_width=True): st.session_state.page = 'checkin'; st.rerun()
     with c4:
-        if st.button("📊", help="統計數據", use_container_width=True): st.session_state.page = 'stats'; st.rerun()
+        if st.button("📊 統計數據", use_container_width=True): st.session_state.page = 'stats'; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================
@@ -179,7 +179,6 @@ if st.session_state.page == 'home':
 
     st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>福德里 - 關懷據點系統</h1>", unsafe_allow_html=True)
     
-    # 快速導航
     col_l, c1, c2, c3, col_r = st.columns([1.5, 2, 2, 2, 0.5])
     with c1:
         if st.button("📋 長輩名冊", key="h_m"): st.session_state.page = 'members'; st.rerun()
@@ -377,6 +376,7 @@ elif st.session_state.page == 'stats':
             with tab_course:
                 st.markdown("### 1. 參與概況")
                 merged_df = filtered_logs.merge(members[['姓名', '性別']], on='姓名', how='left')
+                
                 total_visits = len(merged_df)
                 male_visits = len(merged_df[merged_df['性別'] == '男'])
                 female_visits = len(merged_df[merged_df['性別'] == '女'])
@@ -386,7 +386,7 @@ elif st.session_state.page == 'stats':
                 with m2: st.markdown(f"""<div class="dash-card"><div class="dash-label">男性人次</div><div class="dash-value">{male_visits}</div></div>""", unsafe_allow_html=True)
                 with m3: st.markdown(f"""<div class="dash-card"><div class="dash-label">女性人次</div><div class="dash-value">{female_visits}</div></div>""", unsafe_allow_html=True)
                 
-                # 🔥 課程分類統計 (層次化)
+                # 🔥 時尚感升級：取代圓餅圖的「進度條表格」
                 st.markdown("### 2. 課程分類統計")
                 def parse_main_cat(s): return s.split('-')[0] if '-' in s else s
                 def parse_sub_cat(s): return s.split('-')[1] if '-' in s else s
@@ -394,27 +394,52 @@ elif st.session_state.page == 'stats':
                 merged_df['大分類'] = merged_df['課程分類'].apply(parse_main_cat)
                 merged_df['子分類'] = merged_df['課程分類'].apply(parse_sub_cat)
                 
-                # 1. 大分類總表 (Bar Chart)
-                main_counts = merged_df['大分類'].value_counts().reset_index()
-                main_counts.columns = ['大分類', '次數']
-                fig_main = px.bar(main_counts, x='大分類', y='次數', title='【大分類】開課場次統計', text='次數', color='次數', color_continuous_scale='Purples')
-                st.plotly_chart(fig_main, use_container_width=True)
+                c_tbl1, c_tbl2 = st.columns(2)
                 
-                # 2. 子分類鑽取 (Dropdown -> Filtered Bar Chart)
-                st.markdown("#### 🔍 查看子分類詳情")
-                all_mains = sorted(main_counts['大分類'].unique().tolist())
-                if all_mains:
-                    selected_main = st.selectbox("請選擇一個大分類查看：", all_mains)
+                with c_tbl1:
+                    st.markdown("#### 🏆 熱門大分類")
+                    main_counts = merged_df['大分類'].value_counts().reset_index()
+                    main_counts.columns = ['課程類別', '場次']
                     
-                    sub_data = merged_df[merged_df['大分類'] == selected_main]
-                    sub_counts = sub_data['子分類'].value_counts().reset_index()
-                    sub_counts.columns = ['子分類', '次數']
+                    # 使用 Column Config 顯示進度條 (時尚感關鍵)
+                    st.dataframe(
+                        main_counts,
+                        use_container_width=True,
+                        column_config={
+                            "場次": st.column_config.ProgressColumn(
+                                "熱度",
+                                help="該分類的開課佔比",
+                                format="%d",
+                                min_value=0,
+                                max_value=int(main_counts['場次'].max()),
+                            ),
+                        },
+                    )
                     
-                    if not sub_counts.empty:
-                        fig_sub = px.bar(sub_counts, x='子分類', y='次數', title=f'【{selected_main}】之子分類統計', text='次數', color='次數', color_continuous_scale='Oranges')
-                        st.plotly_chart(fig_sub, use_container_width=True)
-                    else:
-                        st.info("此分類無子分類資料")
+                with c_tbl2:
+                    st.markdown("#### 🔍 子分類鑽取")
+                    all_mains = sorted(main_counts['課程類別'].unique().tolist())
+                    if all_mains:
+                        selected_main = st.selectbox("查看哪個大分類？", all_mains)
+                        sub_data = merged_df[merged_df['大分類'] == selected_main]
+                        sub_counts = sub_data['子分類'].value_counts().reset_index()
+                        sub_counts.columns = ['子分類', '場次']
+                        
+                        if not sub_counts.empty:
+                            st.dataframe(
+                                sub_counts,
+                                use_container_width=True,
+                                column_config={
+                                    "場次": st.column_config.ProgressColumn(
+                                        "熱度",
+                                        format="%d",
+                                        min_value=0,
+                                        max_value=int(sub_counts['場次'].max()),
+                                    ),
+                                },
+                            )
+                        else:
+                            st.info("此分類無子分類資料")
 
             with tab_health:
                 st.markdown("### 🔍 個案健康查詢")
