@@ -4,6 +4,7 @@ from datetime import datetime, date, timedelta, timezone
 import gspread
 import time
 import os
+import plotly.express as px  # 引入圖表庫
 
 # =========================================================
 # 0) 系統設定
@@ -22,7 +23,7 @@ BG_MAIN = "#F0F2F5"
 TEXT    = "#212121"   
 
 # =========================================================
-# 1) CSS 樣式 (V17.0 同步升級)
+# 1) CSS 樣式
 # =========================================================
 st.markdown(f"""
 <style>
@@ -95,7 +96,7 @@ div[data-baseweb="tab"][aria-selected="true"] {{
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic
+# 2) Logic & Data
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 COURSE_HIERARCHY = {
@@ -176,6 +177,7 @@ if st.session_state.page == 'home':
 
     st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>福德里 - 關懷據點系統</h1>", unsafe_allow_html=True)
     
+    # 快速導航
     col_l, c1, c2, c3, col_r = st.columns([1.5, 2, 2, 2, 0.5])
     with c1:
         st.info("📋 管理長輩名單")
@@ -188,19 +190,41 @@ if st.session_state.page == 'home':
         if st.button("統計數據", key="h_s"): st.session_state.page = 'stats'; st.rerun()
 
     st.markdown("---")
+    
+    # 資料載入
     logs = load_data("elderly_logs")
+    members = load_data("elderly_members")
+    
+    # 🔥 首頁人口結構與今日概況
     today_str = get_tw_time().strftime("%Y-%m-%d")
     today_count = len(logs[logs['日期'] == today_str]) if not logs.empty else 0
     
-    st.markdown(f"### 📅 今日據點看板 ({today_str})")
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); padding: 30px; border-radius: 20px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(255, 152, 0, 0.25);">
-        <div style="font-size: 1.2rem; opacity: 0.9; color: white !important;">今日服務長輩人次</div>
-        <div style="font-size: 4rem; font-weight: 900; margin: 10px 0; color: white !important;">
-            {today_count} <span style="font-size: 1.5rem; color: white !important;">人</span>
+    avg_age = 0
+    male_count = 0
+    female_count = 0
+    
+    if not members.empty:
+        members['年齡'] = members['出生年月日'].apply(calculate_age)
+        avg_age = round(members['年齡'].mean(), 1)
+        male_count = len(members[members['性別'] == '男'])
+        female_count = len(members[members['性別'] == '女'])
+
+    st.markdown(f"### 📅 據點即時看板")
+    
+    c_today, c_age, c_male, c_female = st.columns(4)
+    with c_today:
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); padding: 20px; border-radius: 15px; color: white; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+            <div style="font-size: 1rem; opacity: 0.9; color: white !important;">今日服務人次</div>
+            <div style="font-size: 2.5rem; font-weight: 900; margin: 5px 0; color: white !important;">{today_count}</div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    with c_age:
+        st.markdown(f"""<div class="dash-card"><div class="dash-label">平均年齡</div><div class="dash-value">{avg_age} <span style="font-size:1rem;">歲</span></div></div>""", unsafe_allow_html=True)
+    with c_male:
+        st.markdown(f"""<div class="dash-card"><div class="dash-label">男性長輩</div><div class="dash-value">{male_count} <span style="font-size:1rem;">人</span></div></div>""", unsafe_allow_html=True)
+    with c_female:
+        st.markdown(f"""<div class="dash-card"><div class="dash-label">女性長輩</div><div class="dash-value">{female_count} <span style="font-size:1rem;">人</span></div></div>""", unsafe_allow_html=True)
 
 elif st.session_state.page == 'members':
     render_nav()
@@ -251,7 +275,6 @@ elif st.session_state.page == 'checkin':
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown("#### 2. 長輩刷卡/輸入 (含健康檢測)")
     
-    # 🔥 自動健康警示邏輯
     alerts = []
     if st.session_state.sbp_val >= 140: alerts.append("⚠️ 收縮壓偏高 (>140)")
     if st.session_state.sbp_val <= 90: alerts.append("⚠️ 收縮壓偏低 (<90)")
@@ -260,10 +283,8 @@ elif st.session_state.page == 'checkin':
     if st.session_state.pulse_val >= 100: alerts.append("💓 心跳過快 (>100)")
     if st.session_state.pulse_val <= 50: alerts.append("💓 心跳過慢 (<50)")
     
-    if alerts:
-        st.error(" ".join(alerts) + "，請休息 5 分鐘後重量！")
-    else:
-        st.success("✅ 數值正常")
+    if alerts: st.error(" ".join(alerts) + "，請休息 5 分鐘後重量！")
+    else: st.success("✅ 數值正常")
 
     def process_checkin():
         pid = st.session_state.elder_pid.strip().upper()
@@ -292,7 +313,6 @@ elif st.session_state.page == 'checkin':
     with c_bp1: st.number_input("收縮壓 (高壓)", min_value=50, max_value=250, key="sbp_val")
     with c_bp2: st.number_input("舒張壓 (低壓)", min_value=30, max_value=150, key="dbp_val")
     with c_bp3: st.number_input("脈搏", min_value=30, max_value=200, key="pulse_val")
-        
     st.text_input("請輸入長輩身分證 (Enter 報到)", key="elder_pid", on_change=process_checkin)
     st.markdown('</div>', unsafe_allow_html=True)
     
@@ -303,44 +323,120 @@ elif st.session_state.page == 'checkin':
         today_logs = logs[logs['日期'] == today]
         st.dataframe(today_logs[['時間', '姓名', '課程名稱', '收縮壓', '舒張壓']], use_container_width=True)
 
+# =========================================================
+# 7) Page: Stats (統計數據 - 全面升級)
+# =========================================================
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 統計數據")
+    
     members = load_data("elderly_members")
     logs = load_data("elderly_logs")
-    if members.empty: st.info("尚無長輩資料")
+    
+    if members.empty:
+        st.info("請先建立長輩名冊，才會有統計數據。")
+    elif logs.empty:
+        st.info("尚無報到紀錄，無法產生報表。")
     else:
-        members['年齡'] = members['出生年月日'].apply(calculate_age)
-        avg_age = round(members['年齡'].mean(), 1)
-        male_count = len(members[members['性別'] == '男'])
-        female_count = len(members[members['性別'] == '女'])
-        st.markdown("### 👥 長輩結構")
-        c1, c2, c3 = st.columns(3)
-        with c1: st.markdown(f"""<div class="dash-card"><div class="dash-label">平均年齡</div><div class="dash-value">{avg_age} <span style="font-size:1rem;">歲</span></div></div>""", unsafe_allow_html=True)
-        with c2: st.markdown(f"""<div class="dash-card"><div class="dash-label">男性長輩</div><div class="dash-value">{male_count} <span style="font-size:1rem;">人</span></div></div>""", unsafe_allow_html=True)
-        with c3: st.markdown(f"""<div class="dash-card"><div class="dash-label">女性長輩</div><div class="dash-value">{female_count} <span style="font-size:1rem;">人</span></div></div>""", unsafe_allow_html=True)
-        st.markdown("---")
-        st.markdown("### 🏆 參與度分析 (全勤統計)")
+        # 資料預處理
+        logs['dt'] = pd.to_datetime(logs['日期'], errors='coerce')
+        logs['收縮壓'] = pd.to_numeric(logs['收縮壓'], errors='coerce')
+        logs['舒張壓'] = pd.to_numeric(logs['舒張壓'], errors='coerce')
+        logs['脈搏'] = pd.to_numeric(logs['脈搏'], errors='coerce')
+        
+        # 日期篩選 (全域)
         st.markdown('<div style="background:white; padding:20px; border-radius:15px; border:1px solid #ddd; margin-bottom:20px;">', unsafe_allow_html=True)
         d_range = st.date_input("📅 選擇統計區間", value=(date(date.today().year, date.today().month, 1), date.today()))
         st.markdown('</div>', unsafe_allow_html=True)
-        if not logs.empty and isinstance(d_range, tuple) and len(d_range) == 2:
+        
+        # 篩選資料
+        filtered_logs = pd.DataFrame()
+        if isinstance(d_range, tuple) and len(d_range) == 2:
             start_d, end_d = d_range
-            logs['dt'] = pd.to_datetime(logs['日期'], errors='coerce').dt.date
-            period_logs = logs[(logs['dt'] >= start_d) & (logs['dt'] <= end_d)]
-            if period_logs.empty: st.warning("此區間無上課紀錄")
-            else:
-                course_dates = sorted(period_logs['dt'].unique())
-                total_course_days = len(course_dates)
-                st.write(f"期間共有 **{total_course_days}** 天有課程活動。")
-                attendance = period_logs.groupby('姓名')['dt'].nunique().reset_index()
-                attendance.columns = ['姓名', '出席天數']
-                perfect_attendance = attendance[attendance['出席天數'] == total_course_days]
-                c_full, c_list = st.columns([1, 2])
-                with c_full:
-                    st.markdown(f"""<div class="dash-card" style="border-left: 6px solid #4CAF50;"><div class="dash-label">全勤人數</div><div class="dash-value">{len(perfect_attendance)} <span style="font-size:1rem;">人</span></div></div>""", unsafe_allow_html=True)
-                    if not perfect_attendance.empty: st.success(f"🏅 全勤名單：{', '.join(perfect_attendance['姓名'].tolist())}")
-                with c_list:
-                    st.markdown("##### 📋 出席統計表")
-                    merge_df = attendance.merge(members[['姓名', '性別', '年齡']], on='姓名', how='left')
-                    st.dataframe(merge_df.sort_values('出席天數', ascending=False), use_container_width=True)
+            mask = (logs['dt'].dt.date >= start_d) & (logs['dt'].dt.date <= end_d)
+            filtered_logs = logs[mask].copy()
+        else:
+            filtered_logs = logs.copy()
+
+        if filtered_logs.empty:
+            st.warning("此時間區間無資料")
+        else:
+            # 分頁籤：課程成效 vs 長輩健康
+            tab_course, tab_health = st.tabs(["📚 課程成效分析", "🏥 長輩健康追蹤"])
+            
+            # --- Tab 1: 課程成效 ---
+            with tab_course:
+                st.markdown("### 1. 參與概況")
+                
+                # 合併性別資料
+                merged_df = filtered_logs.merge(members[['姓名', '性別']], on='姓名', how='left')
+                
+                total_visits = len(merged_df)
+                unique_people = merged_df['姓名'].nunique()
+                male_visits = len(merged_df[merged_df['性別'] == '男'])
+                female_visits = len(merged_df[merged_df['性別'] == '女'])
+                
+                m1, m2, m3 = st.columns(3)
+                with m1: st.markdown(f"""<div class="dash-card"><div class="dash-label">總參與人次</div><div class="dash-value">{total_visits}</div></div>""", unsafe_allow_html=True)
+                with m2: st.markdown(f"""<div class="dash-card"><div class="dash-label">男性人次</div><div class="dash-value">{male_visits}</div></div>""", unsafe_allow_html=True)
+                with m3: st.markdown(f"""<div class="dash-card"><div class="dash-label">女性人次</div><div class="dash-value">{female_visits}</div></div>""", unsafe_allow_html=True)
+                
+                st.markdown("### 2. 課程分類統計")
+                # 解析 "大分類-子分類"
+                def parse_main_cat(s): return s.split('-')[0] if '-' in s else s
+                def parse_sub_cat(s): return s.split('-')[1] if '-' in s else s
+                
+                merged_df['大分類'] = merged_df['課程分類'].apply(parse_main_cat)
+                merged_df['子分類'] = merged_df['課程分類'].apply(parse_sub_cat)
+                
+                c_chart1, c_chart2 = st.columns(2)
+                
+                with c_chart1:
+                    # 大分類圓餅圖
+                    main_counts = merged_df['大分類'].value_counts().reset_index()
+                    main_counts.columns = ['大分類', '次數']
+                    fig_main = px.pie(main_counts, values='次數', names='大分類', title='課程大分類佔比', color_discrete_sequence=px.colors.sequential.Purples_r)
+                    st.plotly_chart(fig_main, use_container_width=True)
+                    
+                with c_chart2:
+                    # 子分類長條圖
+                    sub_counts = merged_df['子分類'].value_counts().reset_index()
+                    sub_counts.columns = ['子分類', '次數']
+                    fig_sub = px.bar(sub_counts, x='子分類', y='次數', title='熱門子分類排行', color='次數', color_continuous_scale='Bluered')
+                    st.plotly_chart(fig_sub, use_container_width=True)
+                
+                st.markdown("### 3. 出席明細表")
+                # 依人名統計
+                attend_summary = merged_df.groupby(['姓名', '性別']).size().reset_index(name='參與次數')
+                st.dataframe(attend_summary.sort_values('參與次數', ascending=False), use_container_width=True)
+
+            # --- Tab 2: 長輩健康 ---
+            with tab_health:
+                st.markdown("### 🔍 個案健康查詢")
+                
+                # 選擇長輩
+                all_elders = sorted(filtered_logs['姓名'].unique().tolist())
+                target_elder = st.selectbox("請選擇長輩姓名", all_elders)
+                
+                elder_logs = filtered_logs[filtered_logs['姓名'] == target_elder].sort_values('dt')
+                
+                if elder_logs.empty:
+                    st.info("該長輩在此區間無資料")
+                else:
+                    # 計算異常次數
+                    high_bp_count = len(elder_logs[(elder_logs['收縮壓'] >= 140) | (elder_logs['舒張壓'] >= 90)])
+                    abnormal_pulse = len(elder_logs[(elder_logs['脈搏'] >= 100) | (elder_logs['脈搏'] <= 50)])
+                    
+                    c_h1, c_h2 = st.columns(2)
+                    with c_h1: st.markdown(f"""<div class="dash-card" style="border-left:6px solid #E91E63"><div class="dash-label">血壓異常次數</div><div class="dash-value">{high_bp_count}</div><div class="dash-sub">高於 140/90</div></div>""", unsafe_allow_html=True)
+                    with c_h2: st.markdown(f"""<div class="dash-card" style="border-left:6px solid #F44336"><div class="dash-label">心跳異常次數</div><div class="dash-value">{abnormal_pulse}</div><div class="dash-sub">過快(>100)或過慢(<50)</div></div>""", unsafe_allow_html=True)
+                    
+                    st.markdown("### 📈 血壓變化趨勢圖")
+                    # 繪製折線圖
+                    fig_bp = px.line(elder_logs, x='dt', y=['收縮壓', '舒張壓'], markers=True, title=f"{target_elder} - 血壓變化圖")
+                    # 加上警戒線
+                    fig_bp.add_hline(y=140, line_dash="dash", line_color="red", annotation_text="高血壓警戒 (140)")
+                    st.plotly_chart(fig_bp, use_container_width=True)
+                    
+                    st.markdown("##### 詳細量測紀錄")
+                    st.dataframe(elder_logs[['日期', '時間', '收縮壓', '舒張壓', '脈搏']], use_container_width=True)
