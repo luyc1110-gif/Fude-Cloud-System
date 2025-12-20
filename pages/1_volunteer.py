@@ -6,9 +6,14 @@ import plotly.express as px
 import random
 
 # =========================================================
-# 0) 系統設定與狀態初始化
+# 0) 系統設定與初始化 (解決 AttributeError)
 # =========================================================
-st.set_page_config(page_title="志工管理系統", page_icon="💜", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="志工管理系統",
+    page_icon="💜",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
@@ -33,10 +38,10 @@ html, body, [class*="css"], div, p, span, li, ul {{ font-family: "Noto Sans TC",
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 下拉選單與輸入框 (白底黑字) */
+/* 下拉選單與輸入框 (白底黑字高對比) */
 .stTextInput input, .stDateInput input, .stTimeInput input, div[data-baseweb="select"] > div {{
     background-color: #FFFFFF !important; color: #000000 !important;
-    border: 2px solid #D1D1D1 !important; border-radius: 12px !important; font-weight: 700 !important;
+    border: 2px solid #BCB4B4 !important; border-radius: 12px !important; font-weight: 700 !important;
 }}
 div[data-baseweb="select"] span {{ color: #000000 !important; }}
 
@@ -48,15 +53,15 @@ div[data-testid="stButton"] > button {{
 }}
 div[data-testid="stButton"] > button:hover {{ background-color: {PRIMARY} !important; color: white !important; }}
 
-/* 年度時數大卡片 */
+/* 🔥 年度時數大卡片：強制白字 */
 .vol-metric-box {{
     background: linear-gradient(135deg, {PRIMARY} 0%, {ACCENT} 100%);
-    padding: 35px; border-radius: 25px; color: white !important; text-align: center; margin-bottom: 25px;
+    padding: 35px; border-radius: 25px; color: {TEXT_LIGHT} !important; text-align: center; margin-bottom: 25px;
     box-shadow: 0 8px 25px rgba(154, 140, 152, 0.2);
 }}
-.vol-metric-box div, .vol-metric-box span {{ color: white !important; font-weight: 900 !important; }}
+.vol-metric-box div, .vol-metric-box span {{ color: {TEXT_LIGHT} !important; font-weight: 900 !important; }}
 
-/* 小名牌卡片 */
+/* 小統計卡片 */
 .dash-card {{
     background-color: white; padding: 18px; border-radius: 18px; border-left: 6px solid {PRIMARY};
     box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 12px;
@@ -69,7 +74,7 @@ div[data-testid="stButton"] > button:hover {{ background-color: {PRIMARY} !impor
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic & Google Sheets
+# 2) 資料邏輯 (防呆修復 KeyError 與 NaN)
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 ALL_CATEGORIES = ["祥和志工", "關懷據點週二志工", "關懷據點週三志工", "環保志工", "臨時志工"]
@@ -87,20 +92,23 @@ def load_data(sheet_name):
         df = pd.DataFrame(sheet.get_all_records()).astype(str)
         target = M_COLS if sheet_name == 'members' else L_COLS
         for c in target: 
-            if c not in df.columns: df[c] = ""
+            if c not in df.columns: df[c] = "" # 🔥 修復 KeyError
         return df
     except: return pd.DataFrame(columns=M_COLS if sheet_name == 'members' else L_COLS)
 
 def save_data(df, sheet_name):
     try:
-        df_to_save = df.fillna("").replace(['nan', 'NaN', 'nan.0'], "").astype(str)
+        # 🔥 修復 nan 錯誤：儲存前清空非法值
+        df_to_save = df.fillna("").replace(['nan', 'NaN', 'nan.0', 'None', '<NA>'], "").astype(str)
         client = get_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
         sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist())
         load_data.clear()
         return True
-    except Exception as e: st.error(f"寫入失敗：{e}"); return False
+    except Exception as e:
+        st.error(f"寫入失敗：{e}")
+        return False
 
 def calculate_age(b_str):
     try:
@@ -118,8 +126,8 @@ def check_is_retired(row):
             if not str(row.get(exit, "")).strip(): is_active = True
     return has_any and not is_active
 
-def calculate_hours(logs_df, year):
-    if logs_df.empty: return 0
+def calculate_hours_logic(logs_df, year):
+    if logs_df.empty or '日期' not in logs_df.columns: return 0
     df = logs_df.copy()
     df['dt'] = pd.to_datetime(df['日期'] + ' ' + df['時間'], errors='coerce')
     df = df.dropna(subset=['dt'])
@@ -138,10 +146,10 @@ def calculate_hours(logs_df, year):
     return total_sec
 
 # =========================================================
-# 3) UI 渲染
+# 3) 導航列與 UI
 # =========================================================
 def render_nav():
-    st.markdown('<div style="background:white; padding:12px; border-radius:20px; margin-bottom:20px; box-shadow: 0 2px 15px rgba(0,0,0,0.05);">', unsafe_allow_html=True)
+    st.markdown('<div class="nav-container" style="background:white; padding:12px; border-radius:20px; margin-bottom:20px; box-shadow: 0 2px 15px rgba(0,0,0,0.05);">', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         if st.button("🏠 志工首頁", use_container_width=True): st.session_state.page='home'; st.rerun()
@@ -153,16 +161,26 @@ def render_nav():
         if st.button("📊 數據分析", use_container_width=True): st.session_state.page='report'; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
+# --- 頁面：首頁 ---
 if st.session_state.page == 'home':
-    if st.button("🚪 回系統大廳"): st.switch_page("Home.py")
+    c_back, _ = st.columns([1, 4])
+    with c_back:
+        if st.button("🚪 回系統大廳"): st.switch_page("Home.py")
     st.markdown("<h1 style='text-align: center;'>福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
     
     logs, members = load_data("logs"), load_data("members")
     this_year = datetime.now().year
-    total_sec = calculate_hours(logs, this_year)
+    total_sec = calculate_hours_logic(logs, this_year)
     h, m = int(total_sec // 3600), int((total_sec % 3600) // 60)
     
-    st.markdown(f"""<div class="vol-metric-box"><div>📅 {this_year} 年度全體志工總服務時數</div><div style="font-size:3.5rem;">{h} <span style="font-size:1.5rem;">小時</span> {m} <span style="font-size:1.5rem;">分</span></div></div>""", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="vol-metric-box">
+        <div style="font-size: 1.2rem; opacity: 0.9;">📅 {this_year} 年度全體志工總服務時數</div>
+        <div style="font-size: 4rem; font-weight: 900; margin: 10px 0;">
+            {h} <span style="font-size: 1.5rem;">小時</span> {m} <span style="font-size: 1.5rem;">分</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     if not members.empty:
         members['age'] = members['生日'].apply(calculate_age)
@@ -173,8 +191,15 @@ if st.session_state.page == 'home':
             count = len(subset)
             avg_age = round(subset[subset['age']>0]['age'].mean(), 1) if not subset[subset['age']>0].empty else 0
             with [c1,c2,c3,c4][i]:
-                st.markdown(f"""<div class="dash-card"><div style="color:#666;font-weight:bold;">{cat}志工</div><div style="font-size:1.8rem;color:{ACCENT};font-weight:900;">{count} 人</div><div style="font-size:0.9rem;color:#888;">平均 {avg_age} 歲</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="dash-card">
+                    <div style="color:#666;font-weight:bold;">{cat}志工</div>
+                    <div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{count} 人</div>
+                    <div style="font-size:0.9rem;color:#888;">平均 {avg_age} 歲</div>
+                </div>
+                """, unsafe_allow_html=True)
 
+# --- 頁面：打卡 ---
 elif st.session_state.page == 'checkin':
     render_nav()
     st.markdown("## ⏰ 智能打卡站")
@@ -184,18 +209,18 @@ elif st.session_state.page == 'checkin':
     st.markdown('<div class="custom-card" style="border-left: 6px solid #9A8C98;">', unsafe_allow_html=True)
     st.markdown("#### 1. 設定執勤活動與日期")
     c1, c2, c3 = st.columns([1.5, 1.5, 2])
-    with c1: raw_act = st.selectbox("📌 選擇活動項目", DEFAULT_ACTIVITIES)
+    with c1: raw_act = st.selectbox("📌 活動項目", DEFAULT_ACTIVITIES)
     with c2: target_date = st.date_input("執勤日期", value=date.today())
     with c3: note = st.text_input("📝 活動名稱 (選填)") if "專案" in raw_act or "教育" in raw_act else ""
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="custom-card">', unsafe_allow_html=True)
-    c_t, c_m = st.columns([2, 3])
-    with c_t: st.markdown("#### 2. 志工刷卡 (支援條碼槍)")
-    with c_m:
-        m_type, m_txt = st.session_state.checkin_msg
-        if m_type == "error": st.error(m_txt)
-        elif m_type == "success": st.success(m_txt)
+    ct, cm = st.columns([2, 3])
+    with ct: st.markdown("#### 2. 志工刷卡 (支援條碼槍)")
+    with cm:
+        mt, mx = st.session_state.checkin_msg
+        if mt == "error": st.error(mx)
+        elif mt == "success": st.success(mx)
 
     def process_scan():
         pid = st.session_state.input_pid.strip().upper()
@@ -213,18 +238,20 @@ elif st.session_state.page == 'checkin':
                 st.session_state.checkin_msg = ("success", f"✅ {name} {action}成功 ({d_str})")
         st.session_state.input_pid = ""
 
-    st.text_input("身分證字號掃描區 (條碼槍對準處)", key="input_pid", on_change=process_scan)
+    st.text_input("身分證字號掃描區", key="input_pid", on_change=process_scan)
     st.markdown('</div>', unsafe_allow_html=True)
 
     logs_view = load_data("logs")
     d_str = target_date.strftime("%Y-%m-%d")
     if not logs_view[logs_view['日期'] == d_str].empty:
         st.markdown(f"### 📋 {d_str} 志工進出名單")
-        day_logs = logs_view[logs_view['日期'] == d_str].sort_values('時間', ascending=False)
-        edited = st.data_editor(day_logs, use_container_width=True, num_rows="dynamic", key="v_log_edit")
-        if st.button("💾 儲存名單修改"):
-            logs_view.update(edited); save_data(logs_view, "logs"); st.success("已更新！")
+        day_df = logs_view[logs_view['日期'] == d_str].sort_values('時間', ascending=False)
+        edited = st.data_editor(day_df, use_container_width=True, num_rows="dynamic", key="v_log_edit")
+        if st.button("💾 儲存修改"):
+            logs_view[logs_view['日期'] == d_str] = edited
+            if save_data(logs_view, "logs"): st.success("紀錄已更新！")
 
+# --- 頁面：名冊 ---
 elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 志工名冊維護")
@@ -239,9 +266,10 @@ elif st.session_state.page == 'members':
     if not df.empty:
         df['狀態'] = df.apply(lambda r: '服務中' if check_is_retired(r) else '已退隊', axis=1)
         t1, t2 = st.tabs(["🔥 服務中", "🍂 已退隊"])
-        with t1: st.data_editor(df[df['狀態']=='服務中'], use_container_width=True, num_rows="dynamic")
-        with t2: st.data_editor(df[df['狀態']=='已退隊'], use_container_width=True, num_rows="dynamic")
+        with t1: st.data_editor(df[df['狀態']=='服務中'], use_container_width=True, num_rows="dynamic", key="v_active_edit")
+        with t2: st.data_editor(df[df['狀態']=='已退隊'], use_container_width=True, num_rows="dynamic", key="v_retired_edit")
 
+# --- 頁面：數據 ---
 elif st.session_state.page == 'report':
     render_nav()
     st.markdown("## 📊 數據分析")
