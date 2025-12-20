@@ -6,9 +6,14 @@ import plotly.express as px
 import random
 
 # =========================================================
-# 0) 系統設定與初始化
+# 0) 系統設定與初始化 (解決 AttributeError)
 # =========================================================
-st.set_page_config(page_title="長輩關懷系統", page_icon="👴", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="長輩關懷系統",
+    page_icon="👴",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
@@ -21,7 +26,7 @@ ACCENT  = "#6D597A"   # 煙燻紫
 BG_MAIN = "#F8F9FA"   
 
 # =========================================================
-# 1) CSS 樣式 (極致高對比)
+# 1) CSS 樣式 (極致高對比 + 莫蘭迪)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -60,7 +65,7 @@ div[data-testid="stButton"] > button:hover {{ background-color: {ACCENT} !import
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic & Sheets
+# 2) Logic & Google Sheets (防 nan 報錯)
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 COURSE_HIERARCHY = {
@@ -76,7 +81,8 @@ def get_client(): return gspread.service_account_from_dict(st.secrets["gcp_servi
 
 def load_data(sheet_name):
     try:
-        client = get_client(); sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
+        client = get_client()
+        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         df = pd.DataFrame(sheet.get_all_records()).astype(str)
         target = M_COLS if sheet_name == 'elderly_members' else L_COLS
         for c in target: 
@@ -86,10 +92,14 @@ def load_data(sheet_name):
 
 def save_data(df, sheet_name):
     try:
-        df_to_save = df.fillna("").replace(['nan', 'NaN', 'nan.0'], "").astype(str)
-        client = get_client(); sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.clear(); sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist())
-        load_data.clear(); return True
+        # 🔥 修復 nan 錯誤
+        df_to_save = df.fillna("").replace(['nan', 'NaN', 'nan.0', 'None', '<NA>'], "").astype(str)
+        client = get_client()
+        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
+        sheet.clear()
+        sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist())
+        load_data.clear()
+        return True
     except Exception as e: st.error(f"寫入失敗：{e}"); return False
 
 def get_tw_time(): return datetime.now(TW_TZ)
@@ -117,6 +127,7 @@ def render_nav():
         if st.button("📊 統計數據", use_container_width=True): st.session_state.page='stats'; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
+# --- 頁面：首頁 ---
 if st.session_state.page == 'home':
     if st.button("🚪 回系統大廳"): st.switch_page("Home.py")
     st.markdown("<h1 style='text-align: center; color: #444;'>福德里 - 關懷據點系統</h1>", unsafe_allow_html=True)
@@ -126,21 +137,25 @@ if st.session_state.page == 'home':
     t_count = len(logs[logs['日期'] == today_str]) if not logs.empty else 0
     avg_age = round(members['出生年月日'].apply(calculate_age).mean(), 1) if not members.empty else 0
     m_count, f_count = len(members[members['性別']=='男']), len(members[members['性別']=='女'])
+    
     c_y, c_t = st.columns(2)
     with c_y: st.markdown(f"""<div class="elder-metric-box" style="background:linear-gradient(135deg,#B5838D 0%,#6D597A 100%);"><div>📅 {this_year} 年度總人次</div><div style="font-size:3.5rem;">{y_count}</div></div>""", unsafe_allow_html=True)
     with c_t: st.markdown(f"""<div class="elder-metric-box" style="background:linear-gradient(135deg,#E5989B 0%,#B5838D 100%);"><div>☀️ 今日服務人次</div><div style="font-size:3.5rem;">{t_count}</div></div>""", unsafe_allow_html=True)
+    
     c1, c2, c3 = st.columns(3)
     with c1: st.markdown(f"""<div class="dash-card"><div style="color:#666;">平均年齡</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{avg_age} 歲</div></div>""", unsafe_allow_html=True)
     with c2: st.markdown(f"""<div class="dash-card"><div style="color:#666;">男性長輩</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{m_count} 人</div></div>""", unsafe_allow_html=True)
     with c3: st.markdown(f"""<div class="dash-card"><div style="color:#666;">女性長輩</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{f_count} 人</div></div>""", unsafe_allow_html=True)
 
+# --- 頁面：報到 ---
 elif st.session_state.page == 'checkin':
     render_nav()
     st.markdown("## 🩸 據點報到站")
     if 'elder_pid' not in st.session_state: st.session_state.elder_pid = ""
     if 'checkin_msg' not in st.session_state: st.session_state.checkin_msg = (None, None)
+    
     st.markdown('<div class="custom-card" style="border-left: 6px solid #E5989B;">', unsafe_allow_html=True)
-    st.markdown("#### 1. 設定課程項目與補登時間")
+    st.markdown("#### 1. 設定課程項目與報到日期")
     c1, c2, c3 = st.columns([1.5, 1.5, 2.5])
     with c1: m_cat = st.selectbox("課程大分類", list(COURSE_HIERARCHY.keys()))
     with c2: s_cat = st.selectbox("子分類", COURSE_HIERARCHY[m_cat])
@@ -150,53 +165,82 @@ elif st.session_state.page == 'checkin':
     with cd1: t_date = st.date_input("報到日期", value=get_tw_time().date())
     with cd2: t_time = st.time_input("報到時間", value=get_tw_time().time())
     with cd3:
-        if st.session_state.get('sbp_val', 120) >= 140: st.error("⚠️ 注意：長輩血壓偏高！")
+        # 🔥 血壓紅色警告提醒
+        if st.session_state.get('sbp_val', 120) >= 140: st.error("⚠️ 注意：目前輸入的收縮壓偏高 (>140)！")
     st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('<div class="custom-card">', unsafe_allow_html=True)
-    ct, cm = st.columns([2, 3]); with ct: st.markdown("#### 2. 長輩掃描報到 (支援條碼槍)")
+    ct, cm = st.columns([2, 3])
+    with ct: st.markdown("#### 2. 長輩掃描報到 (支援條碼槍)")
     with cm:
         mt, mx = st.session_state.checkin_msg
         if mt == "error": st.error(mx)
         elif mt == "success": st.success(mx)
+
     def process_checkin():
-        pid = st.session_state.elder_pid.strip().upper(); if not pid: return
+        pid = st.session_state.elder_pid.strip().upper()
+        if not pid: return
         df_m, df_l = load_data("elderly_members"), load_data("elderly_logs")
         d_str, t_str = t_date.strftime("%Y-%m-%d"), t_time.strftime("%H:%M:%S")
         person = df_m[df_m['身分證字號'] == pid]
         if person.empty: st.session_state.checkin_msg = ("error", "❌ 查無此人")
         else:
             name = person.iloc[0]['姓名']
-            if not df_l[(df_l['身分證字號']==pid) & (df_l['日期']==d_str) & (df_l['課程名稱']==(c_name or s_cat))].empty:
-                st.session_state.checkin_msg = ("error", f"❌ {name} 今日已完成此項報到")
+            final_c = c_name if c_name.strip() else s_cat
+            if not df_l[(df_l['身分證字號']==pid) & (df_l['日期']==d_str) & (df_l['課程名稱']==final_c)].empty:
+                st.session_state.checkin_msg = ("error", f"❌ 重複：{name} 今日已完成此項報到")
             else:
-                new_log = {"姓名":name,"身分證字號":pid,"日期":d_str,"時間":t_str,"課程分類":f"{m_cat}-{s_cat}","課程名稱":(c_name or s_cat),"收縮壓":st.session_state.sbp_val,"舒張壓":st.session_state.dbp_val,"脈搏":st.session_state.pulse_val}
+                new_log = {"姓名":name,"身分證字號":pid,"日期":d_str,"時間":t_str,"課程分類":f"{m_cat}-{s_cat}","課程名稱":final_c,"收縮壓":st.session_state.sbp_val,"舒張壓":st.session_state.dbp_val,"脈搏":st.session_state.pulse_val}
                 if save_data(pd.concat([df_l, pd.DataFrame([new_log])], ignore_index=True), "elderly_logs"):
                     st.session_state.checkin_msg = ("success", f"✅ {name} 報到成功")
         st.session_state.elder_pid = ""
+
     cb1, cb2, cb3 = st.columns(3)
     with cb1: st.number_input("收縮壓", 50, 250, 120, key="sbp_val")
     with cb2: st.number_input("舒張壓", 30, 150, 80, key="dbp_val")
     with cb3: st.number_input("脈搏", 30, 200, 72, key="pulse_val")
-    st.text_input("身分證掃描區", key="elder_pid", on_change=process_checkin)
+    st.text_input("身分證字號掃描區", key="elder_pid", on_change=process_checkin)
     st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown(f"### 📋 {t_date.strftime('%Y-%m-%d')} 報到名單")
-    logs_view = load_data("elderly_logs"); d_mask = (logs_view['日期'] == t_date.strftime("%Y-%m-%d"))
-    if not logs_view[d_mask].empty:
-        edited = st.data_editor(logs_view[d_mask].sort_values('時間', ascending=False), use_container_width=True, num_rows="dynamic", key="checkin_edit")
-        if st.button("💾 儲存修改"): logs_view[d_mask] = edited; save_data(logs_view, "elderly_logs"); st.success("已更新！")
 
+    logs_view = load_data("elderly_logs")
+    d_mask = (logs_view['日期'] == t_date.strftime("%Y-%m-%d"))
+    if not logs_view[d_mask].empty:
+        st.markdown(f"### 📋 {t_date.strftime('%Y-%m-%d')} 報到名單")
+        edited = st.data_editor(logs_view[d_mask].sort_values('時間', ascending=False), use_container_width=True, num_rows="dynamic", key="checkin_edit")
+        if st.button("💾 儲存修改"):
+            logs_view[d_mask] = edited
+            if save_data(logs_view, "elderly_logs"): st.success("紀錄已更新！")
+
+# --- 頁面：名冊 ---
+elif st.session_state.page == 'members':
+    render_nav()
+    st.markdown("## 📋 名冊管理")
+    df = load_data("elderly_members")
+    with st.expander("➕ 新增長輩資料"):
+        with st.form("add_e"):
+            c1, c2, c3 = st.columns(3); n, p, g = c1.text_input("姓名"), c2.text_input("身分證"), c3.selectbox("性別",["男","女"])
+            d, ph = st.date_input("生日", value=date(1950,1,1)), st.text_input("電話")
+            addr = st.text_input("地址")
+            if st.form_submit_button("確認新增"):
+                new = pd.DataFrame([{"姓名":n,"身分證字號":p.upper(),"性別":g,"出生年月日":str(d),"電話":ph,"地址":addr,"加入日期":str(date.today())}])
+                if save_data(pd.concat([df, new], ignore_index=True), "elderly_members"): st.success("成功"); st.rerun()
+    if not df.empty:
+        df['年齡'] = df['出生年月日'].apply(calculate_age)
+        st.data_editor(df[["姓名","性別","年齡","電話","身分證字號","地址","出生年月日","備註"]], use_container_width=True, num_rows="dynamic", key="m_edit")
+
+# --- 頁面：數據 ---
 elif st.session_state.page == 'stats':
     render_nav()
-    st.markdown("## 📊 統計數據分析")
+    st.markdown("## 📊 數據統計")
     members, logs = load_data("elderly_members"), load_data("elderly_logs")
     if not logs.empty:
         logs['dt'] = pd.to_datetime(logs['日期'], errors='coerce')
-        d_range = st.date_input("📅 選擇統計區間", value=(date(date.today().year, date.today().month, 1), date.today()))
+        d_range = st.date_input("📅 選擇區間", value=(date(date.today().year, date.today().month, 1), date.today()))
         if isinstance(d_range, tuple) and len(d_range) == 2:
             f_logs = logs[(logs['dt'].dt.date >= d_range[0]) & (logs['dt'].dt.date <= d_range[1])].copy()
-            tab_c, tab_h = st.tabs(["📚 課程與參與度", "🏥 健康個案追蹤"])
-            with tab_c:
-                st.markdown("### 🫧 課程場次占比 (靈動泡泡圖)")
+            t1, t2 = st.tabs(["📚 課程成效", "🏥 個案健康"])
+            with t1:
+                # 🔥 靈動泡泡圖
                 unique_sessions = f_logs.drop_duplicates(subset=['日期', '課程名稱']).copy()
                 unique_sessions['大分類'] = unique_sessions['課程分類'].apply(lambda x: x.split('-')[0] if '-' in x else x)
                 m_cts = unique_sessions['大分類'].value_counts().reset_index(); m_cts.columns = ['類別', '場次']
@@ -204,24 +248,21 @@ elif st.session_state.page == 'stats':
                 m_cts['label'] = m_cts['類別'] + '<br>' + m_cts['場次'].astype(str) + '場'
                 fig = px.scatter(m_cts, x="x", y="y", size="場次", color="類別", text="label", size_max=90, color_discrete_sequence=px.colors.sequential.RdPu)
                 fig.update_traces(textposition='middle center', textfont=dict(size=14, color='white'))
-                fig.update_layout(showlegend=False, height=400, xaxis=dict(showticklabels=False, title=""), yaxis=dict(showticklabels=False, title=""), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10,b=10,l=10,r=10))
+                fig.update_layout(showlegend=False, height=450, xaxis=dict(showticklabels=False, title=""), yaxis=dict(showticklabels=False, title=""), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig, use_container_width=True)
+                
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.markdown("#### 大分類明細")
+                    st.markdown("#### 大分類統計")
                     st.dataframe(m_cts[['類別', '場次']], use_container_width=True, column_config={"場次": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(m_cts['場次'].max() or 1))})
                 with c2:
-                    sh, ss = st.columns([1, 2]); with sh: st.markdown("#### 子分類鑽取")
-                    with ss: sel_m = st.selectbox("選擇大分類", sorted(m_cts['類別'].unique()), label_visibility="collapsed", key="s_m_s")
+                    sh, ss = st.columns([1.2, 2]); with sh: st.markdown("#### 子分類鑽取")
+                    with ss: sel_m = st.selectbox("請選擇大分類", sorted(m_cts['類別'].unique()), label_visibility="collapsed", key="s_m_s")
                     s_cts = unique_sessions[unique_sessions['大分類']==sel_m]['課程分類'].apply(lambda x: x.split('-')[1] if '-' in x else x).value_counts().reset_index(); s_cts.columns = ['子分類', '場次']
                     st.dataframe(s_cts, use_container_width=True, column_config={"場次": st.column_config.ProgressColumn("場次", format="%d", min_value=0, max_value=int(s_cts['場次'].max() or 1))})
-            with tab_h:
-                target = st.selectbox("🔍 選擇長輩查看趨勢", sorted(f_logs['姓名'].unique()))
+            with t2:
+                target = st.selectbox("🔍 選擇長輩", sorted(f_logs['姓名'].unique()))
                 e_logs = f_logs[f_logs['姓名']==target].sort_values('dt')
-                fig_h = px.line(e_logs, x='dt', y=['收縮壓', '舒張壓'], markers=True, title=f"{target} 血壓變化圖", color_discrete_sequence=[PRIMARY, ACCENT])
+                fig_h = px.line(e_logs, x='dt', y=['收縮壓', '舒張壓'], markers=True, title=f"{target} 健康趨勢", color_discrete_sequence=[PRIMARY, ACCENT])
                 fig_h.add_hline(y=140, line_dash="dash", line_color="#E91E63", annotation_text="高血壓警戒")
                 st.plotly_chart(fig_h, use_container_width=True)
-
-elif st.session_state.page == 'members':
-    render_nav()
-    # [名冊管理與編輯代碼，包含 V30.0 中的 save_data 邏輯]
