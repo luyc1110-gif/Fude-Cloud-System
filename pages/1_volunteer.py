@@ -226,7 +226,7 @@ if st.session_state.page == 'home':
         
         # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
         # 這裡是在 c1 裡面再切出 [1, 3] 兩塊巧克力
-        sub_spacer, sub_button = st.columns([1, 2]) 
+        sub_spacer, sub_button = st.columns([0.2, 3.8]) 
         
         with sub_button:
             # key 一定要唯一，不能重複喔
