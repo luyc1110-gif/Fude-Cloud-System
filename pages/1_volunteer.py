@@ -218,22 +218,21 @@ if st.session_state.page == 'home':
     
     col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1.5, 1.5, 1.5, 1.5, 0.5])
     with c1:
-    # --- 1. 圖示部分 (保持不動) ---
-    if os.path.exists("icon_checkin.png"): 
-        st.image("icon_checkin.png", width=120)
-    else: 
-        st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
-    
-    # --- 2. 按鈕部分 (這裡要加「隔間」來推它) ---
-    # 我們在 c1 格子裡，再切出 [1, 3] 的比例
-    # 左邊的 sub_spacer 占 1 份 (用來把按鈕往右推)
-    # 右邊的 sub_button 占 3 份 (用來放按鈕)
-    sub_spacer, sub_button = st.columns([1, 3]) 
-    
-    with sub_button:
-        if st.button("智能打卡站", key="home_btn1"): 
-            st.session_state.page = 'checkin'
-            st.rerun()
+        # --- 1. 圖示部分 (保持不動) ---
+        if os.path.exists("icon_checkin.png"): 
+            st.image("icon_checkin.png", width=120)
+        else: 
+            st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
+        
+        # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
+        # 這裡是在 c1 裡面再切出 [1, 3] 兩塊巧克力
+        sub_spacer, sub_button = st.columns([1, 3]) 
+        
+        with sub_button:
+            # key 一定要唯一，不能重複喔
+            if st.button("智能打卡站", key="home_btn1_fixed"): 
+                st.session_state.page = 'checkin'
+                st.rerun()
     with c2:
         if os.path.exists("icon_members.png"): st.image("icon_members.png", width=120)
         else: st.markdown("<div style='text-align:center; font-size:60px;'>📋</div>", unsafe_allow_html=True)
