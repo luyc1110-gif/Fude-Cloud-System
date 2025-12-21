@@ -240,7 +240,7 @@ if st.session_state.page == 'home':
     
     st.markdown(f"### 📊 {this_year} 年度即時概況")
     st.markdown(f"""
-    <div style="background: background-color: #290d3b 100%; padding: 30px; border-radius: 20px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(81, 45, 168, 0.25);">
+    <div style="background: background-color: #290D3B 100%; padding: 30px; border-radius: 20px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(81, 45, 168, 0.25);">
         <div style="font-size: 1.2rem; opacity: 0.9; color: white !important;">📅 {this_year} 年度 - 全體志工總服務時數</div>
         <div style="font-size: 3.5rem; font-weight: 900; margin: 15px 0; color: white !important;">
             {total_hours} <span style="font-size: 1.5rem; color: white !important;">小時</span> 
