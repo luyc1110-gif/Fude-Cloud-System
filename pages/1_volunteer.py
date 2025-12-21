@@ -249,7 +249,7 @@ if st.session_state.page == 'home':
             if st.button("志工名冊", key="home_btn2_fixed"): 
                 st.session_state.page = 'members'
                 st.rerun()
-   with c2:
+   with c3:
         # --- 1. 圖示部分 (保持不動) ---
         if os.path.exists("icon_report.png"): 
             st.image("icon_report.png", width=120)
