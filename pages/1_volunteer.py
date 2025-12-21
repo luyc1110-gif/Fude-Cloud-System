@@ -249,10 +249,22 @@ if st.session_state.page == 'home':
             if st.button("志工名冊", key="home_btn2_fixed"): 
                 st.session_state.page = 'members'
                 st.rerun()
-    with c3:
-        if os.path.exists("icon_report.png"): st.image("icon_report.png", width=120)
-        else: st.markdown("<div style='text-align:center; font-size:60px;'>📊</div>", unsafe_allow_html=True)
-        if st.button("數據分析", key="home_btn3"): st.session_state.page = 'report'; st.rerun()
+   with c2:
+        # --- 1. 圖示部分 (保持不動) ---
+        if os.path.exists("icon_report.png"): 
+            st.image("icon_report.png", width=120)
+        else: 
+            st.markdown("<div style='text-align:center; font-size:60px;'>📊</div>", unsafe_allow_html=True)
+        
+        # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
+        # 這裡是在 c2 裡面再切出 [1, 3] 兩塊巧克力
+        sub_spacer, sub_button = st.columns([0.2, 3.8]) 
+        
+        with sub_button:
+            # key 一定要唯一，不能重複喔
+            if st.button("數據分析", key="home_btn3_fixed"): 
+                st.session_state.page = 'report'
+                st.rerun()
     
     st.markdown("---")
     logs = load_data_from_sheet("logs")
