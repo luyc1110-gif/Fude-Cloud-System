@@ -216,7 +216,7 @@ if st.session_state.page == 'home':
 
     st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
     
-    col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1.5, 5, 5, 5, 0.5])
+    col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1.5, 1.5, 1.5, 1.5, 0.5])
     with c1:
         if os.path.exists("icon_checkin.png"): st.image("icon_checkin.png", width=120)
         else: st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
