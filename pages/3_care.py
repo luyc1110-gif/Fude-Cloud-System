@@ -30,57 +30,22 @@ st.markdown(f"""
 html, body, [class*="css"], div, p, span, li, ul {{ font-family: "Noto Sans TC", sans-serif; color: #333 !important; }}
 /* --- 強制表格與名冊區域為白底黑字 --- */
 /* 針對表格容器 */
-div[data-testid="stDataFrame"], div[data-testid="stTable"] {
+div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
     background-color: #FFFFFF !important;
     border-radius: 10px;
     padding: 10px;
-}
+}}
 
 /* 確保表格內部的文字為純黑色 */
-.stDataFrame div, .stDataFrame span, .stDataFrame p {
+.stDataFrame div, .stDataFrame span, .stDataFrame p {{
     color: #000000 !important;
-}
+}}
 
-/* 修改表格內部的「身份別」等下拉選單顏色 */
-/* 註：Streamlit 表格內的下拉選單是由 Glide Data Grid 渲染，CSS 控制較受限 */
-/* 但這行可以幫助外層選單保持清晰 */
-div[role="listbox"] ul li {
+/* 修改表格內部的下拉選單顏色 */
+div[role="listbox"] ul li {{
     background-color: #FFFFFF !important;
     color: #000000 !important;
-}
-.stApp {{ background-color: {BG_MAIN}; }}
-[data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
-.block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
-
-/* 🔥 強制下拉式選單與日期選擇顯示 (白底黑字) */
-div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
-    background-color: #FFFFFF !important; 
-    color: #000000 !important;
-    border: 2px solid #D1D1D1 !important; 
-    border-radius: 12px !important; 
-    font-weight: 700 !important;
 }}
-div[data-baseweb="select"] span, div[data-baseweb="select"] div {{ color: #000000 !important; }}
-div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{
-    background-color: #FFFFFF !important; color: #000000 !important; font-weight: 700 !important;
-}}
-
-/* 數據看板 */
-.care-metric-box {{
-    padding: 30px; border-radius: 20px; color: #FFFFFF !important; text-align: center; margin-bottom: 15px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-}}
-.care-metric-box div, .care-metric-box span {{ color: #FFFFFF !important; font-weight: 900 !important; }}
-
-/* 導航按鈕 */
-div[data-testid="stButton"] > button {{
-    width: 100%; background-color: white !important; color: {PRIMARY} !important;
-    border: 2px solid {PRIMARY} !important; border-radius: 15px !important;
-    font-weight: 900 !important; font-size: 1.1rem !important; transition: all 0.2s;
-}}
-div[data-testid="stButton"] > button:hover {{ background-color: {PRIMARY} !important; color: white !important; }}
-
-.dash-card {{ background-color: white; padding: 15px; border-radius: 15px; border-left: 6px solid {PRIMARY}; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px; }}
 </style>
 """, unsafe_allow_html=True)
 
