@@ -178,14 +178,14 @@ elif st.session_state.page == 'members':
         with st.form("add_care"):
             c1, c2, c3, c4 = st.columns(4)
             # 把這行拆開寫比較清楚，重點是加入了 min_value 和 max_value
-n = c1.text_input("姓名")
-p = c2.text_input("身分證")
-g = c3.selectbox("性別", ["男", "女"])
-b = c4.date_input(
-    "生日", 
-    value=date(1950, 1, 1), 
-    min_value=date(1911, 1, 1),  # 🔥 最久可選到 民國元年
-    max_value=date(2025, 12, 31) # 🔥 最晚可選到 2025 年底
+            n = c1.text_input("姓名")
+            p = c2.text_input("身分證")
+            g = c3.selectbox("性別", ["男", "女"])
+            b = c4.date_input(
+            "生日", 
+            value=date(1950, 1, 1), 
+            min_value=date(1911, 1, 1),  # 🔥 最久可選到 民國元年
+            max_value=date(2025, 12, 31) # 🔥 最晚可選到 2025 年底
 )
             addr, ph = st.text_input("地址"), st.text_input("電話")
             ce1, ce2 = st.columns(2); en, ep = ce1.text_input("緊急聯絡人"), ce2.text_input("緊急聯絡電話")
