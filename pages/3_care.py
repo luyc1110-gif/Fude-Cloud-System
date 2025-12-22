@@ -28,6 +28,26 @@ st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
 html, body, [class*="css"], div, p, span, li, ul {{ font-family: "Noto Sans TC", sans-serif; color: #333 !important; }}
+/* --- 強制表格與名冊區域為白底黑字 --- */
+/* 針對表格容器 */
+div[data-testid="stDataFrame"], div[data-testid="stTable"] {
+    background-color: #FFFFFF !important;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+/* 確保表格內部的文字為純黑色 */
+.stDataFrame div, .stDataFrame span, .stDataFrame p {
+    color: #000000 !important;
+}
+
+/* 修改表格內部的「身份別」等下拉選單顏色 */
+/* 註：Streamlit 表格內的下拉選單是由 Glide Data Grid 渲染，CSS 控制較受限 */
+/* 但這行可以幫助外層選單保持清晰 */
+div[role="listbox"] ul li {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+}
 .stApp {{ background-color: {BG_MAIN}; }}
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
