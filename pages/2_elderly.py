@@ -206,7 +206,7 @@ elif st.session_state.page == 'members':
             c1, c2, c3 = st.columns(3)
             name, pid, gender = c1.text_input("姓名"), c2.text_input("身分證字號"), c3.selectbox("性別", ["男", "女"])
             c4, c5 = st.columns([1, 2])
-            dob, phone = c4.date_input("出生年月日", value=date(1950, 1, 1), min_value=date(1900, 1, 1)), c5.text_input("電話")
+            dob, phone = c4.date_input("出生年月日", value=date(2025, 1, 1), min_value=date(1900, 1, 1)), c5.text_input("電話")
             addr, note = st.text_input("地址"), st.text_input("備註")
             if st.form_submit_button("確認新增"):
                 if not pid or not name: st.error("姓名與身分證字號為必填")
