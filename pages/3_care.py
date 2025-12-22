@@ -20,7 +20,7 @@ ACCENT  = "#6D6875"   # 灰紫色
 BG_MAIN = "#F8F9FA"   
 
 # =========================================================
-# 1) CSS 樣式
+# 1) CSS 樣式 (強化辨識度)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -30,10 +30,9 @@ html, body, [class*="css"], div, p, span, li, ul {{ font-family: "Noto Sans TC",
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 表格白底黑字強化 */
+/* 表格白底黑字 */
 div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
-    background-color: #FFFFFF !important;
-    border-radius: 10px; padding: 10px;
+    background-color: #FFFFFF !important; border-radius: 10px; padding: 10px;
 }}
 .stDataFrame div, .stDataFrame span, .stDataFrame p {{ color: #000000 !important; }}
 
@@ -43,6 +42,20 @@ div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTim
     border: 2px solid #D1D1D1 !important; border-radius: 12px !important; font-weight: 700 !important;
 }}
 div[data-baseweb="select"] span {{ color: #000000 !important; }}
+
+/* 🔥 解決「確認按鈕」辨識度問題：深綠底 + 白字 */
+div[data-testid="stFormSubmitButton"] > button {{
+    background-color: {PRIMARY} !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 900 !important;
+    padding: 10px 20px !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+}}
+div[data-testid="stFormSubmitButton"] > button:hover {{
+    background-color: {ACCENT} !important;
+}}
 
 .care-metric-box {{
     padding: 30px; border-radius: 20px; color: #FFFFFF !important; text-align: center; margin-bottom: 15px;
@@ -98,7 +111,7 @@ def calculate_age(dob_str):
     except: return 0
 
 # =========================================================
-# 3) UI 元件
+# 3) 頁面渲染邏輯
 # =========================================================
 def render_nav():
     st.markdown('<div style="background:white; padding:12px; border-radius:20px; margin-bottom:20px; box-shadow: 0 2px 15px rgba(0,0,0,0.05);">', unsafe_allow_html=True)
@@ -110,7 +123,7 @@ def render_nav():
                 st.session_state.page = p_key; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 頁面處理 ---
+# --- [分頁 0：首頁] ---
 if st.session_state.page == 'home':
     if st.button("🚪 回大廳"): st.switch_page("Home.py")
     st.markdown("<h1 style='text-align: center;'>福德里 - 關懷戶管理系統</h1>", unsafe_allow_html=True)
@@ -118,35 +131,44 @@ if st.session_state.page == 'home':
     mems, logs = load_data("care_members", COLS_MEM), load_data("care_logs", COLS_LOG)
     if not mems.empty:
         mems['age'] = mems['生日'].apply(calculate_age)
-        st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#8E9775 0%,#6D6875 100%);"><div>🏠 關懷戶總人數 / 平均年齡</div><div style="font-size:3.5rem;">{len(mems)} 人 / {round(mems["age"].mean(),1)} 歲</div></div>', unsafe_allow_html=True)
+        dis_sub = mems[mems['身分別'].str.contains("身障", na=False)]
+        c1, c2 = st.columns(2)
+        with c1: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#8E9775 0%,#6D6875 100%);"><div>🏠 關懷戶總人數 / 平均年齡</div><div style="font-size:3.5rem;">{len(mems)} 人 / {round(mems["age"].mean(),1)} 歲</div></div>', unsafe_allow_html=True)
+        with c2: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#8E9775 100%);"><div>♿ 身障關懷人數 / 平均年齡</div><div style="font-size:3.5rem;">{len(dis_sub)} 人 / {round(dis_sub["age"].mean(),1) if not dis_sub.empty else 0} 歲</div></div>', unsafe_allow_html=True)
 
+# --- [分頁 1：名冊] ---
 elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 關懷戶名冊管理")
     df = load_data("care_members", COLS_MEM)
-    with st.expander("➕ 新增關懷戶"):
+    with st.expander("➕ 新增關懷戶資料"):
         with st.form("add_care"):
             c1, c2, c3, c4 = st.columns(4)
             n, p, g, b = c1.text_input("姓名"), c2.text_input("身分證"), c3.selectbox("性別", ["男", "女"]), c4.date_input("生日", value=date(1950, 1, 1))
             addr, ph = st.text_input("地址"), st.text_input("電話")
+            # 🔥 補回緊急聯絡人欄位
+            ce1, ce2 = st.columns(2)
+            en = ce1.text_input("緊急聯絡人")
+            ep = ce2.text_input("緊急聯絡人電話")
+            id_t = st.multiselect("身分別", ["低收", "中低收", "中低老人", "身障", "獨居", "獨居有子女"])
             if st.form_submit_button("確認新增"):
                 if p.upper() in df['身分證字號'].values: st.error("❌ 該身分證號已存在！")
                 else:
-                    new = {"姓名":n, "身分證字號":p.upper(), "性別":g, "生日":str(b), "地址":addr, "電話":ph}
+                    new = {"姓名":n, "身分證字號":p.upper(), "性別":g, "生日":str(b), "地址":addr, "電話":ph, "緊急聯絡人":en, "緊急聯絡人電話":ep, "身分別":",".join(id_t)}
                     if save_data(pd.concat([df, pd.DataFrame([new])], ignore_index=True), "care_members"): st.success("成功"); st.rerun()
     if not df.empty:
         df['歲數'] = df['生日'].apply(calculate_age)
         edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="mem_ed")
-        if st.button("💾 儲存修改"): 
-            if save_data(edited_df, "care_members"): st.success("已更新")
+        if st.button("💾 儲存修改"): save_data(edited_df, "care_members")
 
+# --- [分頁 2：健康數據] ---
 elif st.session_state.page == 'health':
     render_nav()
-    st.markdown("## 🏥 健康狀況管理")
-    h_df, m_df = load_data("care_health", COLS_HEALTH), load_data("care_members", COLS_MEM)
-    if not h_df.empty:
-        st.data_editor(h_df, use_container_width=True, num_rows="dynamic")
+    st.markdown("## 🏥 關懷戶健康指標")
+    h_df = load_data("care_health", COLS_HEALTH)
+    st.data_editor(h_df, use_container_width=True, num_rows="dynamic")
 
+# --- [分頁 3：物資庫存] ---
 elif st.session_state.page == 'inventory':
     render_nav()
     st.markdown("## 📦 物資庫存管理")
@@ -154,86 +176,61 @@ elif st.session_state.page == 'inventory':
     with st.form("add_inv"):
         c1, c2, c3, c4 = st.columns(4)
         do, ty, co, qt = c1.text_input("捐贈者"), c2.selectbox("類型",["食物","日用品","輔具"]), c3.text_input("物資名稱"), c4.number_input("數量", min_value=1)
-        if st.form_submit_button("入庫"):
+        if st.form_submit_button("確認入庫"):
             new = {"捐贈者":do, "物資類型":ty, "物資內容":co, "總數量":qt, "捐贈日期":str(date.today())}
-            save_data(pd.concat([inv, pd.DataFrame([new])], ignore_index=True), "care_inventory"); st.rerun()
+            if save_data(pd.concat([inv, pd.DataFrame([new])], ignore_index=True), "care_inventory"): st.rerun()
     if not inv.empty:
         summary = []
         for item, group in inv.groupby('物資內容'):
-            total_in = group['總數量'].replace("", "0").astype(float).sum()
-            total_out = logs[logs['物資內容'] == item]['發放數量'].replace("", "0").astype(float).sum() if not logs.empty else 0
-            summary.append({"物資名稱": item, "入庫": total_in, "發放": total_out, "剩餘": total_in - total_out})
+            tin = group['總數量'].replace("", "0").astype(float).sum()
+            tout = logs[logs['物資內容'] == item]['發放數量'].replace("", "0").astype(float).sum() if not logs.empty else 0
+            summary.append({"物資名稱": item, "累積入庫": tin, "累計發放": tout, "剩餘庫存": tin - tout})
         st.dataframe(pd.DataFrame(summary), use_container_width=True)
 
-# =========================================================
-# 4) 訪視發放 (核心修改：庫存顯示與擋存邏輯)
-# =========================================================
+# --- [分頁 4：訪視發放] ---
 elif st.session_state.page == 'visit':
     render_nav()
     st.markdown("## 🤝 訪視與物資發放")
     mems, inv, logs = load_data("care_members", COLS_MEM), load_data("care_inventory", COLS_INV), load_data("care_logs", COLS_LOG)
-    
-    # --- A. 先算好每一項的剩餘庫存 ---
     stock_dict = {}
     if not inv.empty:
-        for item, group in inv.groupby('物資內容'):
-            tin = group['總數量'].replace("", "0").astype(float).sum()
-            tout = logs[logs['物資內容'] == item]['發放數量'].replace("", "0").astype(float).sum() if not logs.empty else 0
-            stock_dict[item] = max(0, int(tin - tout))
-
-    # --- B. 製作帶有庫存數字的選單 ---
-    item_display_list = ["(僅訪視，不領取)"]
-    item_to_real_name = {"(僅訪視，不領取)": "(僅訪視，不領取)"}
+        for itm, gp in inv.groupby('物資內容'):
+            tin = gp['總數量'].replace("", "0").astype(float).sum()
+            tout = logs[logs['物資內容'] == itm]['發放數量'].replace("", "0").astype(float).sum() if not logs.empty else 0
+            stock_dict[itm] = max(0, int(tin - tout))
     
-    for name, stock in stock_dict.items():
-        display_text = f"{name} (庫存: {stock})"
-        item_display_list.append(display_text)
-        item_to_real_name[display_text] = name
-
-    # --- C. 介面 ---
-    with st.container(border=True):
-        st.markdown("#### 🎁 新增發放紀錄")
+    itm_list = ["(僅訪視，不領取)"] + [f"{k} (庫存: {v})" for k, v in stock_dict.items()]
+    with st.form("add_visit"):
         c1, c2, c3 = st.columns(3)
-        v_list = load_data("members", ["姓名"])['姓名'].tolist() if not load_data("members", ["姓名"]).empty else ["無資料"]
-        sel_v = c1.selectbox("執行志工", v_list)
-        sel_d = c2.date_input("日期", value=date.today())
-        sel_c = c3.selectbox("關懷戶", mems['姓名'].tolist() if not mems.empty else ["無名冊"])
-        
-        c4, c5 = st.columns([2, 1])
-        sel_i_display = c4.selectbox("選擇物資 (顯示剩餘庫存)", item_display_list)
-        sel_q = c5.number_input("數量", min_value=0, value=1)
-        
-        # 取得真正的物資名稱
-        real_item_name = item_to_real_name[sel_i_display]
-        
-        nt = st.text_area("訪視紀錄內容")
-        
-        if st.button("確認提交"):
-            # 🔥 擋存邏輯：檢查庫存
-            if real_item_name == "(僅訪視，不領取)":
-                can_save = True
+        v = st.selectbox("志工", load_data("members", ["姓名"])['姓名'].tolist())
+        d = st.date_input("日期", value=date.today())
+        p = st.selectbox("關懷戶", mems['姓名'].tolist())
+        itm_sel = st.selectbox("物資 (顯示剩餘)", itm_list)
+        qty = st.number_input("數量", min_value=0, value=1)
+        note = st.text_area("訪視紀錄")
+        if st.form_submit_button("確認提交紀錄"):
+            real_itm = itm_sel.split(" (庫存:")[0]
+            if real_itm != "(僅訪視，不領取)" and qty > stock_dict.get(real_itm, 0):
+                st.error("❌ 數量超過庫存！")
             else:
-                current_stock = stock_dict.get(real_item_name, 0)
-                if sel_q > current_stock:
-                    st.error(f"❌ 無法建檔：發放數量 ({sel_q}) 超過目前庫存 ({current_stock})！")
-                    can_save = False
-                elif sel_q <= 0:
-                    st.warning("⚠️ 請輸入有效的發放數量")
-                    can_save = False
-                else:
-                    can_save = True
-            
-            # --- D. 存檔 ---
-            if can_save:
-                new = {"志工":sel_v, "發放日期":str(sel_d), "關懷戶姓名":sel_c, "物資內容":real_item_name, "發放數量":sel_q, "訪視紀錄":nt}
-                if save_data(pd.concat([logs, pd.DataFrame([new])], ignore_index=True), "care_logs"):
-                    st.success("✅ 紀錄已成功建檔，庫存已連動。"); time.sleep(1); st.rerun()
+                new = {"志工":v, "發放日期":str(d), "關懷戶姓名":p, "物資內容":real_itm, "發放數量":qty, "訪視紀錄":note}
+                if save_data(pd.concat([logs, pd.DataFrame([new])], ignore_index=True), "care_logs"): st.success("成功"); time.sleep(1); st.rerun()
 
-    if not logs.empty:
-        st.markdown("### 📋 歷史清單")
-        ed_logs = st.data_editor(logs, use_container_width=True, num_rows="dynamic", key="log_ed")
-        if st.button("💾 儲存修改內容"): save_data(ed_logs, "care_logs")
-
+# --- [分頁 5：統計數據] ---
 elif st.session_state.page == 'stats':
     render_nav()
-    st.info("統計功能連動中...")
+    st.markdown("## 📊 數據統計查詢")
+    inv, logs = load_data("care_inventory", COLS_INV), load_data("care_logs", COLS_LOG)
+    t1, t2 = st.tabs(["📦 物資捐贈統計", "🔍 個案歷程查詢"])
+    with t1:
+        if not inv.empty:
+            cts = inv.groupby('物資類型')['總數量'].apply(lambda x: x.astype(float).sum()).reset_index()
+            fig = px.bar(cts, x='物資類型', y='總數量', color='物資類型', title="各類物資累計捐贈總量")
+            st.plotly_chart(fig, use_container_width=True)
+    with t2:
+        if not logs.empty:
+            m = load_data("care_members", COLS_MEM)
+            qn = st.selectbox("選擇關懷戶", m['姓名'].tolist())
+            res = logs[logs['關懷戶姓名'] == qn]
+            st.markdown(f"#### {qn} 訪視與領取紀錄：{len(res)} 次")
+            st.dataframe(res, use_container_width=True)
