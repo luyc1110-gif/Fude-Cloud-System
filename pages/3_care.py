@@ -11,6 +11,25 @@ import time
 # =========================================================
 st.set_page_config(page_title="關懷戶管理系統", page_icon="🏠", layout="wide", initial_sidebar_state="collapsed")
 
+# --- 🔒 安全登入門禁 (跨頁面同步) ---
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.markdown("### 🔒 福德里管理系統 - 登入")
+    # type="password" 會讓輸入的字變成黑點，保護隱私
+    pwd = st.text_input("請輸入管理員授權碼", type="password")
+    
+    if st.button("確認登入"):
+        # 從你剛剛改好的 secrets 中讀取密碼
+        if pwd == st.secrets["admin_password"]:
+            st.session_state.authenticated = True
+            st.success("登入成功！正在跳轉...")
+            st.rerun()
+        else:
+            st.error("授權碼錯誤，請重新輸入。")
+    st.stop() # 沒登入就攔截，不執行後面的程式碼
+
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
