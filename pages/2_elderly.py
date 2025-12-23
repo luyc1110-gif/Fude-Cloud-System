@@ -262,6 +262,68 @@ elif st.session_state.page == 'checkin':
                     st.session_state.checkin_msg = ("success", f"✅ {name} 報到成功")
         st.session_state.elder_pid = ""
 
+    # =========================================================
+    # 3. 補登系統 (批次報到) - 新增區塊
+    # =========================================================
+    st.markdown("---")
+    with st.expander("🕒 批次補登系統 (手動補錄資料)", expanded=False):
+        st.info("適合用於：活動結束後統一補登、或長輩忘記帶卡時由志工代為錄入。")
+        
+        # 讀取長輩名冊供下拉選單使用
+        df_m = load_data("elderly_members")
+        if df_m.empty:
+            st.warning("目前名冊中無長輩資料，請先新增名冊。")
+        else:
+            with st.form("batch_form"):
+                # 第一列：日期與時間
+                c_date, c_time = st.columns(2)
+                back_date = c_date.date_input("補登日期", value=get_tw_time().date())
+                back_time = c_time.time_input("補登時間", value=get_tw_time().time())
+                
+                # 第二列：選擇長輩 (可多選)
+                # 將姓名與身分證組合，方便辨識同名同姓
+                member_options = df_m.apply(lambda x: f"{x['姓名']} ({x['身分證字號'][-4:]})", axis=1).tolist()
+                selected_labels = st.multiselect("選擇補登長輩 (可多選)", options=member_options)
+                
+                # 第三列：血壓心跳 (這批人共用此數值，若需個別輸入建議分次補登)
+                c_s, c_d, c_p = st.columns(3)
+                b_sbp = c_s.number_input("補登收縮壓", min_value=50, max_value=250, value=120)
+                b_dbp = c_d.number_input("補登舒張壓", min_value=30, max_value=150, value=80)
+                b_pulse = c_p.number_input("補登脈搏", min_value=30, max_value=200, value=72)
+                
+                # 提交按鈕
+                if st.form_submit_button("執行批次補登"):
+                    if not selected_labels:
+                        st.error("請至少選擇一位長輩")
+                    else:
+                        df_l = load_data("elderly_logs")
+                        new_entries = []
+                        
+                        for label in selected_labels:
+                            # 從選項中反推回原始姓名與資料 (透過 index 匹配最準確)
+                            idx = member_options.index(label)
+                            person = df_m.iloc[idx]
+                            
+                            new_log = {
+                                "姓名": person['姓名'],
+                                "身分證字號": person['身分證字號'],
+                                "日期": back_date.strftime("%Y-%m-%d"),
+                                "時間": back_time.strftime("%H:%M:%S"),
+                                "課程分類": final_course_cat,
+                                "課程名稱": final_course_name,
+                                "收縮壓": b_sbp,
+                                "舒張壓": b_dbp,
+                                "脈搏": b_pulse
+                            }
+                            new_entries.append(new_log)
+                        
+                        # 批次寫入
+                        combined_df = pd.concat([df_l, pd.DataFrame(new_entries)], ignore_index=True)
+                        save_data(combined_df, "elderly_logs")
+                        st.success(f"✅ 已成功補登 {len(new_entries)} 筆紀錄！")
+                        time.sleep(1)
+                        st.rerun()
+                        
     cb1, cb2, cb3 = st.columns(3)
     with cb1: st.number_input("收縮壓", min_value=50, max_value=250, value=120, key="sbp_val")
     with cb2: st.number_input("舒張壓", min_value=30, max_value=150, value=80, key="dbp_val")
