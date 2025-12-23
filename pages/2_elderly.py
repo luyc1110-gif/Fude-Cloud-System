@@ -313,80 +313,104 @@ elif st.session_state.page == 'checkin':
             st.warning("名冊中尚無資料")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- 3. 今日名單 ---
-    st.write("📋 今日已報到名單：")
-    logs = load_data("elderly_logs")
-    today_str = get_tw_time().strftime("%Y-%m-%d")
-    if not logs.empty:
-        today_logs = logs[logs['日期'] == today_str]
-        st.dataframe(today_logs[['時間', '姓名', '課程名稱', '收縮壓', '舒張壓', '脈搏']], use_container_width=True)
-
     # =========================================================
-    # 3. 補登系統 (完全手動自訂時間)
+    # 3. 今日報到名單 (新增：可編輯、可修改功能)
     # =========================================================
     st.markdown("---")
-    with st.expander("🕒 批次補登系統 (手動自訂日期時間)", expanded=False):
-        st.markdown('<div style="background-color: #FFF3E0; padding: 15px; border-radius: 10px; border-left: 5px solid #FF9800; margin-bottom: 15px;">'
-                    '<strong>💡 使用說明：</strong> 此處補登會嚴格依照您下方選取的日期與時間寫入紀錄。</div>', unsafe_allow_html=True)
+    st.write("📋 今日已報到名單 (您可以直接點擊下方格子修改內容)：")
+    
+    logs = load_data("elderly_logs")
+    today_str = get_tw_time().strftime("%Y-%m-%d")
+    
+    if not logs.empty:
+        # 1. 篩選出今日名單，並轉成 DataFrame
+        today_logs = logs[logs['日期'] == today_str].copy()
+        
+        if not today_logs.empty:
+            # 2. 使用 data_editor 讓表格變為可編輯
+            # 這裡設定 num_rows="dynamic" 可以讓您手動刪除整行(點選行首按 Delete)
+            edited_df = st.data_editor(
+                today_logs,
+                column_order=['時間', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'],
+                use_container_width=True,
+                num_rows="dynamic",
+                key="today_checkin_editor"
+            )
+            
+            # 3. 儲存修改按鈕
+            if st.button("💾 儲存名單修改"):
+                # 將「非今日」的資料與「修改後今日」的資料合併
+                other_logs = logs[logs['日期'] != today_str]
+                final_logs = pd.concat([other_logs, edited_df], ignore_index=True)
+                
+                if save_data(final_logs, "elderly_logs"):
+                    st.success("✅ 名單已更新至雲端！")
+                    time.sleep(1)
+                    st.rerun()
+        else:
+            st.info("今日尚無報到紀錄。")
+    else:
+        st.info("資料庫目前無任何紀錄。")
+
+    # =========================================================
+    # 4. 補登系統 (修正：確保日期時間精確寫入)
+    # =========================================================
+    st.markdown("---")
+    with st.expander("🕒 批次補登系統 (手動補錄過去資料)", expanded=False):
+        st.info("💡 補登完成後，若日期不是今天，請到「統計數據」分頁查看該日紀錄。")
         
         df_m = load_data("elderly_members")
         if df_m.empty:
             st.warning("目前名冊中無長輩資料。")
         else:
-            # 這裡使用單獨的 form 名稱以防衝突
-            with st.form("manual_batch_form"):
-                # 第一排：日期與時間 (這就是補登的核心，直接讓用戶選)
+            with st.form("manual_batch_form_new"):
                 c_date, c_time = st.columns(2)
-                # 使用 value 設定預設值，但使用者修改後會以此為準
-                selected_date = c_date.date_input("1. 選擇補登日期", value=get_tw_time().date())
-                selected_time = c_time.time_input("2. 選擇補登時間", value=get_tw_time().time())
+                # 確保這兩個變數在 submit 時被讀取
+                back_date = c_date.date_input("選擇補登日期", value=get_tw_time().date())
+                back_time = c_time.time_input("選擇補登時間", value=get_tw_time().time())
                 
-                # 第二排：選擇長輩
-                member_options = df_m.apply(lambda x: f"{x['姓名']} ({x['身分證字號']})", axis=1).tolist()
-                selected_members = st.multiselect("3. 選擇補登長輩 (可多選)", options=member_options)
+                member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" 
+                                for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
+                selected_members = st.multiselect("選擇補登長輩 (多選)", options=member_options)
                 
-                # 第三排：血壓數值
                 c_s, c_d, c_p = st.columns(3)
-                b_sbp = c_s.number_input("補登收縮壓", min_value=50, max_value=250, value=120)
-                b_dbp = c_d.number_input("補登舒張壓", min_value=30, max_value=150, value=80)
-                b_pulse = c_p.number_input("補登脈搏", min_value=30, max_value=200, value=72)
+                b_sbp = c_s.number_input("補登收縮壓", value=120)
+                b_dbp = c_d.number_input("補登舒張壓", value=80)
+                b_pulse = c_p.number_input("補登脈搏", value=72)
                 
-                if st.form_submit_button("🚀 執行補登 (寫入所選時間)"):
+                if st.form_submit_button("🚀 執行補登"):
                     if not selected_members:
                         st.error("請先選擇長輩！")
                     else:
                         df_l = load_data("elderly_logs")
                         new_entries = []
                         
-                        # 格式化選定的日期與時間
-                        save_date_str = selected_date.strftime("%Y-%m-%d")
-                        save_time_str = selected_time.strftime("%H:%M:%S")
+                        # 重要：強制轉為字串，確保寫入 Sheet 的是手選時間
+                        s_date = back_date.strftime("%Y-%m-%d")
+                        s_time = back_time.strftime("%H:%M:%S")
                         
                         for label in selected_members:
-                            # 提取身分證字號來找出該位長輩
                             target_pid = label.split("(")[-1].replace(")", "")
-                            person = df_m[df_m['身分證字號'] == target_pid].iloc[0]
+                            # 從 label 中還原姓名
+                            target_name = label.split(". ")[1].split(" (")[0]
                             
-                            new_log = {
-                                "姓名": person['姓名'],
-                                "身分證字號": person['身分證字號'],
-                                "日期": save_date_str,    # 使用選定的日期
-                                "時間": save_time_str,    # 使用選定的時間
+                            new_entries.append({
+                                "姓名": target_name,
+                                "身分證字號": target_pid,
+                                "日期": s_date,
+                                "時間": s_time,
                                 "課程分類": final_course_cat,
                                 "課程名稱": final_course_name,
                                 "收縮壓": b_sbp,
                                 "舒張壓": b_dbp,
                                 "脈搏": b_pulse
-                            }
-                            new_entries.append(new_log)
+                            })
                         
-                        # 合併並存檔
                         updated_logs = pd.concat([df_l, pd.DataFrame(new_entries)], ignore_index=True)
-                        save_data(updated_logs, "elderly_logs")
-                        
-                        st.success(f"✅ 已完成 {len(new_entries)} 筆補登！日期：{save_date_str} 時間：{save_time_str}")
-                        time.sleep(1)
-                        st.rerun()
+                        if save_data(updated_logs, "elderly_logs"):
+                            st.success(f"✅ 已成功補登 {len(new_entries)} 筆紀錄 (時間：{s_time})")
+                            time.sleep(1)
+                            st.rerun()
 
 elif st.session_state.page == 'stats':
     render_nav()
