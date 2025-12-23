@@ -239,7 +239,7 @@ elif st.session_state.page == 'checkin':
     final_course_name = course_name if course_name.strip() else sub_cat
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 健康檢查函式
+    # A. 健康檢查函式 (定義在最前面)
     def check_health_alert(sbp, dbp, pulse):
         alerts = []
         if sbp >= 140 or dbp >= 90: alerts.append(f"⚠️ 血壓偏高 ({sbp}/{dbp})")
@@ -248,11 +248,11 @@ elif st.session_state.page == 'checkin':
         elif pulse < 60: alerts.append(f"💓 心跳過慢 ({pulse})")
         return alerts
 
-    # 執行報到邏輯
+    # B. 報到處理函式 (改名為 do_checkin，供下方所有按鈕共用)
     def do_checkin(pid, sbp, dbp, pulse):
         df_m = load_data("elderly_members")
         df_l = load_data("elderly_logs")
-        person = df_m[df_m['身分證字號'] == pid]
+        person = df_m[df_m['身分證字號'] == pid.strip().upper()]
         
         if person.empty:
             st.error("❌ 查無此人，請先至名冊新增。")
@@ -262,7 +262,7 @@ elif st.session_state.page == 'checkin':
         alerts = check_health_alert(sbp, dbp, pulse)
         
         new_log = {
-            "姓名": name, "身分證字號": pid,
+            "姓名": name, "身分證字號": pid.upper(),
             "日期": get_tw_time().strftime("%Y-%m-%d"), "時間": get_tw_time().strftime("%H:%M:%S"),
             "課程分類": final_course_cat, "課程名稱": final_course_name,
             "收縮壓": sbp, "舒張壓": dbp, "脈搏": pulse
@@ -278,44 +278,35 @@ elif st.session_state.page == 'checkin':
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown("#### 2. 長輩報到輸入")
     
-    # 血壓輸入
+    # 血壓輸入 (先取得數值)
     c_bp1, c_bp2, c_bp3 = st.columns(3)
-    sbp_val = c_bp1.number_input("收縮壓 (高壓)", min_value=50, max_value=250, value=120)
-    dbp_val = c_bp2.number_input("舒張壓 (低壓)", min_value=30, max_value=150, value=80)
+    sbp_val = c_bp1.number_input("收縮壓", min_value=50, max_value=250, value=120)
+    dbp_val = c_bp2.number_input("舒張壓", min_value=30, max_value=150, value=80)
     pulse_val = c_bp3.number_input("脈搏", min_value=30, max_value=200, value=72)
 
-    # 報到方式切換
-    tab1, tab2 = st.tabs(["🔍 掃描/輸入身分證", "選單選取長輩"])
+    tab1, tab2 = st.tabs(["🔍 掃描身分證", "📋 選單選取"])
     
     with tab1:
-        # 這裡將原本的 on_change=process_checkin 拿掉
-        input_pid = st.text_input("請輸入或掃描身分證字號", key="scan_pid")
-        
-        # 改用按鈕觸發，並確保呼叫的是 do_checkin
-        if st.button("確認報到 (身分證)", key="btn_pid"):
+        # 修改點：移除 on_change，避免與舊函式名稱衝突
+        input_pid = st.text_input("請掃描身分證字號", key="scan_pid_input")
+        if st.button("確認報到 (掃描)", key="btn_scan"):
             if input_pid:
-                # 這裡呼叫的是 do_checkin，並傳入對應的數值
-                do_checkin(input_pid.strip().upper(), sbp_val, dbp_val, pulse_val)
+                do_checkin(input_pid, sbp_val, dbp_val, pulse_val)
                 st.rerun()
-            else:
-                st.error("請輸入身分證字號")
 
     with tab2:
         df_m = load_data("elderly_members")
         if not df_m.empty:
-            # 加上編號的下拉選單
+            # 長輩名稱加上編號
             member_options = [f"{i+1}. {row['姓名']} ({row['身分證字號']})" for i, row in df_m.iterrows()]
-            selected_member = st.selectbox("請選擇長輩姓名", ["--- 請選擇 ---"] + member_options)
+            selected_member = st.selectbox("請選擇長輩", ["--- 請選擇 ---"] + member_options)
             
             if st.button("確認報到 (選單)", key="btn_select"):
                 if selected_member != "--- 請選擇 ---":
-                    # 解析身分證字號
+                    # 解析身分證
                     sel_pid = selected_member.split("(")[-1].replace(")", "")
                     do_checkin(sel_pid, sbp_val, dbp_val, pulse_val)
                     st.rerun()
-        else:
-            st.warning("名冊中尚無資料")
-            
     st.markdown('</div>', unsafe_allow_html=True)
 
     # 顯示今日報到列表
