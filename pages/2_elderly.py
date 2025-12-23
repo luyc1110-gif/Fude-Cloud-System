@@ -301,7 +301,7 @@ elif st.session_state.page == 'checkin':
             member_options = [
     f"{idx}. {row['姓名']} ({row['身分證字號']})"
     for idx, row in enumerate(df_m.itertuples(index=False), start=1)
-]
+    ]
 
             selected_member = st.selectbox("請選擇長輩", ["--- 請選擇 ---"] + member_options)
             if st.button("確認報到 (選單)", key="btn_do_select"):
