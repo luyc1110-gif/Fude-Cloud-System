@@ -388,27 +388,6 @@ elif st.session_state.page == 'checkin':
                         time.sleep(1)
                         st.rerun()
 
-cb1, cb2, cb3 = st.columns(3)
-    with cb1: st.number_input("收縮壓", min_value=50, max_value=250, value=120, key="sbp_val")
-    with cb2: st.number_input("舒張壓", min_value=30, max_value=150, value=80, key="dbp_val")
-    with cb3: st.number_input("脈搏", min_value=30, max_value=200, key="pulse_val")
-    pid = st.text_input("身分證字號掃描區", key="elder_pid")
-if st.button("確認報到"):
-    do_checkin(pid, sbp_val, dbp_val, pulse_val)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown(f"### 📋 {target_date.strftime('%Y-%m-%d')} 報到名單")
-    logs_view = load_data("elderly_logs")
-    sel_date_str = target_date.strftime("%Y-%m-%d")
-    date_mask = (logs_view['日期'] == sel_date_str)
-    if not logs_view[date_mask].empty:
-        today_df = logs_view[date_mask].sort_values('時間', ascending=False)
-        edited = st.data_editor(today_df, use_container_width=True, num_rows="dynamic", key="checkin_editor")
-        if st.button("💾 儲存修改"):
-            logs_view[date_mask] = edited
-            if save_data(logs_view, "elderly_logs"): st.success("紀錄已更新！")
-
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 統計數據")
