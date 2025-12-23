@@ -219,13 +219,48 @@ elif st.session_state.page == 'members':
         st.data_editor(df[["姓名", "性別", "年齡", "電話", "地址", "身分證字號", "出生年月日", "備註"]], use_container_width=True, num_rows="dynamic", key="elder_editor")
 
 # =========================================================
-# 6) Page: Checkin (據點報到)
+# 6) Page: Checkin (據點報到) - 完整修正版
 # =========================================================
 elif st.session_state.page == 'checkin':
     render_nav()
     st.markdown("## 🩸 據點報到與健康量測")
 
-    # 1. 課程設定
+    # --- 內部功能函式 (確保定義在 UI 之前) ---
+    def check_health_alert(sbp, dbp, pulse):
+        alerts = []
+        if sbp >= 140 or dbp >= 90: alerts.append(f"⚠️ 血壓偏高 ({sbp}/{dbp})")
+        elif sbp <= 90 or dbp <= 60: alerts.append(f"⚠️ 血壓偏低 ({sbp}/{dbp})")
+        if pulse > 100: alerts.append(f"💓 心跳過快 ({pulse})")
+        elif pulse < 60: alerts.append(f"💓 心跳過慢 ({pulse})")
+        return alerts
+
+    def do_checkin(pid, sbp, dbp, pulse):
+        df_m = load_data("elderly_members")
+        df_l = load_data("elderly_logs")
+        pid_clean = pid.strip().upper()
+        person = df_m[df_m['身分證字號'] == pid_clean]
+        
+        if person.empty:
+            st.error(f"❌ 查無此人 ({pid_clean})，請先至名冊新增。")
+            return
+            
+        name = person.iloc[0]['姓名']
+        alerts = check_health_alert(sbp, dbp, pulse)
+        
+        new_log = {
+            "姓名": name, "身分證字號": pid_clean,
+            "日期": get_tw_time().strftime("%Y-%m-%d"), "時間": get_tw_time().strftime("%H:%M:%S"),
+            "課程分類": final_course_cat, "課程名稱": final_course_name,
+            "收縮壓": sbp, "舒張壓": dbp, "脈搏": pulse
+        }
+        save_data(pd.concat([df_l, pd.DataFrame([new_log])], ignore_index=True), "elderly_logs")
+        
+        if alerts:
+            st.warning(f"✅ {name} 報到成功，但數值異常：{' / '.join(alerts)}")
+        else:
+            st.success(f"✅ {name} 報到成功！")
+
+    # --- 1. 今日課程設定 ---
     st.markdown('<div class="dash-card" style="border-left: 6px solid #FF9800;">', unsafe_allow_html=True)
     st.markdown("#### 1. 今日課程設定")
     c_main, c_sub, c_name = st.columns([1, 1, 1.5])
@@ -239,57 +274,23 @@ elif st.session_state.page == 'checkin':
     final_course_name = course_name if course_name.strip() else sub_cat
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # A. 健康檢查函式 (定義在最前面)
-    def check_health_alert(sbp, dbp, pulse):
-        alerts = []
-        if sbp >= 140 or dbp >= 90: alerts.append(f"⚠️ 血壓偏高 ({sbp}/{dbp})")
-        elif sbp <= 90 or dbp <= 60: alerts.append(f"⚠️ 血壓偏低 ({sbp}/{dbp})")
-        if pulse > 100: alerts.append(f"💓 心跳過快 ({pulse})")
-        elif pulse < 60: alerts.append(f"💓 心跳過慢 ({pulse})")
-        return alerts
-
-    # B. 報到處理函式 (改名為 do_checkin，供下方所有按鈕共用)
-    def do_checkin(pid, sbp, dbp, pulse):
-        df_m = load_data("elderly_members")
-        df_l = load_data("elderly_logs")
-        person = df_m[df_m['身分證字號'] == pid.strip().upper()]
-        
-        if person.empty:
-            st.error("❌ 查無此人，請先至名冊新增。")
-            return
-            
-        name = person.iloc[0]['姓名']
-        alerts = check_health_alert(sbp, dbp, pulse)
-        
-        new_log = {
-            "姓名": name, "身分證字號": pid.upper(),
-            "日期": get_tw_time().strftime("%Y-%m-%d"), "時間": get_tw_time().strftime("%H:%M:%S"),
-            "課程分類": final_course_cat, "課程名稱": final_course_name,
-            "收縮壓": sbp, "舒張壓": dbp, "脈搏": pulse
-        }
-        save_data(pd.concat([df_l, pd.DataFrame([new_log])], ignore_index=True), "elderly_logs")
-        
-        if alerts:
-            st.warning(f"✅ {name} 報到成功，但數值異常：{' / '.join(alerts)}")
-        else:
-            st.success(f"✅ {name} 報到成功！")
-
-    # 2. 報到區
+    # --- 2. 報到輸入區 ---
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
-    st.markdown("#### 2. 長輩報到輸入")
+    st.markdown("#### 2. 長輩報到與量測輸入")
     
-    # 血壓輸入 (先取得數值)
+    # 血壓與脈搏 (一組三個欄位是正常的：收縮、舒張、脈搏)
     c_bp1, c_bp2, c_bp3 = st.columns(3)
-    sbp_val = c_bp1.number_input("收縮壓", min_value=50, max_value=250, value=120)
-    dbp_val = c_bp2.number_input("舒張壓", min_value=30, max_value=150, value=80)
+    sbp_val = c_bp1.number_input("收縮壓 (高壓)", min_value=50, max_value=250, value=120)
+    dbp_val = c_bp2.number_input("舒張壓 (低壓)", min_value=30, max_value=150, value=80)
     pulse_val = c_bp3.number_input("脈搏", min_value=30, max_value=200, value=72)
 
-    tab1, tab2 = st.tabs(["🔍 掃描身分證", "📋 選單選取"])
+    # 切換報到方式
+    tab1, tab2 = st.tabs(["🔍 掃描/輸入身分證", "📋 下拉選單選取"])
     
     with tab1:
-        # 修改點：移除 on_change，避免與舊函式名稱衝突
-        input_pid = st.text_input("請掃描身分證字號", key="scan_pid_input")
-        if st.button("確認報到 (掃描)", key="btn_scan"):
+        # 注意：這裡不要加 on_change，完全靠按鈕觸發最安全
+        input_pid = st.text_input("請掃描或輸入身分證字號", key="scan_pid_field")
+        if st.button("確認報到 (身分證)", key="btn_do_scan"):
             if input_pid:
                 do_checkin(input_pid, sbp_val, dbp_val, pulse_val)
                 st.rerun()
@@ -297,24 +298,23 @@ elif st.session_state.page == 'checkin':
     with tab2:
         df_m = load_data("elderly_members")
         if not df_m.empty:
-            # 長輩名稱加上編號
             member_options = [f"{i+1}. {row['姓名']} ({row['身分證字號']})" for i, row in df_m.iterrows()]
             selected_member = st.selectbox("請選擇長輩", ["--- 請選擇 ---"] + member_options)
-            
-            if st.button("確認報到 (選單)", key="btn_select"):
+            if st.button("確認報到 (選單)", key="btn_do_select"):
                 if selected_member != "--- 請選擇 ---":
-                    # 解析身分證
                     sel_pid = selected_member.split("(")[-1].replace(")", "")
                     do_checkin(sel_pid, sbp_val, dbp_val, pulse_val)
                     st.rerun()
+        else:
+            st.warning("名冊中尚無資料")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 顯示今日報到列表
+    # --- 3. 今日名單 ---
     st.write("📋 今日已報到名單：")
     logs = load_data("elderly_logs")
-    today = get_tw_time().strftime("%Y-%m-%d")
+    today_str = get_tw_time().strftime("%Y-%m-%d")
     if not logs.empty:
-        today_logs = logs[logs['日期'] == today]
+        today_logs = logs[logs['日期'] == today_str]
         st.dataframe(today_logs[['時間', '姓名', '課程名稱', '收縮壓', '舒張壓', '脈搏']], use_container_width=True)
 
     # =========================================================
