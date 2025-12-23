@@ -387,14 +387,6 @@ elif st.session_state.page == 'checkin':
                         st.success(f"✅ 已完成 {len(new_entries)} 筆補登！日期：{save_date_str} 時間：{save_time_str}")
                         time.sleep(1)
                         st.rerun()
-                        
-    cb1, cb2, cb3 = st.columns(3)
-    with cb1: st.number_input("收縮壓", min_value=50, max_value=250, value=120, key="sbp_val")
-    with cb2: st.number_input("舒張壓", min_value=30, max_value=150, value=80, key="dbp_val")
-    with cb3: st.number_input("脈搏", min_value=30, max_value=200, key="pulse_val")
-    pid = st.text_input("身分證字號掃描區", key="elder_pid")
-if st.button("確認報到"):
-    do_checkin(pid, sbp_val, dbp_val, pulse_val)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
