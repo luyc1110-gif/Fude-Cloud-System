@@ -288,11 +288,17 @@ elif st.session_state.page == 'checkin':
     tab1, tab2 = st.tabs(["🔍 掃描/輸入身分證", "選單選取長輩"])
     
     with tab1:
+        # 這裡將原本的 on_change=process_checkin 拿掉
         input_pid = st.text_input("請輸入或掃描身分證字號", key="scan_pid")
+        
+        # 改用按鈕觸發，並確保呼叫的是 do_checkin
         if st.button("確認報到 (身分證)", key="btn_pid"):
             if input_pid:
+                # 這裡呼叫的是 do_checkin，並傳入對應的數值
                 do_checkin(input_pid.strip().upper(), sbp_val, dbp_val, pulse_val)
                 st.rerun()
+            else:
+                st.error("請輸入身分證字號")
 
     with tab2:
         df_m = load_data("elderly_members")
