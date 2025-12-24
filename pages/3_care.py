@@ -174,28 +174,60 @@ elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 關懷戶名冊管理")
     df = load_data("care_members", COLS_MEM)
+    
     with st.expander("➕ 新增關懷戶 (防重複機制)"):
-        with st.form("add_care"):
+        # 使用 st.form，當按下提交按鈕後，頁面重整會自動恢復元件的初始狀態 (即清空)
+        with st.form("add_care", clear_on_submit=True):
             c1, c2, c3, c4 = st.columns(4)
-            # 把這行拆開寫比較清楚，重點是加入了 min_value 和 max_value
             n = c1.text_input("姓名")
             p = c2.text_input("身分證")
             g = c3.selectbox("性別", ["男", "女"])
             b = c4.date_input(
-            "生日", 
-            value=date(1950, 1, 1), 
-            min_value=date(1911, 1, 1),  # 🔥 最久可選到 民國元年
-            max_value=date(2025, 12, 31) # 🔥 最晚可選到 2025 年底
-)
+                "生日", 
+                value=date(1950, 1, 1), 
+                min_value=date(1911, 1, 1), 
+                max_value=date(2025, 12, 31)
+            )
+            
             addr, ph = st.text_input("地址"), st.text_input("電話")
-            ce1, ce2 = st.columns(2); en, ep = ce1.text_input("緊急聯絡人"), ce2.text_input("緊急聯絡電話")
+            ce1, ce2 = st.columns(2)
+            en, ep = ce1.text_input("緊急聯絡人"), ce2.text_input("緊急聯絡電話")
+            
+            # --- 一、新增的三個欄位 ---
+            cn1, cn2, cn3 = st.columns(3)
+            child = cn1.number_input("18歲以下子女", min_value=0, value=0, step=1)
+            adult = cn2.number_input("成人數量", min_value=0, value=0, step=1)
+            senior = cn3.number_input("65歲以上長者", min_value=0, value=0, step=1)
+            
             id_t = st.multiselect("身分別 (可多選)", ["低收", "中低收", "中低老人", "身障", "獨居", "獨居有子女"])
+            
             if st.form_submit_button("確認新增關懷戶"):
-                if p.upper() in df['身分證字號'].values: st.error("❌ 該身分證號已存在！")
-                elif not n: st.error("❌ 姓名為必填")
+                if p.upper() in df['身分證字號'].values:
+                    st.error("❌ 該身分證號已存在！")
+                elif not n:
+                    st.error("❌ 姓名為必填")
                 else:
-                    new = {"姓名":n, "身分證字號":p.upper(), "性別":g, "生日":str(b), "地址":addr, "電話":ph, "緊急聯絡人":en, "緊急聯絡人電話":ep, "身分別":",".join(id_t)}
-                    if save_data(pd.concat([df, pd.DataFrame([new])], ignore_index=True), "care_members"): st.success("已新增"); st.rerun()
+                    # 將新增的欄位加入資料物件中
+                    new = {
+                        "姓名": n, 
+                        "身分證字號": p.upper(), 
+                        "性別": g, 
+                        "生日": str(b), 
+                        "地址": addr, 
+                        "電話": ph, 
+                        "緊急聯絡人": en, 
+                        "緊急聯絡人電話": ep, 
+                        "身分別": ",".join(id_t),
+                        "18歲以下子女": str(child),
+                        "成人數量": str(adult),
+                        "65歲以上長者": str(senior)
+                    }
+                    
+                    if save_data(pd.concat([df, pd.DataFrame([new])], ignore_index=True), "care_members"):
+                        st.success("✅ 已新增關懷戶！")
+                        # 二、利用 time.sleep 讓使用者看見成功訊息後，再 rerun 重整頁面以清空欄位
+                        time.sleep(1)
+                        st.rerun()
     if not df.empty:
         df['歲數'] = df['生日'].apply(calculate_age)
         ed = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="mem_ed")
