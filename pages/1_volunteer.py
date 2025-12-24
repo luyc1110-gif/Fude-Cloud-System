@@ -316,8 +316,7 @@ if st.session_state.page == 'home':
         <div style="background: white; padding: 20px; border-radius: 15px; border-left: 6px solid #4A148C; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; text-align: center;">
             <div style="font-size: 1.1rem; color: #666; font-weight: bold;">👥 服務中志工總人數</div>
             <div style="font-size: 2.5rem; color: #4A148C; font-weight: 900; margin: 5px 0;">{total_unique_count} <span style="font-size: 1.2rem; color: #888;">人</span></div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
         # 接下來才是原本的各分類統計 (祥和、據點等)
         active_m['age'] = active_m['生日'].apply(calculate_age)
