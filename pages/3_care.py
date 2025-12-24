@@ -315,13 +315,94 @@ elif st.session_state.page == 'visit':
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False), use_container_width=True, num_rows="dynamic", key="v_ed")
         if st.button("💾 儲存修改內容"): save_data(ed_l, "care_logs")
 
-# --- [分頁 5：統計數據] ---
+# --- [分頁 5：統計與個案查詢] ---
 elif st.session_state.page == 'stats':
     render_nav()
-    st.markdown("## 📊 數據統計查詢")
+    st.markdown("## 📊 數據統計與個案查詢")
+    
+    # 讀取必要資料
     logs = load_data("care_logs", COLS_LOG)
-    if not logs.empty:
-        fig = px.bar(logs.groupby('物資內容')['發放數量'].apply(lambda x: x.replace("","0").astype(float).sum()).reset_index(), x='物資內容', y='發放數量', color='物資內容', title="各類物資發放排行")
-        st.plotly_chart(fig, use_container_width=True)
-        qn = st.selectbox("選擇關懷戶查詢歷程", sorted(logs['關懷戶姓名'].unique()))
-        st.dataframe(logs[logs['關懷戶姓名'] == qn], use_container_width=True)
+    mems = load_data("care_members", COLS_MEM)
+    
+    # 建立頁籤：區分「個案詳細檔案」與「整體統計圖表」
+    tab1, tab2 = st.tabs(["👤 個案詳細檔案", "📈 整體物資統計"])
+    
+    # --- 分頁 1: 個案查詢 (您的新需求) ---
+    with tab1:
+        if mems.empty:
+            st.info("目前尚無關懷戶名冊資料")
+        else:
+            # 1. 搜尋選單
+            all_names = mems['姓名'].unique().tolist()
+            target_name = st.selectbox("🔍 請選擇或輸入關懷戶姓名", all_names)
+            
+            if target_name:
+                # 取得該員的基本資料 (Series)
+                p_data = mems[mems['姓名'] == target_name].iloc[0]
+                
+                # 計算年齡
+                age = calculate_age(p_data['生日'])
+                
+                st.markdown("### 📋 基本資料卡")
+                
+                # 使用 container 加上邊框，讓它看起來像一張卡片
+                with st.container():
+                    st.markdown(f"""
+                    <div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <div style="font-size: 1.8rem; font-weight: 900; color: #333;">
+                                {p_data['姓名']} <span style="font-size: 1rem; color: #666; background: #eee; padding: 2px 8px; border-radius: 10px;">{p_data['性別']} / {age} 歲</span>
+                            </div>
+                            <div style="font-weight: bold; color: {PRIMARY}; border: 2px solid {PRIMARY}; padding: 5px 15px; border-radius: 20px;">
+                                {p_data['身分別']}
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div><b>🆔 身分證：</b> {p_data['身分證字號']}</div>
+                            <div><b>🎂 生日：</b> {p_data['生日']}</div>
+                            <div><b>📞 電話：</b> {p_data['電話']}</div>
+                            <div><b>📍 地址：</b> {p_data['地址']}</div>
+                        </div>
+                        <hr style="border-top: 1px dashed #ccc;">
+                        <div style="margin-top: 10px; color: #555;">
+                            <b>🏠 家庭結構：</b> 
+                            18歲以下 <b>{p_data['18歲以下子女']}</b> 人，
+                            成人 <b>{p_data['成人數量']}</b> 人，
+                            65歲以上長者 <b>{p_data['65歲以上長者']}</b> 人
+                        </div>
+                        <div style="margin-top: 5px; color: #d9534f;">
+                            <b>🚨 緊急聯絡：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown("### 🤝 歷史訪視與領取紀錄")
+                # 篩選出該員的紀錄
+                p_logs = logs[logs['關懷戶姓名'] == target_name]
+                
+                if p_logs.empty:
+                    st.info("此人目前尚無訪視或物資領取紀錄。")
+                else:
+                    # 整理一下顯示的順序，最新的在上面
+                    p_logs = p_logs.sort_values("發放日期", ascending=False)
+                    
+                    # 顯示資料表
+                    st.dataframe(
+                        p_logs[['發放日期', '物資內容', '發放數量', '訪視紀錄', '志工']],
+                        use_container_width=True,
+                        hide_index=True
+                    )
+    
+    # --- 分頁 2: 整體圖表 (原本的功能) ---
+    with tab2:
+        if not logs.empty:
+            st.markdown("#### 📊 各類物資發放排行")
+            # 簡單的長條圖
+            bar_data = logs.groupby('物資內容')['發放數量'].apply(lambda x: x.replace("","0").astype(float).sum()).reset_index()
+            fig = px.bar(bar_data, x='物資內容', y='發放數量', color='物資內容')
+            st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("#### 📝 所有發放流水帳")
+            st.dataframe(logs, use_container_width=True)
+        else:
+            st.info("目前無任何發放紀錄")
