@@ -305,23 +305,29 @@ if st.session_state.page == 'home':
     """, unsafe_allow_html=True)
     
    if not members.empty:
-        # 過濾掉已退隊的，並複製一份
         active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy()
         
-        # 新增：計算不重複姓名總數
+        # 1. 計算不重複人數
         total_unique_count = active_m['姓名'].nunique()
 
-        # 呈現總人數卡片
+        # 2. 顯示總人數卡片 (請整段複製，確保引號正確)
         st.markdown(f"""
-        <div style="background: white; padding: 20px; border-radius: 15px; border-left: 6px solid #4A148C; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; text-align: center;">
+        <div style="background: white; padding: 20px; border-radius: 15px; border-left: 6px solid {PRIMARY}; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; text-align: center;">
             <div style="font-size: 1.1rem; color: #666; font-weight: bold;">👥 服務中志工總人數</div>
-            <div style="font-size: 2.5rem; color: #4A148C; font-weight: 900; margin: 5px 0;">{total_unique_count} <span style="font-size: 1.2rem; color: #888;">人</span></div>
-        </div>""", unsafe_allow_html=True)
+            <div style="font-size: 2.5rem; color: {PRIMARY}; font-weight: 900; margin: 5px 0;">
+                {total_unique_count} <span style="font-size: 1.2rem; color: #888;">人</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # 接下來才是原本的各分類統計 (祥和、據點等)
+        # 3. 原本的年齡計算與分類卡片
         active_m['age'] = active_m['生日'].apply(calculate_age)
         valid_age = active_m[active_m['age'] > 0]
+        
+        # 這裡建議維持 4 欄，視覺比較平衡
         cols = st.columns(4)
+        for idx, cat in enumerate(ALL_CATEGORIES):
+            if cat == "臨時志工": continue
 
 elif st.session_state.page == 'checkin':
     render_nav()
