@@ -294,6 +294,8 @@ if st.session_state.page == 'home':
     total_mins = int((total_sec % 3600) // 60)
     
     st.markdown(f"### 📊 {this_year} 年度即時概況")
+    
+    # 年度總時數卡片
     st.markdown(f"""
     <div style="background: #ceafe3; padding: 30px; border-radius: 20px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(81, 45, 168, 0.25);">
         <div style="font-size: 1.2rem; opacity: 0.9; color: white !important;">📅 {this_year} 年度 - 全體志工總服務時數</div>
@@ -304,30 +306,39 @@ if st.session_state.page == 'home':
     </div>
     """, unsafe_allow_html=True)
     
-   if not members.empty:
+    if not members.empty:
+        # 過濾服務中的志工
         active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy()
         
-        # 1. 計算不重複人數
+        # 新增：計算不重複總人數
         total_unique_count = active_m['姓名'].nunique()
 
-        # 2. 顯示總人數卡片 (請整段複製，確保引號正確)
+        # 呈現總人數卡片 (確保這裡的 f-string 括號正確)
         st.markdown(f"""
-        <div style="background: white; padding: 20px; border-radius: 15px; border-left: 6px solid {PRIMARY}; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; text-align: center;">
-            <div style="font-size: 1.1rem; color: #666; font-weight: bold;">👥 服務中志工總人數</div>
-            <div style="font-size: 2.5rem; color: {PRIMARY}; font-weight: 900; margin: 5px 0;">
-                {total_unique_count} <span style="font-size: 1.2rem; color: #888;">人</span>
-            </div>
+        <div style="background: white; padding: 20px; border-radius: 15px; border-left: 6px solid {PRIMARY}; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 25px; text-align: center;">
+            <div style="font-size: 1.1rem; color: #666; font-weight: bold;">👥 服務中志工總人數 (不重複計算)</div>
+            <div style="font-size: 2.5rem; color: {PRIMARY}; font-weight: 900; margin: 5px 0;">{total_unique_count} <span style="font-size: 1.2rem; color: #888;">人</span></div>
         </div>
         """, unsafe_allow_html=True)
 
-        # 3. 原本的年齡計算與分類卡片
+        # 分類統計資訊
         active_m['age'] = active_m['生日'].apply(calculate_age)
         valid_age = active_m[active_m['age'] > 0]
-        
-        # 這裡建議維持 4 欄，視覺比較平衡
         cols = st.columns(4)
         for idx, cat in enumerate(ALL_CATEGORIES):
             if cat == "臨時志工": continue
+            subset = active_m[active_m['志工分類'].astype(str).str.contains(cat, na=False)]
+            count = len(subset)
+            age_subset = valid_age[valid_age['志工分類'].astype(str).str.contains(cat, na=False)]
+            avg_age = round(age_subset['age'].mean(), 1) if not age_subset.empty else 0
+            with cols[idx % 4]:
+                st.markdown(f"""
+                <div class="dash-card">
+                    <div class="dash-label">{cat.replace('志工','')}</div>
+                    <div class="dash-value">{count} <span style="font-size:1rem;color:#888;">人</span></div>
+                    <div class="dash-sub">平均 {avg_age} 歲</div>
+                </div>
+                """, unsafe_allow_html=True)
 
 elif st.session_state.page == 'checkin':
     render_nav()
