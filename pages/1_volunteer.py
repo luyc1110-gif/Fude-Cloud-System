@@ -104,16 +104,32 @@ div[data-baseweb="tab"][aria-selected="true"] {{
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic & Helpers
+# 2) Logic & Helpers (PATCH)
 # =========================================================
-SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
-ALL_CATEGORIES = ["祥和志工", "關懷據點週二志工", "關懷據點週三志工", "環保志工", "臨時志工"]
-DEFAULT_ACTIVITIES = ["關懷據點週二活動", "關懷據點週三活動", "環保清潔", "專案活動", "教育訓練"]
-DISPLAY_ORDER = ["姓名", "身分證字號", "性別", "電話", "志工分類", "生日", "地址", "備註", "祥和_加入日期", "祥和_退出日期", "據點週二_加入日期", "據點週二_退出日期", "據點週三_加入日期", "據點週三_退出日期", "環保_加入日期", "環保_退出日期"]
 
-@st.cache_resource
-def get_google_sheet_client():
-    return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+def _clean_str_df(df: pd.DataFrame) -> pd.DataFrame:
+    """把 NaN/None/NaT 轉成空字串，避免 'nan' 這種毒字串污染邏輯。"""
+    if df is None or df.empty:
+        return pd.DataFrame() if df is None else df
+    df = df.copy()
+    df = df.fillna("")
+    # 有些情況 astype(str) 會產生 'nan'，這裡再保險清一次
+    df = df.replace({"nan": "", "None": "", "NaT": ""})
+    # 轉字串前先 fillna，避免 nan 變 'nan'
+    for c in df.columns:
+        df[c] = df[c].astype(str).replace({"nan": "", "None": "", "NaT": ""}).str.strip()
+    return df
+
+def _parse_dt(df: pd.DataFrame) -> pd.DataFrame:
+    """安全地建立 dt 欄位，不要炸；回傳 copy。"""
+    if df is None or df.empty:
+        return pd.DataFrame() if df is None else df.copy()
+    out = df.copy()
+    # 日期/時間欄位可能不存在或是空字串
+    if '日期' not in out.columns: out['日期'] = ""
+    if '時間' not in out.columns: out['時間'] = ""
+    out['dt'] = pd.to_datetime(out['日期'].astype(str) + " " + out['時間'].astype(str), errors='coerce')
+    return out
 
 @st.cache_data(ttl=60)
 def load_data_from_sheet(sheet_name):
@@ -121,81 +137,77 @@ def load_data_from_sheet(sheet_name):
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         data = sheet.get_all_records()
-        df = pd.DataFrame(data).astype(str)
+        df = pd.DataFrame(data)
+        df = _clean_str_df(df)
+
         if sheet_name == 'members':
-            for c in DISPLAY_ORDER: 
-                if c not in df.columns: df[c] = ""
+            for c in DISPLAY_ORDER:
+                if c not in df.columns:
+                    df[c] = ""
         elif sheet_name == 'logs':
             required = ['姓名', '身分證字號', '電話', '志工分類', '動作', '時間', '日期', '活動內容']
-            for c in required: 
-                if c not in df.columns: df[c] = ""
+            for c in required:
+                if c not in df.columns:
+                    df[c] = ""
         return df
-    except: return pd.DataFrame()
-
-def save_data_to_sheet(df, sheet_name):
-    try:
-        client = get_google_sheet_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.clear()
-        sheet.update([df.columns.values.tolist()] + df.values.tolist())
-        load_data_from_sheet.clear()
-    except Exception as e: st.error(f"寫入失敗：{e}")
-
-def get_tw_time(): return datetime.now(TW_TZ)
-
-def calculate_age(birthday_str):
-    try:
-        b_date = datetime.strptime(str(birthday_str).strip(), "%Y-%m-%d")
-        today = date.today()
-        return today.year - b_date.year - ((today.month, today.day) < (b_date.month, b_date.day))
-    except: return 0
-
-def check_is_fully_retired(row):
-    roles = [('祥和_加入日期', '祥和_退出日期'), ('據點週二_加入日期', '據點週二_退出日期'), ('據點週三_加入日期', '據點週三_退出日期'), ('環保_加入日期', '環保_退出日期')]
-    has_any = False
-    is_active = False
-    for join_col, exit_col in roles:
-        if join_col in row and str(row[join_col]).strip() != "":
-            has_any = True
-            if exit_col not in row or str(row[exit_col]).strip() == "": is_active = True
-    if not has_any: return False 
-    return not is_active
+    except Exception:
+        return pd.DataFrame()
 
 def calculate_hours_year(logs_df, year):
-    if logs_df.empty: return 0
-    logs_df['dt'] = pd.to_datetime(logs_df['日期'] + ' ' + logs_df['時間'], errors='coerce')
-    logs_df = logs_df.dropna(subset=['dt'])
-    year_logs = logs_df[logs_df['dt'].dt.year == year].copy()
-    if year_logs.empty: return 0
+    # ✅ 不要改到 cache 來源
+    if logs_df is None or logs_df.empty:
+        return 0
+    df = _parse_dt(_clean_str_df(logs_df))
+    df = df.dropna(subset=['dt'])
+    year_logs = df[df['dt'].dt.year == year].copy()
+    if year_logs.empty:
+        return 0
+
     total_seconds = 0
-    year_logs = year_logs.sort_values(['姓名', 'dt'])
+    year_logs = year_logs.sort_values(['姓名', '日期', 'dt'])
+
     for (name, date_val), group in year_logs.groupby(['姓名', '日期']):
         actions = group['動作'].tolist()
         times = group['dt'].tolist()
         i = 0
         while i < len(actions):
             if actions[i] == '簽到':
-                for j in range(i + 1, len(actions)):
+                # 找到下一個簽退
+                j = i + 1
+                while j < len(actions):
                     if actions[j] == '簽退':
                         total_seconds += (times[j] - times[i]).total_seconds()
                         i = j
                         break
+                    j += 1
                 i += 1
-            else: i += 1
+            else:
+                i += 1
     return total_seconds
 
 def get_present_volunteers(logs_df):
     """計算目前場內有哪些人（最後動作為簽到者）"""
-    if logs_df.empty: return pd.DataFrame()
+    if logs_df is None or logs_df.empty:
+        return pd.DataFrame()
+
+    df = _parse_dt(_clean_str_df(logs_df))
+    # ✅ to_datetime 失敗就丟掉，不要炸
+    df = df.dropna(subset=['dt'])
+
     today_str = get_tw_time().strftime("%Y-%m-%d")
-    today_logs = logs_df[logs_df['日期'] == today_str].copy()
-    if today_logs.empty: return pd.DataFrame()
-    
-    today_logs['dt'] = pd.to_datetime(today_logs['日期'] + ' ' + today_logs['時間'])
+    today_logs = df[df['日期'] == today_str].copy()
+    if today_logs.empty:
+        return pd.DataFrame()
+
     today_logs = today_logs.sort_values('dt')
-    latest_status = today_logs.groupby('身分證字號').last().reset_index()
-    present = latest_status[latest_status['動作'] == '簽到']
+    latest_status = today_logs.groupby('身分證字號', as_index=False).last()
+    present = latest_status[latest_status['動作'] == '簽到'].copy()
+    # 回傳固定欄位
+    for c in ['姓名', '時間', '活動內容']:
+        if c not in present.columns:
+            present[c] = ""
     return present[['姓名', '時間', '活動內容']]
+
 
 # =========================================================
 # 3) Navigation
@@ -330,11 +342,13 @@ elif st.session_state.page == 'checkin':
                         st.error(f"❌ {name} 已退出，無法打卡。")
                     else:
                         today = now.strftime("%Y-%m-%d")
-                        t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
-                        
+                        t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)].copy()
                         action = "簽到"
-                        if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": 
-                            action = "簽退"
+                if not t_logs.empty:
+                    t_logs = _parse_dt(_clean_str_df(t_logs)).dropna(subset=['dt']).sort_values('dt')
+                if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到":
+                    action = "簽退"
+
                         
                         new_log = pd.DataFrame([{'姓名': name, '身分證字號': pid, '電話': row['電話'], '志工分類': row['志工分類'], '動作': action, '時間': now.strftime("%H:%M:%S"), '日期': today, '活動內容': final_act}])
                         save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
