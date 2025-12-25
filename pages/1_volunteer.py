@@ -23,7 +23,7 @@ BG_MAIN = "#F0F2F5"
 TEXT    = "#212121"
 
 # =========================================================
-# 1) CSS 樣式 (V17.0 顯色+導航優化+Toast修復)
+# 1) CSS 樣式 (V18.0 強力修復 Toast 顯色)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -104,20 +104,22 @@ div[data-baseweb="tab"][aria-selected="true"] {{
     background-color: {PRIMARY} !important; color: white !important; border: 1px solid {PRIMARY};
 }}
 
-/* 🔥 這裡就是針對 Toast 彈出視窗的強制顯色修正 🔥 */
+/* 🔥🔥🔥 強制修復 Toast 配色 (Nuclear Fix) 🔥🔥🔥 */
 div[data-baseweb="toast"] {{
-    background-color: #FFFFFF !important; /* 強制白底 */
-    color: #000000 !important;             /* 強制黑字 */
-    font-size: 1.25rem !important;         /* 字體放大 */
-    font-weight: 900 !important;           /* 字體加粗 */
-    border: 3px solid {PRIMARY} !important; /* 加上明顯的紫色邊框 */
-    border-radius: 15px !important;        /* 圓角 */
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important; /* 加上陰影 */
-    padding: 15px 20px !important;
+    background-color: #FFFFFF !important;
+    border: 3px solid {PRIMARY} !important;
+    border-radius: 15px !important;
+    padding: 15px !important;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3) !important;
 }}
-div[data-baseweb="toast"] div {{
-    align-items: center !important;
-    gap: 10px !important;
+
+/* 強制 Toast 內的所有文字、圖示都變成黑色 */
+div[data-baseweb="toast"] * {{
+    color: #000000 !important;
+    fill: #000000 !important; /* 修復 SVG 圖示顏色 */
+    font-size: 1.2rem !important;
+    font-weight: 900 !important;
+    text-shadow: none !important;
 }}
 </style>
 """, unsafe_allow_html=True)
