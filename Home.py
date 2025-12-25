@@ -96,7 +96,7 @@ div[data-testid="column"] [data-testid="stButton"] {
 div[data-testid="column"] [data-testid="stButton"] button {
     width: 100%;
     height: 100%;
-    opacity: 0;
+    opacity: 50;
     border: none;
     cursor: pointer;
 }
