@@ -420,13 +420,10 @@ elif st.session_state.page == 'checkin':
             # 🔥 修正版：改用 scan_key 計數器，完全不需要 datetime 或 time，保證不報錯
             components.html(f"""
                 <script>
-                    var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
-                    if (input) {{
-                        input.focus();
-                        input.value = '';
-                    }}
+                    const input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
+                    if (input) input.focus();
                 </script>
-            """, height=0, width=0, key=f"focus_{st.session_state.scan_key}")
+            """, height=0, width=0)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
