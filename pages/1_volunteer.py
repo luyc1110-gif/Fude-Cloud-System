@@ -186,6 +186,24 @@ def calculate_hours_year(logs_df, year):
                 i += 1
             else: i += 1
     return total_seconds
+def get_present_volunteers(logs_df):
+    """計算目前場內有哪些人（最後動作為簽到者）"""
+    if logs_df.empty: return pd.DataFrame()
+    today_str = get_tw_time().strftime("%Y-%m-%d")
+    # 篩選今日紀錄
+    today_logs = logs_df[logs_df['日期'] == today_str].copy()
+    if today_logs.empty: return pd.DataFrame()
+    
+    # 確保按時間排序
+    today_logs['dt'] = pd.to_datetime(today_logs['日期'] + ' ' + today_logs['時間'])
+    today_logs = today_logs.sort_values('dt')
+    
+    # 抓取每個人最後一筆狀態
+    latest_status = today_logs.groupby('身分證字號').last().reset_index()
+    
+    # 篩選出最後動作是 "簽到" 的人
+    present = latest_status[latest_status['動作'] == '簽到']
+    return present[['姓名', '時間', '活動內容']]
 
 # =========================================================
 # 3) Navigation
