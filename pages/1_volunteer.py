@@ -13,17 +13,17 @@ st.set_page_config(
     page_title="志工管理系統",
     page_icon="💜",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded", # 🔥 改成展開，因為要放左側選單
 )
 
 TW_TZ = timezone(timedelta(hours=8))
 PRIMARY = "#4A148C"
 ACCENT  = "#7B1FA2"
-BG_MAIN = "#F0F2F5"
+BG_MAIN = "#F8F9FA" # 改成極淡的灰白色，讓白色卡片更突顯
 TEXT    = "#212121"
 
 # =========================================================
-# 1) CSS 樣式 (V18.0 強力修復 Toast 顯色)
+# 1) CSS 樣式 (V19.0 側邊欄膠囊導航版)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -33,78 +33,71 @@ html, body, [class*="css"], div, p, span, li, ul {{
     font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     color: {TEXT} !important;
 }}
-.stApp {{ background-color: {BG_MAIN}; }}
-[data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
-.block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
+.stApp {{ background-color: {BG_MAIN} !important; }}
+[data-testid="stHeader"] {{ display: none; }} /* 隱藏上方預設紅線 */
 
-/* 輸入框與選單顯色修復 */
-.stTextInput input, .stDateInput input, .stTimeInput input {{
+/* --- 側邊欄樣式優化 --- */
+section[data-testid="stSidebar"] {{
+    background-color: #F0F2F5; /* 側邊欄底色 */
+    border-right: 1px solid #ddd;
+}}
+section[data-testid="stSidebar"] div.block-container {{
+    padding-top: 2rem;
+}}
+
+/* --- 側邊欄：未選中的按鈕 (白色膠囊) --- */
+section[data-testid="stSidebar"] button {{
     background-color: #FFFFFF !important;
-    color: #000000 !important;
-    border: 2px solid #9FA8DA !important;
-    border-radius: 10px;
-    font-weight: 700;
+    color: #666 !important;
+    border: 1px solid transparent !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+    border-radius: 25px !important; /* 圓角 */
+    padding: 10px 0 !important;
+    font-weight: 700 !important;
+    transition: all 0.2s;
+    width: 100%;
+    margin-bottom: 8px !important;
 }}
-div[data-baseweb="select"] > div {{
-    background-color: #FFFFFF !important;
-    border: 2px solid #9FA8DA !important;
-    border-radius: 10px !important;
-    color: #000000 !important;
-}}
-div[data-baseweb="select"] span {{ color: #000000 !important; font-weight: 700 !important; }}
-ul[data-baseweb="menu"], div[role="listbox"] {{ background-color: #FFFFFF !important; }}
-li[role="option"], div[role="option"] {{
-    color: #000000 !important; background-color: #FFFFFF !important; font-weight: 700 !important;
-}}
-li[role="option"]:hover, div[role="option"]:hover {{ background-color: #E1BEE7 !important; }}
-
-label {{ color: {PRIMARY} !important; font-weight: 900 !important; font-size: 1.1rem !important; }}
-
-/* 按鈕 */
-div[data-testid="stButton"] > button {{
-    width: 100%; background-color: white !important; color: {PRIMARY} !important;
-    border: 2px solid {PRIMARY} !important; border-radius: 15px !important;
-    font-weight: 900 !important; font-size: 1.1rem !important;
-    padding: 12px 0 !important; box-shadow: 0 4px 0px rgba(74, 20, 140, 0.2);
-    transition: all 0.1s;
-}}
-div[data-testid="stButton"] > button:hover {{ transform: translateY(-2px); background-color: #F3E5F5 !important; }}
-div[data-testid="stButton"] > button:active {{ transform: translateY(2px); box-shadow: none; }}
-
-div[data-testid="stFormSubmitButton"] > button {{
-    background: linear-gradient(135deg, {PRIMARY}, {ACCENT}) !important;
-    color: #FFFFFF !important; font-weight: 900 !important; border: none !important;
+section[data-testid="stSidebar"] button:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
+    color: {PRIMARY} !important;
 }}
 
-/* 卡片 */
+/* --- 側邊欄：被選中的狀態 (紫色膠囊) --- */
+/* 我們會用 markdown 寫一個假的按鈕來呈現選中狀態 */
+.nav-active {{
+    background: linear-gradient(135deg, {PRIMARY}, {ACCENT});
+    color: white !important;
+    padding: 12px 0;
+    text-align: center;
+    border-radius: 25px;
+    font-weight: 900;
+    box-shadow: 0 4px 10px rgba(123, 31, 162, 0.4);
+    margin-bottom: 12px;
+    font-size: 1rem;
+    cursor: default;
+}}
+
+/* --- 右側內容區的卡片 --- */
 div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderContent, div[data-testid="stExpander"] details {{
-    background-color: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    padding: 25px; margin-bottom: 20px; border: 1px solid white;
-}}
-.dash-card {{
-    background-color: white; padding: 15px; border-radius: 15px; border-left: 6px solid {ACCENT};
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px;
-}}
-.dash-label {{ font-size: 1rem; color: #666 !important; font-weight: bold; }}
-.dash-value {{ font-size: 1.8rem; color: {PRIMARY} !important; font-weight: 900; margin: 5px 0; }}
-.dash-sub {{ font-size: 0.9rem; color: #888 !important; }}
-
-.nav-container {{
-    background-color: white; padding: 15px; border-radius: 20px;
-    margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}}
-div[data-testid="stImage"] {{ display: flex; justify-content: center; align-items: flex-end; height: 120px; }}
-
-div[data-baseweb="tab-list"] {{ gap: 10px; }}
-div[data-baseweb="tab"] {{
-    background-color: white; border-radius: 30px; padding: 10px 20px; border: 1px solid #E0E0E0;
-    font-weight: bold; color: {TEXT} !important;
-}}
-div[data-baseweb="tab"][aria-selected="true"] {{
-    background-color: {PRIMARY} !important; color: white !important; border: 1px solid {PRIMARY};
+    background-color: white; 
+    border-radius: 20px; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    padding: 25px; 
+    margin-bottom: 20px; 
+    border: 1px solid #eee;
 }}
 
-/* 🔥🔥🔥 強制修復 Toast 配色 (Nuclear Fix) 🔥🔥🔥 */
+/* 輸入框優化 */
+.stTextInput input, .stDateInput input, .stTimeInput input, div[data-baseweb="select"] > div {{
+    background-color: #FFFFFF !important;
+    border: 2px solid #E0E0E0 !important;
+    border-radius: 12px !important;
+    color: #333 !important;
+}}
+
+/* --- Toast 美化 --- */
 div[data-baseweb="toast"] {{
     background-color: #FFFFFF !important;
     border: 3px solid {PRIMARY} !important;
@@ -112,20 +105,15 @@ div[data-baseweb="toast"] {{
     padding: 15px !important;
     box-shadow: 0 5px 20px rgba(0,0,0,0.3) !important;
 }}
-
-/* 強制 Toast 內的所有文字、圖示都變成黑色 */
 div[data-baseweb="toast"] * {{
     color: #000000 !important;
-    fill: #000000 !important; /* 修復 SVG 圖示顏色 */
-    font-size: 1.2rem !important;
     font-weight: 900 !important;
-    text-shadow: none !important;
 }}
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic
+# 2) Logic & Helpers
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 ALL_CATEGORIES = ["祥和志工", "關懷據點週二志工", "關懷據點週三志工", "環保志工", "臨時志工"]
@@ -204,116 +192,76 @@ def calculate_hours_year(logs_df, year):
                 i += 1
             else: i += 1
     return total_seconds
+
 def get_present_volunteers(logs_df):
-    """計算目前場內有哪些人（最後動作為簽到者）"""
     if logs_df.empty: return pd.DataFrame()
-    
-    # 1. 為了確保能抓到資料，同時支援兩種常見日期格式
     today = get_tw_time()
-    today_str_dash = today.strftime("%Y-%m-%d") # 2025-12-25
-    today_str_slash = today.strftime("%Y/%m/%d") # 2025/12/25
-    
-    # 2. 篩選今日紀錄
-    today_logs = logs_df[
-        (logs_df['日期'] == today_str_dash) | 
-        (logs_df['日期'] == today_str_slash)
-    ].copy()
-    
+    today_str_dash = today.strftime("%Y-%m-%d") 
+    today_str_slash = today.strftime("%Y/%m/%d")
+    today_logs = logs_df[(logs_df['日期'] == today_str_dash) | (logs_df['日期'] == today_str_slash)].copy()
     if today_logs.empty: return pd.DataFrame()
-    
-    # 3. 確保按時間排序 (處理可能的空值)
     today_logs['dt'] = pd.to_datetime(today_logs['日期'] + ' ' + today_logs['時間'], errors='coerce')
     today_logs = today_logs.dropna(subset=['dt'])
     today_logs = today_logs.sort_values('dt')
-    
-    # 4. 抓取每個人 "最後一筆" 狀態
     latest_status = today_logs.groupby('身分證字號').last().reset_index()
-    
-    # 5. 篩選出最後動作是 "簽到" 的人
     present = latest_status[latest_status['動作'] == '簽到']
     return present[['姓名', '時間', '活動內容']]
 
 # =========================================================
-# 3) Navigation
+# 3) Navigation (側邊欄版)
 # =========================================================
 if 'page' not in st.session_state: st.session_state.page = 'home'
 
 def render_nav():
-    st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-    # 內頁導航，只回到志工首頁
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        if st.button("🏠 志工首頁", use_container_width=True): st.session_state.page = 'home'; st.rerun()
-    with c2:
-        if st.button("⏰ 智能打卡", use_container_width=True): st.session_state.page = 'checkin'; st.rerun()
-    with c3:
-        if st.button("📋 志工名冊", use_container_width=True): st.session_state.page = 'members'; st.rerun()
-    with c4:
-        if st.button("📊 數據分析", use_container_width=True): st.session_state.page = 'report'; st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.sidebar:
+        # 標題區
+        st.markdown(f"<h2 style='color:{PRIMARY}; margin-bottom:5px;'>🏠 福德里志工中心</h2>", unsafe_allow_html=True)
+        st.write("") # Spacer
+
+        # 1. 首頁按鈕
+        if st.session_state.page == 'home':
+            st.markdown('<div class="nav-active">📊 年度概況看板</div>', unsafe_allow_html=True)
+        else:
+            if st.button("📊 年度概況看板", key="nav_home", use_container_width=True):
+                st.session_state.page = 'home'; st.rerun()
+
+        # 2. 智能打卡按鈕
+        if st.session_state.page == 'checkin':
+            st.markdown('<div class="nav-active">⏰ 智能打卡站</div>', unsafe_allow_html=True)
+        else:
+            if st.button("⏰ 智能打卡站", key="nav_checkin", use_container_width=True):
+                st.session_state.page = 'checkin'; st.rerun()
+
+        # 3. 志工名冊按鈕
+        if st.session_state.page == 'members':
+            st.markdown('<div class="nav-active">📋 志工名冊管理</div>', unsafe_allow_html=True)
+        else:
+            if st.button("📋 志工名冊管理", key="nav_members", use_container_width=True):
+                st.session_state.page = 'members'; st.rerun()
+
+        # 4. 數據報表按鈕
+        if st.session_state.page == 'report':
+            st.markdown('<div class="nav-active">📉 數據報表中心</div>', unsafe_allow_html=True)
+        else:
+            if st.button("📉 數據報表中心", key="nav_report", use_container_width=True):
+                st.session_state.page = 'report'; st.rerun()
+
+        st.markdown("---")
+        # 回大廳按鈕 (稍微不同色，區隔開來)
+        if st.button("🚪 回系統大廳", key="nav_back", use_container_width=True):
+            st.switch_page("Home.py")
+        
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center; color:#999; font-size:0.8rem;'>Designed for Fude Community</div>", unsafe_allow_html=True)
 
 # =========================================================
 # 4) Pages
 # =========================================================
 if st.session_state.page == 'home':
-    # 🔥 首頁上方增加「回系統大廳」
-    c_back, c_empty = st.columns([1, 4])
-    with c_back:
-        if st.button("🚪 回系統大廳"): st.switch_page("Home.py")
-
-    st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>福德里 - 志工管理系統</h1>", unsafe_allow_html=True)
+    render_nav()
+    # 右側主要內容區
+    st.markdown(f"<h2 style='color: {PRIMARY};'>📊 {datetime.now().year} 年度志工概況</h2>", unsafe_allow_html=True)
     
-    col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1.5, 1.5, 1.5, 1.5, 0.5])
-    with c1:
-        # --- 1. 圖示部分 (保持不動) ---
-        if os.path.exists("icon_checkin.png"): 
-            st.image("icon_checkin.png", width=120)
-        else: 
-            st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
-        
-        # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
-        # 這裡是在 c1 裡面再切出 [1, 3] 兩塊巧克力
-        sub_spacer, sub_button = st.columns([0.2, 3.8]) 
-        
-        with sub_button:
-            # key 一定要唯一，不能重複喔
-            if st.button("智能打卡站", key="home_btn1_fixed"): 
-                st.session_state.page = 'checkin'
-                st.rerun()
-    with c2:
-        # --- 1. 圖示部分 (保持不動) ---
-        if os.path.exists("icon_members.png"): 
-            st.image("icon_members.png", width=120)
-        else: 
-            st.markdown("<div style='text-align:center; font-size:60px;'>📋</div>", unsafe_allow_html=True)
-        
-        # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
-        # 這裡是在 c2 裡面再切出 [1, 3] 兩塊巧克力
-        sub_spacer, sub_button = st.columns([0.2, 3.8]) 
-        
-        with sub_button:
-            # key 一定要唯一，不能重複喔
-            if st.button("志工名冊", key="home_btn2_fixed"): 
-                st.session_state.page = 'members'
-                st.rerun()
-    with c3:
-        # --- 1. 圖示部分 (保持不動) ---
-        if os.path.exists("icon_report.png"): 
-            st.image("icon_report.png", width=120)
-        else: 
-            st.markdown("<div style='text-align:center; font-size:60px;'>📊</div>", unsafe_allow_html=True)
-        
-        # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
-        # 這裡是在 c2 裡面再切出 [1, 3] 兩塊巧克力
-        sub_spacer, sub_button = st.columns([0.2, 3.8]) 
-        
-        with sub_button:
-            # key 一定要唯一，不能重複喔
-            if st.button("數據分析", key="home_btn3_fixed"): 
-                st.session_state.page = 'report'
-                st.rerun()
-    
-    st.markdown("---")
     logs = load_data_from_sheet("logs")
     members = load_data_from_sheet("members")
     this_year = datetime.now().year
@@ -321,9 +269,8 @@ if st.session_state.page == 'home':
     total_hours = int(total_sec // 3600)
     total_mins = int((total_sec % 3600) // 60)
     
-    st.markdown(f"### 📊 {this_year} 年度即時概況")
     st.markdown(f"""
-    <div style="background: #ceafe3; padding: 30px; border-radius: 20px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(81, 45, 168, 0.25);">
+    <div style="background: linear-gradient(135deg, #CE93D8, #AB47BC); padding: 30px; border-radius: 20px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(171, 71, 188, 0.3);">
         <div style="font-size: 1.2rem; opacity: 0.9; color: white !important;">📅 {this_year} 年度 - 全體志工總服務時數</div>
         <div style="font-size: 3.5rem; font-weight: 900; margin: 15px 0; color: white !important;">
             {total_hours} <span style="font-size: 1.5rem; color: white !important;">小時</span> 
@@ -344,7 +291,12 @@ if st.session_state.page == 'home':
             age_subset = valid_age[valid_age['志工分類'].astype(str).str.contains(cat, na=False)]
             avg_age = round(age_subset['age'].mean(), 1) if not age_subset.empty else 0
             with cols[idx % 4]:
-                st.markdown(f"""<div class="dash-card"><div class="dash-label">{cat.replace('志工','')}</div><div class="dash-value">{count} <span style="font-size:1rem;color:#888;">人</span></div><div class="dash-sub">平均 {avg_age} 歲</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="background:white; padding:15px; border-radius:15px; border-left: 6px solid {ACCENT}; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px;">
+                    <div style="font-size:1rem; font-weight:bold; color:#666;">{cat.replace('志工','')}</div>
+                    <div style="font-size:1.8rem; font-weight:900; color:{PRIMARY}; margin:5px 0;">{count} <span style="font-size:1rem;color:#888;">人</span></div>
+                    <div style="font-size:0.9rem; color:#888;">平均 {avg_age} 歲</div>
+                </div>""", unsafe_allow_html=True)
 
 elif st.session_state.page == 'checkin':
     render_nav()
@@ -352,11 +304,10 @@ elif st.session_state.page == 'checkin':
     st.caption(f"📅 台灣時間：{get_tw_time().strftime('%Y-%m-%d %H:%M:%S')}")
     if 'input_pid' not in st.session_state: st.session_state.input_pid = ""
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
-    
-    # 🔥 新增這一行：初始化計數器 (用來強制重整游標焦點)
     if 'scan_key' not in st.session_state: st.session_state.scan_key = 0
 
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
+    
     with tab1:
         col_scan, col_status = st.columns([1.5, 1])
 
@@ -384,7 +335,6 @@ elif st.session_state.page == 'checkin':
                 if last and (now - last).total_seconds() < 1: 
                     st.warning(f"⏳ 刷卡過快"); st.session_state.input_pid = ""; return
                 
-                # 強制重讀資料
                 load_data_from_sheet.clear()
                 df_m = load_data_from_sheet("members")
                 df_l = load_data_from_sheet("logs")
@@ -411,19 +361,20 @@ elif st.session_state.page == 'checkin':
                         else: st.toast(f"🏠 辛苦了 {name} 簽退成功！", icon="✅")
                 else: st.error("❌ 查無此人")
                 
-                # 清空輸入框並讓計數器 +1 (這會強制更新下方的 Script)
                 st.session_state.input_pid = ""
                 st.session_state.scan_key += 1
 
             st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-            # 🔥 修正版：改用 scan_key 計數器，完全不需要 datetime 或 time，保證不報錯
             components.html(f"""
                 <script>
-                    const input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
-                    if (input) input.focus();
+                    var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
+                    if (input) {{
+                        input.focus();
+                        input.value = '';
+                    }}
                 </script>
-            """, height=0, width=0)
+            """, height=0, width=0, key=f"focus_{st.session_state.scan_key}")
             
             st.markdown('</div>', unsafe_allow_html=True)
 
