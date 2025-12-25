@@ -400,13 +400,16 @@ elif st.session_state.page == 'checkin':
             # 自動 Focus 的 JavaScript (移除 width=0 以避免 TypeError)
             components.html(f"""
                 <script>
+                  setTimeout(() => {{
                     var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
                     if (input) {{
-                        input.focus();
-                        input.value = '';
+                      input.focus();
+                      // ⚠️ 不建議清空，會害掃描內容被你自己清掉
+                      // input.value = '';
                     }}
+                  }}, 50);
                 </script>
-            """, height=0, key=f"focus_{st.session_state.scan_key}")
+            """, height=0)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
