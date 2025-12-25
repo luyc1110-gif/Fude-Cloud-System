@@ -45,7 +45,7 @@ div[data-testid="column"] {
 div[data-testid="column"]:hover {
     transform: translateY(-8px);
     box-shadow: 0 15px 30px rgba(0,0,0,0.12);
-    border-color: #ddd;
+    border-color: #968e35;
     /* 如果想要滑鼠移過去變色，可以加這一行：
        background-color: #968e35; 
     */
