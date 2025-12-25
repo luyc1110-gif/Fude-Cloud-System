@@ -342,7 +342,7 @@ elif st.session_state.page == 'checkin':
         col_scan, col_status = st.columns([1.5, 1])
 
         with col_scan:
-            st.markdown('<div style="background:white; padding:20px; border-radius:20px; border:1px solid #ddd; margin-bottom:20px;">', unsafe_allow_html=True)
+            st.markdown('<div style="background:#F8F9FA; padding:20px; border-radius:20px; border:1px solid #eee; margin-bottom:20px;">', unsafe_allow_html=True)
             st.markdown("#### ⚡️ 掃描簽到/退")
             
             c_act, c_note = st.columns([1, 2])
@@ -365,7 +365,6 @@ elif st.session_state.page == 'checkin':
                 if last and (now - last).total_seconds() < 1: 
                     st.warning(f"⏳ 刷卡過快"); st.session_state.input_pid = ""; return
                 
-                # 強制重讀資料
                 load_data_from_sheet.clear()
                 df_m = load_data_from_sheet("members")
                 df_l = load_data_from_sheet("logs")
@@ -392,24 +391,11 @@ elif st.session_state.page == 'checkin':
                         else: st.toast(f"🏠 辛苦了 {name} 簽退成功！", icon="✅")
                 else: st.error("❌ 查無此人")
                 
-                # 清空輸入框並讓計數器 +1 (這會強制更新下方的 Script)
                 st.session_state.input_pid = ""
-                st.session_state.scan_key += 1
-                st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
+
+            # 🔥 完全移除 components.html 自動對焦代碼，確保不報錯
+            st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-            # 自動 Focus 的 JavaScript (移除 width=0 以避免 TypeError)
-            components.html(f"""
-                <script>
-                  setTimeout(() => {{
-                    var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
-                    if (input) {{
-                      input.focus();
-                      // ⚠️ 不建議清空，會害掃描內容被你自己清掉
-                      // input.value = '';
-                    }}
-                  }}, 50);
-                </script>
-            """, height=0)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
