@@ -12,29 +12,33 @@ st.set_page_config(
 )
 
 # =========================================================
-# 1) CSS 魔術：讓整張卡片變成可點擊的按鈕
+# 1) CSS 魔術：強制亮色模式 + 卡片按鈕
 # =========================================================
 st.markdown("""
 <style>
+/* 🔥🔥🔥 關鍵修正：強制將背景設為亮色，忽略系統深色模式 🔥🔥🔥 */
+.stApp {
+    background-color: #F0F2F5 !important;
+    color: #333333 !important;
+}
+
 /* 隱藏預設側邊欄 */
 [data-testid="stSidebar"] { display: none; }
 .block-container { padding-top: 2rem; max-width: 1200px; }
 
 /* --- 卡片容器樣式 --- */
-/* 我們利用 CSS 選擇器，把首頁的三個 column 變成卡片外觀 */
 div[data-testid="column"] {
-    background-color: white;
+    background-color: white; /* 卡片本身是白色 */
     border-radius: 20px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     border: 1px solid #eee;
-    padding: 0px !important; /* 讓圖片可以滿版 */
-    overflow: hidden;        /* 圓角內的內容不溢出 */
+    padding: 0px !important;
+    overflow: hidden;
     transition: transform 0.3s, box-shadow 0.3s;
-    position: relative;      /* 為了讓按鈕可以絕對定位覆蓋 */
-    height: 100%;            /* 等高 */
+    position: relative;
+    height: 100%;
 }
 
-/* 滑鼠移過去的特效 */
 div[data-testid="column"]:hover {
     transform: translateY(-8px);
     box-shadow: 0 15px 30px rgba(0,0,0,0.12);
@@ -54,7 +58,7 @@ div[data-testid="column"]:hover {
 .card-img-box img {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* 讓圖片自動填滿不變形 */
+    object-fit: cover;
 }
 
 /* --- 文字內容區域 --- */
@@ -66,7 +70,6 @@ div[data-testid="column"]:hover {
     font-size: 1.5rem;
     font-weight: 900;
     margin-bottom: 10px;
-    color: #333;
 }
 .card-desc {
     font-size: 1rem;
@@ -74,21 +77,20 @@ div[data-testid="column"]:hover {
     line-height: 1.5;
 }
 
-/* --- 這是關鍵：透明按鈕覆蓋術 --- */
-/* 把按鈕拉大，覆蓋住整個 column，並設為透明 */
+/* --- 透明按鈕覆蓋術 --- */
 div[data-testid="column"] [data-testid="stButton"] {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 10; /* 確保按鈕在最上層 */
+    z-index: 10;
     margin: 0;
 }
 div[data-testid="column"] [data-testid="stButton"] button {
     width: 100%;
     height: 100%;
-    opacity: 0; /* 透明度 0 = 看不見 */
+    opacity: 0;
     border: none;
     cursor: pointer;
 }
