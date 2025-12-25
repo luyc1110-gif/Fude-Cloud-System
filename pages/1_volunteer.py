@@ -408,7 +408,6 @@ elif st.session_state.page == 'checkin':
                     }}
                 </script>
             """, height=0, width=0, key=f"focus_{st.session_state.scan_key}")
-            
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
