@@ -413,7 +413,7 @@ elif st.session_state.page == 'checkin':
 
             st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-            # 🔥 關鍵修正：加入 key=time.time()，強迫瀏覽器每次都執行「回到輸入框」的動作
+            # 🔥 修正版：改用 datetime 來產生亂數 key，避免 time 變數名稱衝突
             components.html(f"""
                 <script>
                     var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
@@ -422,7 +422,7 @@ elif st.session_state.page == 'checkin':
                         input.value = '';
                     }}
                 </script>
-            """, height=0, width=0, key=f"focus_{int(time.time()*1000)}")
+            """, height=0, width=0, key=f"focus_{datetime.now().timestamp()}")
             
             st.markdown('</div>', unsafe_allow_html=True)
 
