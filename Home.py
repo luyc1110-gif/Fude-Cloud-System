@@ -44,7 +44,7 @@ div[data-testid="column"] {
 /* 滑鼠移過去時的特效（會稍微浮起來） */
 div[data-testid="column"]:hover {
     transform: translateY(-8px);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.12);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.5);
     border-color: #4A148C;
     /* 如果想要滑鼠移過去變色，可以加這一行：
        background-color: #968e35; 
