@@ -352,6 +352,9 @@ elif st.session_state.page == 'checkin':
     st.caption(f"📅 台灣時間：{get_tw_time().strftime('%Y-%m-%d %H:%M:%S')}")
     if 'input_pid' not in st.session_state: st.session_state.input_pid = ""
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
+    
+    # 🔥 新增這一行：初始化計數器 (用來強制重整游標焦點)
+    if 'scan_key' not in st.session_state: st.session_state.scan_key = 0
 
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
     with tab1:
@@ -378,7 +381,6 @@ elif st.session_state.page == 'checkin':
                 
                 now = get_tw_time()
                 last = st.session_state['scan_cooldowns'].get(pid)
-                # 防止連點 (縮短為 1 秒)
                 if last and (now - last).total_seconds() < 1: 
                     st.warning(f"⏳ 刷卡過快"); st.session_state.input_pid = ""; return
                 
@@ -405,15 +407,17 @@ elif st.session_state.page == 'checkin':
                         save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
                         st.session_state['scan_cooldowns'][pid] = now
                         
-                        # 這裡的 icon 會自動配合我們剛剛改好的 CSS 變黑字
                         if action == "簽到": st.toast(f"👋 歡迎 {name} 簽到成功！", icon="✅")
                         else: st.toast(f"🏠 辛苦了 {name} 簽退成功！", icon="✅")
                 else: st.error("❌ 查無此人")
+                
+                # 清空輸入框並讓計數器 +1 (這會強制更新下方的 Script)
                 st.session_state.input_pid = ""
+                st.session_state.scan_key += 1
 
             st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-            # 🔥 修正版：改用 datetime 來產生亂數 key，避免 time 變數名稱衝突
+            # 🔥 修正版：改用 scan_key 計數器，完全不需要 datetime 或 time，保證不報錯
             components.html(f"""
                 <script>
                     var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
@@ -422,7 +426,8 @@ elif st.session_state.page == 'checkin':
                         input.value = '';
                     }}
                 </script>
-            """, height=0, width=0, key=f"focus_{datetime.now().timestamp()}")
+            """, height=0, width=0, key=f"focus_{st.session_state.scan_key}")
+            
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
@@ -434,7 +439,6 @@ elif st.session_state.page == 'checkin':
                 count = len(present_df)
                 st.markdown(f"<div style='font-size:2rem; font-weight:bold; color:#4A148C; margin-bottom:10px;'>共 {count} 人</div>", unsafe_allow_html=True)
                 for idx, row in present_df.iterrows():
-                    # 🔥 美化列表：改成大字體卡片
                     st.markdown(f"""
                     <div style="background:white; padding:15px; border-radius:15px; border-left: 8px solid #4A148C; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
