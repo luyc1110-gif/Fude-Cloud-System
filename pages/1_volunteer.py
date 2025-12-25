@@ -23,7 +23,7 @@ BG_MAIN = "#F0F2F5"
 TEXT    = "#212121"
 
 # =========================================================
-# 1) CSS 樣式 (V17.0 顯色+導航優化)
+# 1) CSS 樣式 (V17.0 顯色+導航優化+Toast修復)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -102,6 +102,22 @@ div[data-baseweb="tab"] {{
 }}
 div[data-baseweb="tab"][aria-selected="true"] {{
     background-color: {PRIMARY} !important; color: white !important; border: 1px solid {PRIMARY};
+}}
+
+/* 🔥 這裡就是針對 Toast 彈出視窗的強制顯色修正 🔥 */
+div[data-baseweb="toast"] {{
+    background-color: #FFFFFF !important; /* 強制白底 */
+    color: #000000 !important;             /* 強制黑字 */
+    font-size: 1.25rem !important;         /* 字體放大 */
+    font-weight: 900 !important;           /* 字體加粗 */
+    border: 3px solid {PRIMARY} !important; /* 加上明顯的紫色邊框 */
+    border-radius: 15px !important;        /* 圓角 */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important; /* 加上陰影 */
+    padding: 15px 20px !important;
+}}
+div[data-baseweb="toast"] div {{
+    align-items: center !important;
+    gap: 10px !important;
 }}
 </style>
 """, unsafe_allow_html=True)
