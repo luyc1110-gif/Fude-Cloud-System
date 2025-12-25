@@ -69,7 +69,7 @@ div[data-testid="column"]:hover {
 
 /* --- 文字內容區域 --- */
 .card-content {
-    padding: 25px 50px 40px 20px;
+    padding: 25px 1200px 40px 20px;
     text-align: center;
 }
 .card-title {
