@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta, timezone
 import gspread
 import time
 import os
-import streamlit.components.v1 as components  # 新增：用於自動對焦的元件
+import streamlit.components.v1 as components
 
 # =========================================================
 # 0) 系統設定
@@ -23,7 +23,7 @@ BG_MAIN = "#F0F2F5"
 TEXT    = "#212121"
 
 # =========================================================
-# 1) CSS 樣式 (V17.0 顯色+導航優化)
+# 1) CSS 樣式
 # =========================================================
 st.markdown(f"""
 <style>
@@ -37,7 +37,6 @@ html, body, [class*="css"], div, p, span, li, ul {{
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 輸入框與選單顯色修復 */
 .stTextInput input, .stDateInput input, .stTimeInput input {{
     background-color: #FFFFFF !important;
     color: #000000 !important;
@@ -60,7 +59,6 @@ li[role="option"]:hover, div[role="option"]:hover {{ background-color: #E1BEE7 !
 
 label {{ color: {PRIMARY} !important; font-weight: 900 !important; font-size: 1.1rem !important; }}
 
-/* 按鈕 */
 div[data-testid="stButton"] > button {{
     width: 100%; background-color: white !important; color: {PRIMARY} !important;
     border: 2px solid {PRIMARY} !important; border-radius: 15px !important;
@@ -76,7 +74,6 @@ div[data-testid="stFormSubmitButton"] > button {{
     color: #FFFFFF !important; font-weight: 900 !important; border: none !important;
 }}
 
-/* 卡片 */
 div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderContent, div[data-testid="stExpander"] details {{
     background-color: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);
     padding: 25px; margin-bottom: 20px; border: 1px solid white;
@@ -191,18 +188,12 @@ def get_present_volunteers(logs_df):
     """計算目前場內有哪些人（最後動作為簽到者）"""
     if logs_df.empty: return pd.DataFrame()
     today_str = get_tw_time().strftime("%Y-%m-%d")
-    # 篩選今日紀錄
     today_logs = logs_df[logs_df['日期'] == today_str].copy()
     if today_logs.empty: return pd.DataFrame()
     
-    # 確保按時間排序
     today_logs['dt'] = pd.to_datetime(today_logs['日期'] + ' ' + today_logs['時間'])
     today_logs = today_logs.sort_values('dt')
-    
-    # 抓取每個人最後一筆狀態
     latest_status = today_logs.groupby('身分證字號').last().reset_index()
-    
-    # 篩選出最後動作是 "簽到" 的人
     present = latest_status[latest_status['動作'] == '簽到']
     return present[['姓名', '時間', '活動內容']]
 
@@ -213,7 +204,6 @@ if 'page' not in st.session_state: st.session_state.page = 'home'
 
 def render_nav():
     st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-    # 內頁導航，只回到志工首頁
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         if st.button("🏠 志工首頁", use_container_width=True): st.session_state.page = 'home'; st.rerun()
@@ -229,7 +219,6 @@ def render_nav():
 # 4) Pages
 # =========================================================
 if st.session_state.page == 'home':
-    # 🔥 首頁上方增加「回系統大廳」
     c_back, c_empty = st.columns([1, 4])
     with c_back:
         if st.button("🚪 回系統大廳"): st.switch_page("Home.py")
@@ -238,47 +227,23 @@ if st.session_state.page == 'home':
     
     col_spacer_l, c1, c2, c3, col_spacer_r = st.columns([1.5, 1.5, 1.5, 1.5, 0.5])
     with c1:
-        # --- 1. 圖示部分 (保持不動) ---
-        if os.path.exists("icon_checkin.png"): 
-            st.image("icon_checkin.png", width=120)
-        else: 
-            st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
-        
-        # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
+        if os.path.exists("icon_checkin.png"): st.image("icon_checkin.png", width=120)
+        else: st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
         sub_spacer, sub_button = st.columns([0.2, 3.8]) 
-        
         with sub_button:
-            if st.button("智能打卡站", key="home_btn1_fixed"): 
-                st.session_state.page = 'checkin'
-                st.rerun()
+            if st.button("智能打卡站", key="home_btn1_fixed"): st.session_state.page = 'checkin'; st.rerun()
     with c2:
-        # --- 1. 圖示部分 (保持不動) ---
-        if os.path.exists("icon_members.png"): 
-            st.image("icon_members.png", width=120)
-        else: 
-            st.markdown("<div style='text-align:center; font-size:60px;'>📋</div>", unsafe_allow_html=True)
-        
-        # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
+        if os.path.exists("icon_members.png"): st.image("icon_members.png", width=120)
+        else: st.markdown("<div style='text-align:center; font-size:60px;'>📋</div>", unsafe_allow_html=True)
         sub_spacer, sub_button = st.columns([0.2, 3.8]) 
-        
         with sub_button:
-            if st.button("志工名冊", key="home_btn2_fixed"): 
-                st.session_state.page = 'members'
-                st.rerun()
+            if st.button("志工名冊", key="home_btn2_fixed"): st.session_state.page = 'members'; st.rerun()
     with c3:
-        # --- 1. 圖示部分 (保持不動) ---
-        if os.path.exists("icon_report.png"): 
-            st.image("icon_report.png", width=120)
-        else: 
-            st.markdown("<div style='text-align:center; font-size:60px;'>📊</div>", unsafe_allow_html=True)
-        
-        # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
+        if os.path.exists("icon_report.png"): st.image("icon_report.png", width=120)
+        else: st.markdown("<div style='text-align:center; font-size:60px;'>📊</div>", unsafe_allow_html=True)
         sub_spacer, sub_button = st.columns([0.2, 3.8]) 
-        
         with sub_button:
-            if st.button("數據分析", key="home_btn3_fixed"): 
-                st.session_state.page = 'report'
-                st.rerun()
+            if st.button("數據分析", key="home_btn3_fixed"): st.session_state.page = 'report'; st.rerun()
     
     st.markdown("---")
     logs = load_data_from_sheet("logs")
@@ -322,10 +287,8 @@ elif st.session_state.page == 'checkin':
 
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
     
-    # ------------------
-    # TAB 1: 現場打卡 (修復版)
-    # ------------------
     with tab1:
+        # 分左右欄：左邊掃描，右邊顯示在場人員
         col_scan, col_status = st.columns([1.5, 1])
 
         with col_scan:
@@ -349,7 +312,6 @@ elif st.session_state.page == 'checkin':
                 
                 now = get_tw_time()
                 last = st.session_state['scan_cooldowns'].get(pid)
-                # 防止連點 (2秒冷卻)
                 if last and (now - last).total_seconds() < 2: 
                     st.warning(f"⏳ 刷卡過快，請稍候"); st.session_state.input_pid = ""; return
                 
@@ -368,7 +330,6 @@ elif st.session_state.page == 'checkin':
                         today = now.strftime("%Y-%m-%d")
                         t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
                         
-                        # 自動判斷 簽到 或是 簽退
                         action = "簽到"
                         if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": 
                             action = "簽退"
@@ -377,17 +338,13 @@ elif st.session_state.page == 'checkin':
                         save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
                         st.session_state['scan_cooldowns'][pid] = now
                         
-                        if action == "簽到":
-                            st.toast(f"✅ {name} 簽到成功！", icon="👋")
-                        else:
-                            st.toast(f"✅ {name} 簽退成功！", icon="🏠")
+                        if action == "簽到": st.toast(f"✅ {name} 簽到成功！", icon="👋")
+                        else: st.toast(f"✅ {name} 簽退成功！", icon="🏠")
                 else: 
                     st.error("❌ 查無此人")
                 
-                # 清空輸入框
                 st.session_state.input_pid = ""
 
-            # 輸入框 (綁定 Enter 觸發 callback)
             st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
             # JS 自動 Focus
