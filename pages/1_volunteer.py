@@ -104,7 +104,7 @@ div[data-baseweb="tab"][aria-selected="true"] {{
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic
+# 2) Logic & Helpers
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 ALL_CATEGORIES = ["祥和志工", "關懷據點週二志工", "關懷據點週三志工", "環保志工", "臨時志工"]
@@ -219,6 +219,7 @@ def render_nav():
 # 4) Pages
 # =========================================================
 if st.session_state.page == 'home':
+    # 🔥 首頁區塊
     c_back, c_empty = st.columns([1, 4])
     with c_back:
         if st.button("🚪 回系統大廳"): st.switch_page("Home.py")
@@ -279,6 +280,7 @@ if st.session_state.page == 'home':
                 st.markdown(f"""<div class="dash-card"><div class="dash-label">{cat.replace('志工','')}</div><div class="dash-value">{count} <span style="font-size:1rem;color:#888;">人</span></div><div class="dash-sub">平均 {avg_age} 歲</div></div>""", unsafe_allow_html=True)
 
 elif st.session_state.page == 'checkin':
+    # 🔥 打卡頁面
     render_nav()
     st.markdown("## ⏰ 智能打卡站")
     st.caption(f"📅 台灣時間：{get_tw_time().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -378,6 +380,7 @@ elif st.session_state.page == 'checkin':
                 st.info("目前無人簽到中")
 
     with tab2:
+        # 補登作業
         df_m = load_data_from_sheet("members")
         if not df_m.empty:
             active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)]
@@ -404,12 +407,14 @@ elif st.session_state.page == 'checkin':
                     save_data_to_sheet(pd.concat([logs, pd.DataFrame(new_rows)], ignore_index=True), "logs")
                     st.success(f"已補登 {len(names)} 筆資料")
     with tab3:
+        # 紀錄修改
         logs = load_data_from_sheet("logs")
         if not logs.empty:
             edited = st.data_editor(logs, num_rows="dynamic", use_container_width=True)
             if st.button("💾 儲存修改"): save_data_to_sheet(edited, "logs"); st.success("已更新")
 
 elif st.session_state.page == 'members':
+    # 🔥 志工名冊
     render_nav()
     st.markdown("## 📋 志工名冊管理")
     df = load_data_from_sheet("members")
@@ -466,6 +471,7 @@ elif st.session_state.page == 'members':
             st.data_editor(retired_df[cols], use_container_width=True, num_rows="dynamic", key="editor_retired")
 
 elif st.session_state.page == 'report':
+    # 🔥 數據分析
     render_nav()
     st.markdown("## 📊 數據分析")
     logs = load_data_from_sheet("logs")
