@@ -100,29 +100,40 @@ div[data-testid="column"]:hover {
     margin-top: auto; /* 把按鈕推到底部 */
 }
 
-/* --- 🔥🔥🔥 [關鍵修正] 透明按鈕覆蓋術 (強力版) 🔥🔥🔥 --- */
+/* --- 🔥🔥🔥 [覆蓋點擊] 更強韌版：支援新版 stButton DOM + 解決圖片吃點擊 --- */
 
-/* 1. 針對按鈕的外框 (Wrapper) */
-div[data-testid="column"] .stButton {
-    position: absolute !important; /* 強制浮動 */
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    z-index: 99 !important; /* 確保在最上層 */
-    margin: 0 !important;
-    padding: 0 !important;
-    display: block !important;
+/* 先讓卡片內所有內容不吃點擊（點哪都會穿透） */
+div[data-testid="column"] .card-img-box,
+div[data-testid="column"] .card-content,
+div[data-testid="column"] img,
+div[data-testid="column"] [data-testid="stImage"] {
+    pointer-events: none !important;
 }
 
-/* 2. 針對按鈕本體 (Button) */
-div[data-testid="column"] .stButton button {
+/* Streamlit 按鈕 wrapper：舊版 .stButton + 新版 data-testid="stButton" 都抓 */
+div[data-testid="column"] .stButton,
+div[data-testid="column"] div[data-testid="stButton"] {
+    position: absolute !important;
+    inset: 0 !important;          /* top:0; right:0; bottom:0; left:0; */
     width: 100% !important;
     height: 100% !important;
-    opacity: 0 !important; /* 變成透明 */
+    z-index: 9999 !important;     /* 壓過圖片/內容 */
+    margin: 0 !important;
+    padding: 0 !important;
+    pointer-events: auto !important; /* ✅ 只有它能吃點擊 */
+}
+
+/* 按鈕本體：透明、全覆蓋 */
+div[data-testid="column"] .stButton button,
+div[data-testid="column"] div[data-testid="stButton"] button {
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
     border: none !important;
+    background: transparent !important;
     cursor: pointer !important;
-    background-color: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -169,16 +180,18 @@ cols = st.columns(3)
 for i, col in enumerate(cols):
     sys = systems[i]
     with col:
-        # 1. 圖片
+        # 1. 圖片（統一包在 card-img-box）
         if os.path.exists(sys["img_file"]):
+            st.markdown("<div class='card-img-box'>", unsafe_allow_html=True)
             st.image(sys["img_file"], use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.markdown(f"""
             <div class="card-img-box" style="background-color: {sys['color']}15;">
                 <span style="font-size: 5rem;">{sys['icon']}</span>
             </div>
             """, unsafe_allow_html=True)
-        
+            
         # 2. 內容 + 偽裝按鈕
         st.markdown(f"""
         <div class="card-content">
