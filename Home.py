@@ -28,16 +28,16 @@ st.markdown("""
 
 /* --- 🔥 2. 這裡是【三個按鈕卡片】的底色 --- */
 div[data-testid="column"] {
-    background-color: #f0f0f0; /* 建議用白色，跟背景做出對比 */
+    background-color: #FFFFFF; /* 建議用白色，跟背景做出對比 */
     
     /* 以下是卡片陰影與外框設定 */
     border-radius: 20px;
     box-shadow: 0 4px 30px rgba(0,0,0,0.5);
-    border: 1px solid #eee;
+    border: 5px solid #eee;
     padding: 0px !important;
     overflow: hidden;
     transition: transform 0.3s, box-shadow 0.3s;
-    position: relative;
+    position: relative
     height: 100%;
 }
 
@@ -45,7 +45,7 @@ div[data-testid="column"] {
 div[data-testid="column"]:hover {
     transform: translateY(-8px);
     box-shadow: 0 15px 30px rgba(0,0,0,0.12);
-    border-color: #968e35;
+    border-color: #4A148C;
     /* 如果想要滑鼠移過去變色，可以加這一行：
        background-color: #968e35; 
     */
