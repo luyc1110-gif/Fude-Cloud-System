@@ -112,15 +112,65 @@ section[data-testid="stSidebar"] button:hover {{
 .dash-value {{ font-size: 2.2rem; color: {PRIMARY} !important; font-weight: 900; margin: 10px 0; }}
 .dash-sub {{ font-size: 0.95rem; color: #666 !important; line-height: 1.6; }}
 
-/* 輸入框優化 */
-.stTextInput input, .stDateInput input, .stTimeInput input, div[data-baseweb="select"] > div {{
-    background-color: #F8F9FA !important; /* 微灰底 */
+/* --------------------------------------------------------------------------
+   🔥 1. 下拉選單 (Selectbox) 配色設定
+   -------------------------------------------------------------------------- */
+/* 主框 (還沒點開時) */
+div[data-baseweb="select"] > div {{
+    background-color: #FFFFFF !important;  /* 🟢 這裡改背景色 (目前白) */
+    color: #000000 !important;             /* 🟢 這裡改字體色 (目前黑) */
+    border: 2px solid #E0E0E0 !important;
+    border-radius: 12px !important;
+}}
+/* 主框內的文字 */
+div[data-baseweb="select"] span {{
+    color: #000000 !important;             /* 🟢 確保選到的文字是黑色 */
+}}
+/* 點開後的選單列表 (背景) */
+ul[data-baseweb="menu"] {{
+    background-color: #FFFFFF !important;  /* 🟢 下拉清單背景色 */
+}}
+/* 選項 (個別項目) */
+li[role="option"] {{
+    color: #000000 !important;             /* 🟢 選項字體色 */
+    background-color: #FFFFFF !important;  /* 🟢 選項背景色 */
+}}
+/* 滑鼠移到選項上的效果 (Hover) */
+li[role="option"]:hover {{
+    background-color: #F3E5F5 !important;  /* 🟣 滑鼠移上去變淡紫色 */
+    color: {PRIMARY} !important;           /* 🟣 字變深紫 */
+}}
+/* 輸入框樣式 (一般文字框) */
+.stTextInput input, .stDateInput input, .stTimeInput input {{
+    background-color: #F8F9FA !important;
     border: 1px solid #E0E0E0 !important;
     border-radius: 12px !important;
     color: #333 !important;
 }}
 
-/* Toast 美化 */
+/* --------------------------------------------------------------------------
+   🔥 2 & 3. 按鈕配色：確認新增 (Submit) & 下載報表 (Download)
+   -------------------------------------------------------------------------- */
+div[data-testid="stFormSubmitButton"] > button, 
+div[data-testid="stDownloadButton"] > button {{
+    background-color: {PRIMARY} !important; /* 🟢 按鈕背景色 (目前深紫) */
+    color: #FFFFFF !important;              /* ⚪ 按鈕字體色 (目前白) */
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 900 !important;
+    padding: 10px 20px !important;
+    transition: all 0.2s;
+}}
+/* 按鈕滑鼠移過去的效果 */
+div[data-testid="stFormSubmitButton"] > button:hover, 
+div[data-testid="stDownloadButton"] > button:hover {{
+    background-color: {ACCENT} !important;  /* 🟣 變亮一點的紫色 */
+    color: #FFFFFF !important;
+    transform: translateY(-2px);            /* 微微浮起 */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}}
+
+/* Toast 訊息框 */
 div[data-baseweb="toast"] {{
     background-color: #FFFFFF !important;
     border: 3px solid {PRIMARY} !important;
@@ -128,10 +178,7 @@ div[data-baseweb="toast"] {{
     padding: 15px !important;
     box-shadow: 0 5px 20px rgba(0,0,0,0.3) !important;
 }}
-div[data-baseweb="toast"] * {{
-    color: #000000 !important;
-    font-weight: 900 !important;
-}}
+div[data-baseweb="toast"] * {{ color: #000000 !important; font-weight: 900 !important; }}
 </style>
 """, unsafe_allow_html=True)
 
