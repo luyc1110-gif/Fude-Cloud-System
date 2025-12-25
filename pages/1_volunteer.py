@@ -397,7 +397,7 @@ elif st.session_state.page == 'checkin':
                 st.session_state.scan_key += 1
                 st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-            # 自動 Focus 的 JavaScript
+            # 自動 Focus 的 JavaScript (移除 width=0 以避免 TypeError)
             components.html(f"""
                 <script>
                     var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
@@ -406,7 +406,7 @@ elif st.session_state.page == 'checkin':
                         input.value = '';
                     }}
                 </script>
-            """, height=0, width=0, key=f"focus_{st.session_state.scan_key}")
+            """, height=0, key=f"focus_{st.session_state.scan_key}")
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
