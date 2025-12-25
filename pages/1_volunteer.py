@@ -395,7 +395,6 @@ elif st.session_state.page == 'checkin':
                 # 清空輸入框並讓計數器 +1 (這會強制更新下方的 Script)
                 st.session_state.input_pid = ""
                 st.session_state.scan_key += 1
-                
                 st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
             # 自動 Focus 的 JavaScript
