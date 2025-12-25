@@ -5,7 +5,7 @@ import gspread
 import time
 import os
 import plotly.express as px
-import random  # 🔥 用於生成隨機座標
+import random
 
 # =========================================================
 # 0) 系統設定
@@ -14,37 +14,36 @@ st.set_page_config(
     page_title="長輩關懷系統",
     page_icon="👴",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded", # 🔥 配合側邊欄設計，預設展開
 )
 
-# --- 🔒 安全登入門禁 (跨頁面同步) ---
+# --- 🔒 安全登入門禁 (保留您原本的邏輯) ---
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
     st.markdown("### 🔒 福德里管理系統 - 登入")
-    # type="password" 會讓輸入的字變成黑點，保護隱私
     pwd = st.text_input("請輸入管理員授權碼", type="password")
     
     if st.button("確認登入"):
-        # 從你剛剛改好的 secrets 中讀取密碼
         if pwd == st.secrets["admin_password"]:
             st.session_state.authenticated = True
             st.success("登入成功！正在跳轉...")
             st.rerun()
         else:
             st.error("授權碼錯誤，請重新輸入。")
-    st.stop() # 沒登入就攔截，不執行後面的程式碼
+    st.stop() 
 
+# =========================================================
+# 1) 配色與 CSS 樣式 (黃橙色系 + 懸浮卡片)
+# =========================================================
 TW_TZ = timezone(timedelta(hours=8))
-PRIMARY = "#4A148C"   
-ACCENT  = "#FF9800"   
-BG_MAIN = "#F0F2F5"   
-TEXT    = "#212121"   
+# 🔥 改為黃橙色系
+PRIMARY = "#EF6C00"   # 深橙色 (用於按鈕、重要文字)
+ACCENT  = "#FFA726"   # 亮橙黃 (用於漸層、輔助)
+BG_MAIN = "#F0F2F5"   # 淺灰底
+TEXT    = "#212121"   # 黑灰字
 
-# =========================================================
-# 1) CSS 樣式
-# =========================================================
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
@@ -53,49 +52,120 @@ html, body, [class*="css"], div, p, span, li, ul {{
     font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     color: {TEXT} !important;
 }}
-.stApp {{ background-color: {BG_MAIN}; }}
-[data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
-.block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 下拉選單與輸入框高對比 */
-.stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input, div[data-baseweb="select"] > div {{
-    background-color: #FFFFFF !important; 
-    color: #000000 !important;
-    border: 2px solid #9FA8DA !important; 
-    border-radius: 10px !important;
+/* 🔥 1. 整體背景 */
+.stApp {{
+    background-color: {BG_MAIN} !important;
+}}
+
+/* 🔥 2. 側邊欄背景 */
+section[data-testid="stSidebar"] {{
+    background-color: {BG_MAIN};
+    border-right: none;
+}}
+
+/* 🔥 3. 懸浮大卡片容器 */
+.block-container {{
+    background-color: #FFFFFF;
+    border-radius: 25px;
+    padding: 3rem 3rem !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    margin-top: 2rem; margin-bottom: 2rem;
+    max-width: 95% !important;
+}}
+
+/* 🔥 4. 修復 Header */
+header[data-testid="stHeader"] {{
+    display: block !important;
+    background-color: transparent !important;
+}}
+header[data-testid="stHeader"] .decoration {{ display: none; }}
+
+/* --- 側邊欄按鈕 (膠囊狀) --- */
+section[data-testid="stSidebar"] button {{
+    background-color: #FFFFFF !important;
+    color: #666 !important;
+    border: 1px solid transparent !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+    border-radius: 25px !important;
+    padding: 10px 0 !important;
     font-weight: 700 !important;
+    width: 100%; margin-bottom: 8px !important;
+    transition: all 0.2s;
 }}
-div[data-baseweb="select"] span, div[data-baseweb="select"] div {{ color: #000000 !important; }}
-div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{
-    background-color: #FFFFFF !important; color: #000000 !important; font-weight: 700 !important;
+section[data-testid="stSidebar"] button:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
+    color: {PRIMARY} !important;
+}}
+/* 選中狀態 (橙色漸層) */
+.nav-active {{
+    background: linear-gradient(135deg, {PRIMARY}, {ACCENT});
+    color: white !important;
+    padding: 12px 0; text-align: center; border-radius: 25px;
+    font-weight: 900; box-shadow: 0 4px 10px rgba(239, 108, 0, 0.3);
+    margin-bottom: 12px; cursor: default;
 }}
 
-/* 導航按鈕 */
-div[data-testid="stButton"] > button {{
-    width: 100%; background-color: white !important; color: {PRIMARY} !important;
-    border: 2px solid {PRIMARY} !important; border-radius: 15px !important;
-    font-weight: 900 !important; font-size: 1.1rem !important;
-    padding: 12px 0 !important; box-shadow: 0 4px 0px rgba(74, 20, 140, 0.1);
-}}
-
-.custom-card {{
-    background-color: white; border-radius: 20px; padding: 25px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid white;
-    width: 100%; margin-bottom: 20px;
-}}
+/* --- 內部統計小卡片 --- */
 .dash-card {{
-    background-color: white; padding: 15px; border-radius: 15px; border-left: 6px solid {ACCENT};
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px;
+    background-color: #F8F9FA; padding: 20px; border-radius: 15px;
+    border-left: 6px solid {ACCENT}; margin-bottom: 15px;
 }}
-.nav-container {{
-    background-color: white; padding: 15px; border-radius: 20px;
-    margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+.dash-label {{ font-size: 1.1rem; color: #444 !important; font-weight: bold; margin-bottom: 5px; }}
+.dash-value {{ font-size: 2.2rem; color: {PRIMARY} !important; font-weight: 900; margin: 10px 0; }}
+.dash-sub {{ font-size: 0.95rem; color: #666 !important; line-height: 1.6; }}
+
+/* --- 下拉選單與輸入框優化 --- */
+div[data-baseweb="select"] > div {{
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    border: 2px solid #E0E0E0 !important;
+    border-radius: 12px !important;
 }}
+div[data-baseweb="select"] span {{ color: #000000 !important; }}
+ul[data-baseweb="menu"] {{ background-color: #FFFFFF !important; }}
+li[role="option"] {{ color: #000000 !important; background-color: #FFFFFF !important; }}
+li[role="option"]:hover {{
+    background-color: #FFF3E0 !important; /* 淡橙色背景 */
+    color: {PRIMARY} !important;
+}}
+.stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
+    background-color: #F8F9FA !important;
+    border: 1px solid #E0E0E0 !important;
+    border-radius: 12px !important;
+    color: #333 !important;
+}}
+
+/* --- 按鈕樣式 (Form Submit & Download) --- */
+div[data-testid="stFormSubmitButton"] > button,
+div[data-testid="stDownloadButton"] > button {{
+    background-color: {PRIMARY} !important; color: #FFFFFF !important;
+    border: none !important; border-radius: 12px !important;
+    padding: 10px 20px !important;
+}}
+div[data-testid="stFormSubmitButton"] > button *, 
+div[data-testid="stDownloadButton"] > button * {{
+    color: #FFFFFF !important; font-weight: 900 !important;
+}}
+div[data-testid="stFormSubmitButton"] > button:hover,
+div[data-testid="stDownloadButton"] > button:hover {{
+    background-color: {ACCENT} !important;
+    transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}}
+
+/* Toast 訊息框 */
+div[data-baseweb="toast"] {{
+    background-color: #FFFFFF !important; border: 3px solid {PRIMARY} !important;
+    border-radius: 15px !important; padding: 15px !important;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3) !important;
+}}
+div[data-baseweb="toast"] * {{ color: #000000 !important; font-weight: 900 !important; }}
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic & Data
+# 2) Logic & Data (保留您原本的所有邏輯)
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 COURSE_HIERARCHY = {
@@ -148,54 +218,110 @@ def calculate_age(dob_str):
     except: return 0
 
 # =========================================================
-# 3) Navigation
+# 3) Navigation (側邊欄版)
 # =========================================================
 if 'page' not in st.session_state: st.session_state.page = 'home'
 
 def render_nav():
-    st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        if st.button("🏠 長輩首頁", use_container_width=True): st.session_state.page = 'home'; st.rerun()
-    with c2:
-        if st.button("📋 長輩名冊", use_container_width=True): st.session_state.page = 'members'; st.rerun()
-    with c3:
-        if st.button("🩸 據點報到", use_container_width=True): st.session_state.page = 'checkin'; st.rerun()
-    with c4:
-        if st.button("📊 統計數據", use_container_width=True): st.session_state.page = 'stats'; st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.sidebar:
+        # 標題區
+        st.markdown(f"<h2 style='color:{PRIMARY}; margin-bottom:5px; padding-left:10px;'>🏠 長輩關懷中心</h2>", unsafe_allow_html=True)
+        st.write("") 
+
+        # 1. 首頁
+        if st.session_state.page == 'home':
+            st.markdown('<div class="nav-active">📊 據點概況看板</div>', unsafe_allow_html=True)
+        else:
+            if st.button("📊 據點概況看板", key="nav_home", use_container_width=True):
+                st.session_state.page = 'home'; st.rerun()
+
+        # 2. 據點報到
+        if st.session_state.page == 'checkin':
+            st.markdown('<div class="nav-active">🩸 據點報到</div>', unsafe_allow_html=True)
+        else:
+            if st.button("🩸 據點報到", key="nav_checkin", use_container_width=True):
+                st.session_state.page = 'checkin'; st.rerun()
+
+        # 3. 長輩名冊
+        if st.session_state.page == 'members':
+            st.markdown('<div class="nav-active">📋 長輩名冊管理</div>', unsafe_allow_html=True)
+        else:
+            if st.button("📋 長輩名冊管理", key="nav_members", use_container_width=True):
+                st.session_state.page = 'members'; st.rerun()
+
+        # 4. 統計數據
+        if st.session_state.page == 'stats':
+            st.markdown('<div class="nav-active">📈 詳細統計報表</div>', unsafe_allow_html=True)
+        else:
+            if st.button("📈 詳細統計報表", key="nav_stats", use_container_width=True):
+                st.session_state.page = 'stats'; st.rerun()
+
+        st.markdown("---")
+        # 回大廳按鈕
+        if st.button("🚪 回系統大廳", key="nav_back", use_container_width=True):
+            st.switch_page("Home.py")
+        
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center; color:#999; font-size:0.8rem;'>Designed for Fude Community</div>", unsafe_allow_html=True)
 
 # =========================================================
 # 4) Pages
 # =========================================================
 if st.session_state.page == 'home':
-    c_back, c_empty = st.columns([1, 4])
-    with c_back:
-        if st.button("🚪 回系統大廳"): st.switch_page("Home.py")
-    st.markdown(f"<h1 style='text-align: center; color: {PRIMARY}; margin-bottom: 30px;'>福德里 - 關懷據點系統</h1>", unsafe_allow_html=True)
-    col_l, c1, c2, c3, col_r = st.columns([1.5, 2, 2, 2, 0.5])
-    with c1:
-        if st.button("📋 長輩名冊", key="h_m"): st.session_state.page = 'members'; st.rerun()
-    with c2:
-        if st.button("🩸 據點報到", key="h_c"): st.session_state.page = 'checkin'; st.rerun()
-    with c3:
-        if st.button("📊 統計數據", key="h_s"): st.session_state.page = 'stats'; st.rerun()
-    st.markdown("---")
+    render_nav()
+    st.markdown(f"<h2 style='color: {PRIMARY};'>📊 據點關懷概況</h2>", unsafe_allow_html=True)
+    
     logs, members = load_data("elderly_logs"), load_data("elderly_members")
-    this_year, today_str = get_tw_time().year, get_tw_time().strftime("%Y-%m-%d")
+    this_year = get_tw_time().year
+    today_str = get_tw_time().strftime("%Y-%m-%d")
+    
     year_count = len(logs[pd.to_datetime(logs['日期'], errors='coerce').dt.year == this_year]) if not logs.empty else 0
     today_count = len(logs[logs['日期'] == today_str]) if not logs.empty else 0
+    
     avg_age = round(members['出生年月日'].apply(calculate_age).mean(), 1) if not members.empty else 0
     male_count = len(members[members['性別'] == '男']) if not members.empty else 0
     female_count = len(members[members['性別'] == '女']) if not members.empty else 0
-    st.markdown(f"### 📅 據點數據看板 ({today_str})")
-    c_year, c_today = st.columns(2)
-    with c_year: st.markdown(f"""<div style="background: linear-gradient(135deg, #7E57C2 0%, #512DA8 100%); padding: 25px; border-radius: 15px; color: white; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 15px;"><div style="font-size: 1.1rem; opacity: 0.9; color: white !important;">📅 {this_year} 年度總服務人次</div><div style="font-size: 3rem; font-weight: 900; margin: 5px 0; color: white !important;">{year_count}</div></div>""", unsafe_allow_html=True)
-    with c_today: st.markdown(f"""<div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); padding: 25px; border-radius: 15px; color: white; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 15px;"><div style="font-size: 1.1rem; opacity: 0.9; color: white !important;">☀️ 今日服務人次</div><div style="font-size: 3rem; font-weight: 900; margin: 5px 0; color: white !important;">{today_count}</div></div>""", unsafe_allow_html=True)
+    total_members = len(members)
+
+    # 頂部漸層大看板 (橙色系)
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, {PRIMARY}, {ACCENT}); padding: 40px; border-radius: 20px; color: white; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 25px rgba(239, 108, 0, 0.3);">
+        <div style="font-size: 1.3rem; opacity: 0.9; color: white !important;">📅 {this_year} 年度 - 據點總服務人次</div>
+        <div style="font-size: 4rem; font-weight: 900; margin: 15px 0; color: white !important;">
+            {year_count} <span style="font-size: 1.5rem; color: white !important;">人次</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 數據小卡
     c1, c2, c3 = st.columns(3)
-    with c1: st.markdown(f"""<div class="dash-card"><div style="color:#666;font-weight:bold;">平均年齡</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{avg_age} 歲</div></div>""", unsafe_allow_html=True)
-    with c2: st.markdown(f"""<div class="dash-card"><div style="color:#666;font-weight:bold;">男性長輩</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{male_count} 人</div></div>""", unsafe_allow_html=True)
-    with c3: st.markdown(f"""<div class="dash-card"><div style="color:#666;font-weight:bold;">女性長輩</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{female_count} 人</div></div>""", unsafe_allow_html=True)
+    
+    with c1:
+        st.markdown(f"""
+        <div class="dash-card">
+            <div class="dash-label">☀️ 今日報到</div>
+            <div class="dash-value">{today_count} <span style="font-size:1rem;color:#888;">人次</span></div>
+            <div class="dash-sub">今日課程活動參與狀況</div>
+        </div>""", unsafe_allow_html=True)
+        
+    with c2:
+        st.markdown(f"""
+        <div class="dash-card">
+            <div class="dash-label">👥 目前長輩總數</div>
+            <div class="dash-value">{total_members} <span style="font-size:1rem;color:#888;">人</span></div>
+            <div class="dash-sub">已建檔之名冊總人數</div>
+        </div>""", unsafe_allow_html=True)
+        
+    with c3:
+        st.markdown(f"""
+        <div class="dash-card">
+            <div class="dash-label">🎂 平均年齡與分佈</div>
+            <div class="dash-value">{avg_age} <span style="font-size:1rem;color:#888;">歲</span></div>
+            <div class="dash-sub">
+                <span style="color:#1E88E5; font-weight:bold;">♂ 男 {male_count}</span>  / 
+                <span style="color:#E91E63; font-weight:bold;">♀ 女 {female_count}</span>
+            </div>
+        </div>""", unsafe_allow_html=True)
 
 elif st.session_state.page == 'members':
     render_nav()
@@ -218,14 +344,10 @@ elif st.session_state.page == 'members':
         df['年齡'] = df['出生年月日'].apply(calculate_age)
         st.data_editor(df[["姓名", "性別", "年齡", "電話", "地址", "身分證字號", "出生年月日", "備註"]], use_container_width=True, num_rows="dynamic", key="elder_editor")
 
-# =========================================================
-# 6) Page: Checkin (據點報到) - 完整修正版
-# =========================================================
 elif st.session_state.page == 'checkin':
     render_nav()
     st.markdown("## 🩸 據點報到與健康量測")
 
-    # --- 內部功能函式 (確保定義在 UI 之前) ---
     def check_health_alert(sbp, dbp, pulse):
         alerts = []
         if sbp >= 140 or dbp >= 90: alerts.append(f"⚠️ 血壓偏高 ({sbp}/{dbp})")
@@ -260,7 +382,6 @@ elif st.session_state.page == 'checkin':
         else:
             st.success(f"✅ {name} 報到成功！")
 
-    # --- 1. 今日課程設定 ---
     st.markdown('<div class="dash-card" style="border-left: 6px solid #FF9800;">', unsafe_allow_html=True)
     st.markdown("#### 1. 今日課程設定")
     c_main, c_sub, c_name = st.columns([1, 1, 1.5])
@@ -274,21 +395,17 @@ elif st.session_state.page == 'checkin':
     final_course_name = course_name if course_name.strip() else sub_cat
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- 2. 報到輸入區 ---
     st.markdown('<div class="dash-card">', unsafe_allow_html=True)
     st.markdown("#### 2. 長輩報到與量測輸入")
     
-    # 血壓與脈搏 (一組三個欄位是正常的：收縮、舒張、脈搏)
     c_bp1, c_bp2, c_bp3 = st.columns(3)
     sbp_val = c_bp1.number_input("收縮壓 (高壓)", min_value=50, max_value=250, value=120)
     dbp_val = c_bp2.number_input("舒張壓 (低壓)", min_value=30, max_value=150, value=80)
     pulse_val = c_bp3.number_input("脈搏", min_value=30, max_value=200, value=72)
 
-    # 切換報到方式
     tab1, tab2 = st.tabs(["🔍 掃描/輸入身分證", "📋 下拉選單選取"])
     
     with tab1:
-        # 注意：這裡不要加 on_change，完全靠按鈕觸發最安全
         input_pid = st.text_input("請掃描或輸入身分證字號", key="scan_pid_field")
         if st.button("確認報到 (身分證)", key="btn_do_scan"):
             if input_pid:
@@ -298,11 +415,7 @@ elif st.session_state.page == 'checkin':
     with tab2:
         df_m = load_data("elderly_members")
         if not df_m.empty:
-            member_options = [
-    f"{idx}. {row.姓名} ({row.身分證字號})"
-    for idx, row in enumerate(df_m.itertuples(index=False), start=1)
-]
-
+            member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
             selected_member = st.selectbox("請選擇長輩", ["--- 請選擇 ---"] + member_options)
             if st.button("確認報到 (選單)", key="btn_do_select"):
                 if selected_member != "--- 請選擇 ---":
@@ -313,9 +426,6 @@ elif st.session_state.page == 'checkin':
             st.warning("名冊中尚無資料")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # =========================================================
-    # 3. 今日報到名單 (新增：可編輯、可修改功能)
-    # =========================================================
     st.markdown("---")
     st.write("📋 今日已報到名單 (您可以直接點擊下方格子修改內容)：")
     
@@ -323,94 +433,46 @@ elif st.session_state.page == 'checkin':
     today_str = get_tw_time().strftime("%Y-%m-%d")
     
     if not logs.empty:
-        # 1. 篩選出今日名單，並轉成 DataFrame
         today_logs = logs[logs['日期'] == today_str].copy()
-        
         if not today_logs.empty:
-            # 2. 使用 data_editor 讓表格變為可編輯
-            # 這裡設定 num_rows="dynamic" 可以讓您手動刪除整行(點選行首按 Delete)
-            edited_df = st.data_editor(
-                today_logs,
-                column_order=['時間', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'],
-                use_container_width=True,
-                num_rows="dynamic",
-                key="today_checkin_editor"
-            )
-            
-            # 3. 儲存修改按鈕
+            edited_df = st.data_editor(today_logs, column_order=['時間', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'], use_container_width=True, num_rows="dynamic", key="today_checkin_editor")
             if st.button("💾 儲存名單修改"):
-                # 將「非今日」的資料與「修改後今日」的資料合併
                 other_logs = logs[logs['日期'] != today_str]
                 final_logs = pd.concat([other_logs, edited_df], ignore_index=True)
-                
                 if save_data(final_logs, "elderly_logs"):
-                    st.success("✅ 名單已更新至雲端！")
-                    time.sleep(1)
-                    st.rerun()
-        else:
-            st.info("今日尚無報到紀錄。")
-    else:
-        st.info("資料庫目前無任何紀錄。")
+                    st.success("✅ 名單已更新至雲端！"); time.sleep(1); st.rerun()
+        else: st.info("今日尚無報到紀錄。")
+    else: st.info("資料庫目前無任何紀錄。")
 
-    # =========================================================
-    # 4. 補登系統 (修正：確保日期時間精確寫入)
-    # =========================================================
     st.markdown("---")
     with st.expander("🕒 批次補登系統 (手動補錄過去資料)", expanded=False):
-        st.info("💡 補登完成後，若日期不是今天，請到「統計數據」分頁查看該日紀錄。")
-        
         df_m = load_data("elderly_members")
-        if df_m.empty:
-            st.warning("目前名冊中無長輩資料。")
+        if df_m.empty: st.warning("目前名冊中無長輩資料。")
         else:
             with st.form("manual_batch_form_new"):
                 c_date, c_time = st.columns(2)
-                # 確保這兩個變數在 submit 時被讀取
                 back_date = c_date.date_input("選擇補登日期", value=get_tw_time().date())
                 back_time = c_time.time_input("選擇補登時間", value=get_tw_time().time())
-                
-                member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" 
-                                for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
+                member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
                 selected_members = st.multiselect("選擇補登長輩 (多選)", options=member_options)
-                
                 c_s, c_d, c_p = st.columns(3)
                 b_sbp = c_s.number_input("補登收縮壓", value=120)
                 b_dbp = c_d.number_input("補登舒張壓", value=80)
                 b_pulse = c_p.number_input("補登脈搏", value=72)
-                
                 if st.form_submit_button("🚀 執行補登"):
-                    if not selected_members:
-                        st.error("請先選擇長輩！")
+                    if not selected_members: st.error("請先選擇長輩！")
                     else:
                         df_l = load_data("elderly_logs")
                         new_entries = []
-                        
-                        # 重要：強制轉為字串，確保寫入 Sheet 的是手選時間
                         s_date = back_date.strftime("%Y-%m-%d")
                         s_time = back_time.strftime("%H:%M:%S")
-                        
                         for label in selected_members:
                             target_pid = label.split("(")[-1].replace(")", "")
-                            # 從 label 中還原姓名
                             target_name = label.split(". ")[1].split(" (")[0]
-                            
-                            new_entries.append({
-                                "姓名": target_name,
-                                "身分證字號": target_pid,
-                                "日期": s_date,
-                                "時間": s_time,
-                                "課程分類": final_course_cat,
-                                "課程名稱": final_course_name,
-                                "收縮壓": b_sbp,
-                                "舒張壓": b_dbp,
-                                "脈搏": b_pulse
-                            })
-                        
+                            new_entries.append({"姓名": target_name, "身分證字號": target_pid, "日期": s_date, "時間": s_time, "課程分類": final_course_cat, "課程名稱": final_course_name, "收縮壓": b_sbp, "舒張壓": b_dbp, "脈搏": b_pulse})
                         updated_logs = pd.concat([df_l, pd.DataFrame(new_entries)], ignore_index=True)
                         if save_data(updated_logs, "elderly_logs"):
-                            st.success(f"✅ 已成功補登 {len(new_entries)} 筆紀錄 (時間：{s_time})")
-                            time.sleep(1)
-                            st.rerun()
+                            st.success(f"✅ 已成功補登 {len(new_entries)} 筆紀錄"); time.sleep(1); st.rerun()
 
 elif st.session_state.page == 'stats':
     render_nav()
@@ -419,7 +481,7 @@ elif st.session_state.page == 'stats':
     if members.empty or logs.empty: st.info("尚無數據")
     else:
         logs['dt'] = pd.to_datetime(logs['日期'], errors='coerce')
-        st.markdown('<div class="custom-card">', unsafe_allow_html=True)
+        st.markdown('<div class="dash-card">', unsafe_allow_html=True)
         d_range = st.date_input("📅 選擇統計區間", value=(date(date.today().year, date.today().month, 1), date.today()))
         st.markdown('</div>', unsafe_allow_html=True)
         if isinstance(d_range, tuple) and len(d_range) == 2:
@@ -437,31 +499,18 @@ elif st.session_state.page == 'stats':
                 unique_sessions['大分類'] = unique_sessions['課程分類'].apply(lambda x: x.split('-')[0] if '-' in x else x)
                 unique_sessions['子分類'] = unique_sessions['課程分類'].apply(lambda x: x.split('-')[1] if '-' in x else x)
 
-                # 🔥🔥 V29.0 靈動泡泡圖 (隨機散開 + 名稱在內) 🔥🔥
                 st.markdown("### 2. 課程場次占比 (靈動泡泡圖)")
                 main_cts = unique_sessions['大分類'].value_counts().reset_index()
                 main_cts.columns = ['類別', '場次']
                 
-                # 生成隨機座標
-                random.seed(42) # 固定種子讓每次重整位置不亂跳，但看起來是散的
+                random.seed(42)
                 main_cts['x_rnd'] = [random.uniform(0, 10) for _ in range(len(main_cts))]
                 main_cts['y_rnd'] = [random.uniform(0, 10) for _ in range(len(main_cts))]
                 main_cts['顯示標籤'] = main_cts['類別'] + '<br>' + main_cts['場次'].astype(str) + '次'
                 
-                fig_bubble = px.scatter(
-                    main_cts, x="x_rnd", y="y_rnd",
-                    size="場次", color="類別", text="顯示標籤",
-                    size_max=100, 
-                    color_discrete_sequence=px.colors.qualitative.Pastel
-                )
+                fig_bubble = px.scatter(main_cts, x="x_rnd", y="y_rnd", size="場次", color="類別", text="顯示標籤", size_max=100, color_discrete_sequence=px.colors.qualitative.Pastel)
                 fig_bubble.update_traces(textposition='middle center', textfont=dict(size=14, color='black', family="Noto Sans TC"))
-                fig_bubble.update_layout(
-                    showlegend=False, height=450, 
-                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title=""),
-                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title=""),
-                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                    margin=dict(t=20, b=20, l=20, r=20)
-                )
+                fig_bubble.update_layout(showlegend=False, height=450, xaxis=dict(showgrid=False, zeroline=False, showticklabels=False), yaxis=dict(showgrid=False, zeroline=False, showticklabels=False), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(t=20, b=20, l=20, r=20))
                 st.plotly_chart(fig_bubble, use_container_width=True)
 
                 c1, c2 = st.columns(2)
