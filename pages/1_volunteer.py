@@ -154,7 +154,7 @@ li[role="option"]:hover {{
 div[data-testid="stFormSubmitButton"] > button, 
 div[data-testid="stDownloadButton"] > button {{
     background-color: {PRIMARY} !important; /* 🟢 按鈕背景色 (目前深紫) */
-    color: #FFFFFF !important;              /* ⚪ 按鈕字體色 (目前白) */
+    color: #FFFF00 !important;              /* ⚪ 按鈕字體色 (目前白) */
     border: none !important;
     border-radius: 12px !important;
     font-weight: 900 !important;
