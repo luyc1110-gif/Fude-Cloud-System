@@ -32,7 +32,7 @@ div[data-testid="column"] {
     
     /* 以下是卡片陰影與外框設定 */
     border-radius: 20px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     border: 1px solid #eee;
     padding: 0px !important;
     overflow: hidden;
