@@ -337,7 +337,7 @@ elif st.session_state.page == 'checkin':
 
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
     with tab1:
-        # --- 版面配置：左邊掃描區，右邊即時狀態 ---
+        # 分左右欄：左邊掃描，右邊顯示在場人員
         col_scan, col_status = st.columns([1.5, 1])
 
         with col_scan:
@@ -351,7 +351,6 @@ elif st.session_state.page == 'checkin':
                 if raw_act in ["專案活動", "教育訓練"]: note = st.text_input("📝 請輸入活動名稱 (必填)", placeholder="例如：社區大掃除")
                 else: st.write("") 
 
-            # 定義處理邏輯
             def process_scan():
                 pid = st.session_state.input_pid.strip().upper()
                 if not pid: return
@@ -362,10 +361,12 @@ elif st.session_state.page == 'checkin':
                 
                 now = get_tw_time()
                 last = st.session_state['scan_cooldowns'].get(pid)
-                # 防止連點 (2秒冷卻)
-                if last and (now - last).total_seconds() < 2: 
-                    st.warning(f"⏳ 刷卡過快，請稍候"); st.session_state.input_pid = ""; return
+                # 防止連點 (縮短為 1 秒避免卡頓)
+                if last and (now - last).total_seconds() < 1: 
+                    st.warning(f"⏳ 刷卡過快"); st.session_state.input_pid = ""; return
                 
+                # 每次打卡時，強制重新讀取最新的名單，確保資料同步
+                load_data_from_sheet.clear()
                 df_m = load_data_from_sheet("members")
                 df_l = load_data_from_sheet("logs")
                 
@@ -379,9 +380,9 @@ elif st.session_state.page == 'checkin':
                         st.error(f"❌ {name} 已退出，無法打卡。")
                     else:
                         today = now.strftime("%Y-%m-%d")
+                        # 檢查今日紀錄來決定是簽到還是簽退
                         t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
                         
-                        # 自動判斷 簽到 或是 簽退
                         action = "簽到"
                         if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": 
                             action = "簽退"
@@ -390,27 +391,24 @@ elif st.session_state.page == 'checkin':
                         save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
                         st.session_state['scan_cooldowns'][pid] = now
                         
-                        if action == "簽到":
-                            st.toast(f"✅ {name} 簽到成功！", icon="👋")
-                        else:
-                            st.toast(f"✅ {name} 簽退成功！", icon="🏠")
+                        if action == "簽到": st.toast(f"✅ {name} 簽到成功！", icon="👋")
+                        else: st.toast(f"✅ {name} 簽退成功！", icon="🏠")
                 else: 
                     st.error("❌ 查無此人")
                 
-                # 清空輸入框
                 st.session_state.input_pid = ""
 
-            # 輸入框 (綁定 Enter 觸發 callback)
             st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-            # --- JavaScript 自動 Focus 核心 ---
-            # 這段 JS 會尋找 label 為 "請輸入身分證 (Enter)" 的 input 元素並強制聚焦
+            # --- 關鍵修改：使用 setTimeout 延遲執行 focus，解決連續掃描失效問題 ---
             components.html(f"""
                 <script>
-                    var input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
-                    if (input) {{
-                        input.focus();
-                    }}
+                    setTimeout(function() {{
+                        var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
+                        if (input) {{
+                            input.focus();
+                        }}
+                    }}, 200); 
                 </script>
             """, height=0, width=0)
             
@@ -418,14 +416,14 @@ elif st.session_state.page == 'checkin':
 
         with col_status:
             st.markdown("#### 🟢 目前在場志工")
+            # 這裡再次強制讀取，確保右側列表是剛打完卡的最新狀態
+            load_data_from_sheet.clear()
             logs = load_data_from_sheet("logs")
             present_df = get_present_volunteers(logs)
             
             if not present_df.empty:
                 count = len(present_df)
                 st.markdown(f"<div style='font-size:2rem; font-weight:bold; color:#4A148C; margin-bottom:10px;'>共 {count} 人</div>", unsafe_allow_html=True)
-                
-                # 美化顯示列表
                 for idx, row in present_df.iterrows():
                     st.markdown(f"""
                     <div style="background:white; padding:10px; border-radius:10px; border-left: 5px solid #66BB6A; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom:8px;">
