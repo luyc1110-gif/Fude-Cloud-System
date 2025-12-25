@@ -55,7 +55,7 @@ div[data-testid="column"]:hover {
 .card-img-box {
     width: 100%;
     height: 200px;
-    background-color: #f0f0f0;
+    background-color: #9c1313;
     display: flex;
     align-items: center;
     justify-content: center;
