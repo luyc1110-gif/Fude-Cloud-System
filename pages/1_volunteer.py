@@ -13,17 +13,17 @@ st.set_page_config(
     page_title="志工管理系統",
     page_icon="💜",
     layout="wide",
-    initial_sidebar_state="expanded", # 🔥 改成展開，因為要放左側選單
+    initial_sidebar_state="expanded",
 )
 
 TW_TZ = timezone(timedelta(hours=8))
 PRIMARY = "#4A148C"
 ACCENT  = "#7B1FA2"
-BG_MAIN = "#F8F9FA" # 改成極淡的灰白色，讓白色卡片更突顯
+BG_MAIN = "#F0F2F5" # 背景色 (淺灰)
 TEXT    = "#212121"
 
 # =========================================================
-# 1) CSS 樣式 (V19.0 側邊欄膠囊導航版)
+# 1) CSS 樣式 (V20.0 懸浮大卡片 + 修復側邊欄 + 男女統計)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -33,25 +33,47 @@ html, body, [class*="css"], div, p, span, li, ul {{
     font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     color: {TEXT} !important;
 }}
-.stApp {{ background-color: {BG_MAIN} !important; }}
-[data-testid="stHeader"] {{ display: none; }} /* 隱藏上方預設紅線 */
 
-/* --- 側邊欄樣式優化 --- */
+/* 🔥 1. 整體背景設為淺灰 */
+.stApp {{
+    background-color: {BG_MAIN} !important;
+}}
+
+/* 🔥 2. 側邊欄背景 (跟主背景融合) */
 section[data-testid="stSidebar"] {{
-    background-color: #F0F2F5; /* 側邊欄底色 */
-    border-right: 1px solid #ddd;
-}}
-section[data-testid="stSidebar"] div.block-container {{
-    padding-top: 2rem;
+    background-color: {BG_MAIN};
+    border-right: none; /* 去掉那條死板的分隔線 */
 }}
 
-/* --- 側邊欄：未選中的按鈕 (白色膠囊) --- */
+/* 🔥 3. 【關鍵】將主內容區變成一張「懸浮大卡片」 */
+.block-container {{
+    background-color: #FFFFFF; /* 卡片白底 */
+    border-radius: 25px;       /* 圓角 */
+    padding: 3rem 3rem !important; /* 內距 */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05); /* 陰影讓它浮起來 */
+    margin-top: 2rem;          /* 離頂部一點距離 */
+    margin-bottom: 2rem;       /* 離底部一點距離 */
+    max-width: 95% !important; /* 寬度佔滿 95%，留邊 */
+}}
+
+/* 🔥 4. 修復側邊欄開關 (Header) */
+/* 之前隱藏了 header 導致按鈕消失，現在恢復顯示，但讓背景透明 */
+header[data-testid="stHeader"] {{
+    display: block !important;
+    background-color: transparent !important;
+}}
+/* 隱藏 header 裡面的彩虹線和裝飾，只留按鈕 */
+header[data-testid="stHeader"] .decoration {{
+    display: none;
+}}
+
+/* --- 側邊欄導航按鈕樣式 (膠囊) --- */
 section[data-testid="stSidebar"] button {{
     background-color: #FFFFFF !important;
     color: #666 !important;
     border: 1px solid transparent !important;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important; /* 圓角 */
+    border-radius: 25px !important;
     padding: 10px 0 !important;
     font-weight: 700 !important;
     transition: all 0.2s;
@@ -64,8 +86,6 @@ section[data-testid="stSidebar"] button:hover {{
     color: {PRIMARY} !important;
 }}
 
-/* --- 側邊欄：被選中的狀態 (紫色膠囊) --- */
-/* 我們會用 markdown 寫一個假的按鈕來呈現選中狀態 */
 .nav-active {{
     background: linear-gradient(135deg, {PRIMARY}, {ACCENT});
     color: white !important;
@@ -79,25 +99,28 @@ section[data-testid="stSidebar"] button:hover {{
     cursor: default;
 }}
 
-/* --- 右側內容區的卡片 --- */
-div[data-testid="stForm"], div[data-testid="stDataFrame"], .streamlit-expanderContent, div[data-testid="stExpander"] details {{
-    background-color: white; 
-    border-radius: 20px; 
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    padding: 25px; 
-    margin-bottom: 20px; 
-    border: 1px solid #eee;
+/* --- 內部卡片 (例如統計數字) 微調 --- */
+/* 因為底已經是白色的，內部的卡片改用淺灰底或邊框區隔 */
+.dash-card {{
+    background-color: #F8F9FA; /* 稍微深一點的灰白，跟大白底區隔 */
+    padding: 20px; 
+    border-radius: 15px; 
+    border-left: 6px solid {ACCENT};
+    margin-bottom: 15px;
 }}
+.dash-label {{ font-size: 1.1rem; color: #444 !important; font-weight: bold; margin-bottom: 5px; }}
+.dash-value {{ font-size: 2.2rem; color: {PRIMARY} !important; font-weight: 900; margin: 10px 0; }}
+.dash-sub {{ font-size: 0.95rem; color: #666 !important; line-height: 1.6; }}
 
 /* 輸入框優化 */
 .stTextInput input, .stDateInput input, .stTimeInput input, div[data-baseweb="select"] > div {{
-    background-color: #FFFFFF !important;
-    border: 2px solid #E0E0E0 !important;
+    background-color: #F8F9FA !important; /* 微灰底 */
+    border: 1px solid #E0E0E0 !important;
     border-radius: 12px !important;
     color: #333 !important;
 }}
 
-/* --- Toast 美化 --- */
+/* Toast 美化 */
 div[data-baseweb="toast"] {{
     background-color: #FFFFFF !important;
     border: 3px solid {PRIMARY} !important;
@@ -208,38 +231,33 @@ def get_present_volunteers(logs_df):
     return present[['姓名', '時間', '活動內容']]
 
 # =========================================================
-# 3) Navigation (側邊欄版)
+# 3) Navigation
 # =========================================================
 if 'page' not in st.session_state: st.session_state.page = 'home'
 
 def render_nav():
     with st.sidebar:
-        # 標題區
-        st.markdown(f"<h2 style='color:{PRIMARY}; margin-bottom:5px;'>🏠 福德里志工中心</h2>", unsafe_allow_html=True)
-        st.write("") # Spacer
+        st.markdown(f"<h2 style='color:{PRIMARY}; margin-bottom:5px; padding-left:10px;'>🏠 福德里志工中心</h2>", unsafe_allow_html=True)
+        st.write("") 
 
-        # 1. 首頁按鈕
         if st.session_state.page == 'home':
             st.markdown('<div class="nav-active">📊 年度概況看板</div>', unsafe_allow_html=True)
         else:
             if st.button("📊 年度概況看板", key="nav_home", use_container_width=True):
                 st.session_state.page = 'home'; st.rerun()
 
-        # 2. 智能打卡按鈕
         if st.session_state.page == 'checkin':
             st.markdown('<div class="nav-active">⏰ 智能打卡站</div>', unsafe_allow_html=True)
         else:
             if st.button("⏰ 智能打卡站", key="nav_checkin", use_container_width=True):
                 st.session_state.page = 'checkin'; st.rerun()
 
-        # 3. 志工名冊按鈕
         if st.session_state.page == 'members':
             st.markdown('<div class="nav-active">📋 志工名冊管理</div>', unsafe_allow_html=True)
         else:
             if st.button("📋 志工名冊管理", key="nav_members", use_container_width=True):
                 st.session_state.page = 'members'; st.rerun()
 
-        # 4. 數據報表按鈕
         if st.session_state.page == 'report':
             st.markdown('<div class="nav-active">📉 數據報表中心</div>', unsafe_allow_html=True)
         else:
@@ -247,7 +265,6 @@ def render_nav():
                 st.session_state.page = 'report'; st.rerun()
 
         st.markdown("---")
-        # 回大廳按鈕 (稍微不同色，區隔開來)
         if st.button("🚪 回系統大廳", key="nav_back", use_container_width=True):
             st.switch_page("Home.py")
         
@@ -259,7 +276,6 @@ def render_nav():
 # =========================================================
 if st.session_state.page == 'home':
     render_nav()
-    # 右側主要內容區
     st.markdown(f"<h2 style='color: {PRIMARY};'>📊 {datetime.now().year} 年度志工概況</h2>", unsafe_allow_html=True)
     
     logs = load_data_from_sheet("logs")
@@ -270,9 +286,9 @@ if st.session_state.page == 'home':
     total_mins = int((total_sec % 3600) // 60)
     
     st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #CE93D8, #AB47BC); padding: 30px; border-radius: 20px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(171, 71, 188, 0.3);">
-        <div style="font-size: 1.2rem; opacity: 0.9; color: white !important;">📅 {this_year} 年度 - 全體志工總服務時數</div>
-        <div style="font-size: 3.5rem; font-weight: 900; margin: 15px 0; color: white !important;">
+    <div style="background: linear-gradient(135deg, #CE93D8, #AB47BC); padding: 40px; border-radius: 20px; color: white; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 25px rgba(171, 71, 188, 0.3);">
+        <div style="font-size: 1.3rem; opacity: 0.9; color: white !important;">📅 {this_year} 年度 - 全體志工總服務時數</div>
+        <div style="font-size: 4rem; font-weight: 900; margin: 15px 0; color: white !important;">
             {total_hours} <span style="font-size: 1.5rem; color: white !important;">小時</span> 
             {total_mins} <span style="font-size: 1.5rem; color: white !important;">分</span>
         </div>
@@ -280,22 +296,35 @@ if st.session_state.page == 'home':
     """, unsafe_allow_html=True)
     
     if not members.empty:
+        # 篩選服務中的志工
         active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy()
         active_m['age'] = active_m['生日'].apply(calculate_age)
-        valid_age = active_m[active_m['age'] > 0]
+        
+        # 統計各分類
         cols = st.columns(4)
         for idx, cat in enumerate(ALL_CATEGORIES):
             if cat == "臨時志工": continue
             subset = active_m[active_m['志工分類'].astype(str).str.contains(cat, na=False)]
             count = len(subset)
-            age_subset = valid_age[valid_age['志工分類'].astype(str).str.contains(cat, na=False)]
+            
+            # 平均年齡
+            age_subset = subset[subset['age'] > 0]
             avg_age = round(age_subset['age'].mean(), 1) if not age_subset.empty else 0
+            
+            # 🔥 新增：男女統計
+            male_count = len(subset[subset['性別'] == '男'])
+            female_count = len(subset[subset['性別'] == '女'])
+            
             with cols[idx % 4]:
                 st.markdown(f"""
-                <div style="background:white; padding:15px; border-radius:15px; border-left: 6px solid {ACCENT}; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 10px;">
-                    <div style="font-size:1rem; font-weight:bold; color:#666;">{cat.replace('志工','')}</div>
-                    <div style="font-size:1.8rem; font-weight:900; color:{PRIMARY}; margin:5px 0;">{count} <span style="font-size:1rem;color:#888;">人</span></div>
-                    <div style="font-size:0.9rem; color:#888;">平均 {avg_age} 歲</div>
+                <div class="dash-card">
+                    <div class="dash-label">{cat.replace('志工','')}</div>
+                    <div class="dash-value">{count} <span style="font-size:1rem;color:#888;">人</span></div>
+                    <div class="dash-sub">
+                        平均 {avg_age} 歲<br>
+                        <span style="color:#1E88E5; font-weight:bold;">♂ 男 {male_count}</span>  / 
+                        <span style="color:#E91E63; font-weight:bold;">♀ 女 {female_count}</span>
+                    </div>
                 </div>""", unsafe_allow_html=True)
 
 elif st.session_state.page == 'checkin':
@@ -304,16 +333,15 @@ elif st.session_state.page == 'checkin':
     st.caption(f"📅 台灣時間：{get_tw_time().strftime('%Y-%m-%d %H:%M:%S')}")
     if 'input_pid' not in st.session_state: st.session_state.input_pid = ""
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
-    
-    # 🔥 新增這一行：初始化計數器 (用來強制重整游標焦點)
     if 'scan_key' not in st.session_state: st.session_state.scan_key = 0
 
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
+    
     with tab1:
         col_scan, col_status = st.columns([1.5, 1])
 
         with col_scan:
-            st.markdown('<div style="background:white; padding:20px; border-radius:20px; border:1px solid #ddd; margin-bottom:20px;">', unsafe_allow_html=True)
+            st.markdown('<div style="background:#F8F9FA; padding:20px; border-radius:20px; border:1px solid #eee; margin-bottom:20px;">', unsafe_allow_html=True)
             st.markdown("#### ⚡️ 掃描簽到/退")
             
             c_act, c_note = st.columns([1, 2])
@@ -336,7 +364,6 @@ elif st.session_state.page == 'checkin':
                 if last and (now - last).total_seconds() < 1: 
                     st.warning(f"⏳ 刷卡過快"); st.session_state.input_pid = ""; return
                 
-                # 強制重讀資料
                 load_data_from_sheet.clear()
                 df_m = load_data_from_sheet("members")
                 df_l = load_data_from_sheet("logs")
@@ -363,19 +390,20 @@ elif st.session_state.page == 'checkin':
                         else: st.toast(f"🏠 辛苦了 {name} 簽退成功！", icon="✅")
                 else: st.error("❌ 查無此人")
                 
-                # 清空輸入框並讓計數器 +1 (這會強制更新下方的 Script)
                 st.session_state.input_pid = ""
                 st.session_state.scan_key += 1
 
             st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-            # 🔥 修正版：改用 scan_key 計數器，完全不需要 datetime 或 time，保證不報錯
             components.html(f"""
                 <script>
-                    const input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
-                    if (input) input.focus();
+                    var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
+                    if (input) {{
+                        input.focus();
+                        input.value = '';
+                    }}
                 </script>
-            """, height=0, width=0)
+            """, height=0, width=0, key=f"focus_{st.session_state.scan_key}")
             
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -389,10 +417,10 @@ elif st.session_state.page == 'checkin':
                 st.markdown(f"<div style='font-size:2rem; font-weight:bold; color:#4A148C; margin-bottom:10px;'>共 {count} 人</div>", unsafe_allow_html=True)
                 for idx, row in present_df.iterrows():
                     st.markdown(f"""
-                    <div style="background:white; padding:15px; border-radius:15px; border-left: 8px solid #4A148C; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom:12px;">
+                    <div style="background:#F8F9FA; padding:15px; border-radius:15px; border-left: 8px solid #4A148C; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <div style="font-weight:900; font-size:1.4rem; color:#333;">#{idx+1} {row['姓名']}</div>
-                            <div style="font-size:1rem; color:#4A148C; background:#F3E5F5; padding:4px 12px; border-radius:20px; font-weight:bold;">{row['時間']}</div>
+                            <div style="font-size:1rem; color:#4A148C; background:#EEE; padding:4px 12px; border-radius:20px; font-weight:bold;">{row['時間']}</div>
                         </div>
                         <div style="font-size:1rem; color:#555; margin-top:8px; font-weight:500;">🚩 {row['活動內容']}</div>
                     </div>
