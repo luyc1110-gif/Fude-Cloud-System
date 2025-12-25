@@ -355,7 +355,6 @@ elif st.session_state.page == 'checkin':
 
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
     with tab1:
-        # 分左右欄：左邊掃描，右邊顯示在場人員
         col_scan, col_status = st.columns([1.5, 1])
 
         with col_scan:
@@ -379,11 +378,11 @@ elif st.session_state.page == 'checkin':
                 
                 now = get_tw_time()
                 last = st.session_state['scan_cooldowns'].get(pid)
-                # 防止連點 (縮短為 1 秒避免卡頓)
+                # 防止連點 (縮短為 1 秒)
                 if last and (now - last).total_seconds() < 1: 
                     st.warning(f"⏳ 刷卡過快"); st.session_state.input_pid = ""; return
                 
-                # 每次打卡時，強制重新讀取最新的名單，確保資料同步
+                # 強制重讀資料
                 load_data_from_sheet.clear()
                 df_m = load_data_from_sheet("members")
                 df_l = load_data_from_sheet("logs")
@@ -398,59 +397,55 @@ elif st.session_state.page == 'checkin':
                         st.error(f"❌ {name} 已退出，無法打卡。")
                     else:
                         today = now.strftime("%Y-%m-%d")
-                        # 檢查今日紀錄來決定是簽到還是簽退
                         t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
-                        
                         action = "簽到"
-                        if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": 
-                            action = "簽退"
+                        if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": action = "簽退"
                         
                         new_log = pd.DataFrame([{'姓名': name, '身分證字號': pid, '電話': row['電話'], '志工分類': row['志工分類'], '動作': action, '時間': now.strftime("%H:%M:%S"), '日期': today, '活動內容': final_act}])
                         save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
                         st.session_state['scan_cooldowns'][pid] = now
                         
-                        if action == "簽到": st.toast(f"✅ {name} 簽到成功！", icon="👋")
-                        else: st.toast(f"✅ {name} 簽退成功！", icon="🏠")
-                else: 
-                    st.error("❌ 查無此人")
-                
+                        # 這裡的 icon 會自動配合我們剛剛改好的 CSS 變黑字
+                        if action == "簽到": st.toast(f"👋 歡迎 {name} 簽到成功！", icon="✅")
+                        else: st.toast(f"🏠 辛苦了 {name} 簽退成功！", icon="✅")
+                else: st.error("❌ 查無此人")
                 st.session_state.input_pid = ""
 
             st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-            # --- 關鍵修改：使用 setTimeout 延遲執行 focus，解決連續掃描失效問題 ---
+            # 🔥 關鍵修正：加入 key=time.time()，強迫瀏覽器每次都執行「回到輸入框」的動作
             components.html(f"""
                 <script>
-                    setTimeout(function() {{
-                        var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
-                        if (input) {{
-                            input.focus();
-                        }}
-                    }}, 200); 
+                    var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
+                    if (input) {{
+                        input.focus();
+                        input.value = '';
+                    }}
                 </script>
-            """, height=0, width=0)
+            """, height=0, width=0, key=f"focus_{int(time.time()*1000)}")
             
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
             st.markdown("#### 🟢 目前在場志工")
-            # 這裡再次強制讀取，確保右側列表是剛打完卡的最新狀態
             load_data_from_sheet.clear()
             logs = load_data_from_sheet("logs")
             present_df = get_present_volunteers(logs)
-            
             if not present_df.empty:
                 count = len(present_df)
                 st.markdown(f"<div style='font-size:2rem; font-weight:bold; color:#4A148C; margin-bottom:10px;'>共 {count} 人</div>", unsafe_allow_html=True)
                 for idx, row in present_df.iterrows():
+                    # 🔥 美化列表：改成大字體卡片
                     st.markdown(f"""
-                    <div style="background:white; padding:10px; border-radius:10px; border-left: 5px solid #66BB6A; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom:8px;">
-                        <div style="font-weight:bold; font-size:1.1rem;">{row['姓名']}</div>
-                        <div style="font-size:0.85rem; color:#666;">🕒 {row['時間']} | 🚩 {row['活動內容']}</div>
+                    <div style="background:white; padding:15px; border-radius:15px; border-left: 8px solid #4A148C; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-weight:900; font-size:1.4rem; color:#333;">#{idx+1} {row['姓名']}</div>
+                            <div style="font-size:1rem; color:#4A148C; background:#F3E5F5; padding:4px 12px; border-radius:20px; font-weight:bold;">{row['時間']}</div>
+                        </div>
+                        <div style="font-size:1rem; color:#555; margin-top:8px; font-weight:500;">🚩 {row['活動內容']}</div>
                     </div>
                     """, unsafe_allow_html=True)
-            else:
-                st.info("目前無人簽到中")
+            else: st.info("目前無人簽到中")
 
     with tab2:
         df_m = load_data_from_sheet("members")
