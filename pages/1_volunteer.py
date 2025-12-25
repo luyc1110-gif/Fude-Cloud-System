@@ -327,46 +327,104 @@ elif st.session_state.page == 'checkin':
 
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
     with tab1:
-        st.markdown('<div style="background:white; padding:20px; border-radius:20px; border:1px solid white; margin-bottom:20px;">', unsafe_allow_html=True)
-        c_act, c_note = st.columns([1, 2])
-        with c_act: raw_act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES)
-        note = ""
-        with c_note:
-            if raw_act in ["專案活動", "教育訓練"]: note = st.text_input("📝 請輸入活動名稱 (必填)", placeholder="例如：社區大掃除")
-            else: st.write("") 
+        # --- 版面配置：左邊掃描區，右邊即時狀態 ---
+        col_scan, col_status = st.columns([1.5, 1])
 
-        def process_scan():
-            pid = st.session_state.input_pid.strip().upper()
-            if not pid: return
-            final_act = raw_act
-            if raw_act in ["專案活動", "教育訓練"]:
-                if not note.strip(): st.error("⚠️ 請填寫「活動名稱」才能打卡！"); return
-                final_act = f"{raw_act}：{note}"
-            now = get_tw_time()
-            last = st.session_state['scan_cooldowns'].get(pid)
-            if last and (now - last).total_seconds() < 120: st.warning(f"⏳ 請勿重複刷卡 ({pid})"); st.session_state.input_pid = ""; return
-            df_m = load_data_from_sheet("members")
-            df_l = load_data_from_sheet("logs")
-            if df_m.empty: st.error("❌ 無法讀取名單"); return
-            person = df_m[df_m['身分證字號'] == pid]
-            if not person.empty:
-                row = person.iloc[0]
-                name = row['姓名']
-                if check_is_fully_retired(row): st.error(f"❌ {name} 已退出，無法打卡。")
-                else:
-                    today = now.strftime("%Y-%m-%d")
-                    t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
-                    action = "簽到"
-                    if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": action = "簽退"
-                    new_log = pd.DataFrame([{'姓名': name, '身分證字號': pid, '電話': row['電話'], '志工分類': row['志工分類'], '動作': action, '時間': now.strftime("%H:%M:%S"), '日期': today, '活動內容': final_act}])
-                    save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
-                    st.session_state['scan_cooldowns'][pid] = now
-                    st.success(f"✅ {name} {action} 成功！")
-            else: st.error("❌ 查無此人")
-            st.session_state.input_pid = ""
+        with col_scan:
+            st.markdown('<div style="background:white; padding:20px; border-radius:20px; border:1px solid #ddd; margin-bottom:20px;">', unsafe_allow_html=True)
+            st.markdown("#### ⚡️ 掃描簽到/退")
+            
+            c_act, c_note = st.columns([1, 2])
+            with c_act: raw_act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES)
+            note = ""
+            with c_note:
+                if raw_act in ["專案活動", "教育訓練"]: note = st.text_input("📝 請輸入活動名稱 (必填)", placeholder="例如：社區大掃除")
+                else: st.write("") 
 
-        st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan)
-        st.markdown('</div>', unsafe_allow_html=True)
+            # 定義處理邏輯
+            def process_scan():
+                pid = st.session_state.input_pid.strip().upper()
+                if not pid: return
+                final_act = raw_act
+                if raw_act in ["專案活動", "教育訓練"]:
+                    if not note.strip(): st.error("⚠️ 請填寫「活動名稱」才能打卡！"); return
+                    final_act = f"{raw_act}：{note}"
+                
+                now = get_tw_time()
+                last = st.session_state['scan_cooldowns'].get(pid)
+                # 防止連點 (2秒冷卻)
+                if last and (now - last).total_seconds() < 2: 
+                    st.warning(f"⏳ 刷卡過快，請稍候"); st.session_state.input_pid = ""; return
+                
+                df_m = load_data_from_sheet("members")
+                df_l = load_data_from_sheet("logs")
+                
+                if df_m.empty: st.error("❌ 無法讀取名單"); return
+                person = df_m[df_m['身分證字號'] == pid]
+                
+                if not person.empty:
+                    row = person.iloc[0]
+                    name = row['姓名']
+                    if check_is_fully_retired(row): 
+                        st.error(f"❌ {name} 已退出，無法打卡。")
+                    else:
+                        today = now.strftime("%Y-%m-%d")
+                        t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
+                        
+                        # 自動判斷 簽到 或是 簽退
+                        action = "簽到"
+                        if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": 
+                            action = "簽退"
+                        
+                        new_log = pd.DataFrame([{'姓名': name, '身分證字號': pid, '電話': row['電話'], '志工分類': row['志工分類'], '動作': action, '時間': now.strftime("%H:%M:%S"), '日期': today, '活動內容': final_act}])
+                        save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
+                        st.session_state['scan_cooldowns'][pid] = now
+                        
+                        if action == "簽到":
+                            st.toast(f"✅ {name} 簽到成功！", icon="👋")
+                        else:
+                            st.toast(f"✅ {name} 簽退成功！", icon="🏠")
+                else: 
+                    st.error("❌ 查無此人")
+                
+                # 清空輸入框
+                st.session_state.input_pid = ""
+
+            # 輸入框 (綁定 Enter 觸發 callback)
+            st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
+            
+            # --- JavaScript 自動 Focus 核心 ---
+            # 這段 JS 會尋找 label 為 "請輸入身分證 (Enter)" 的 input 元素並強制聚焦
+            components.html(f"""
+                <script>
+                    var input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
+                    if (input) {{
+                        input.focus();
+                    }}
+                </script>
+            """, height=0, width=0)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with col_status:
+            st.markdown("#### 🟢 目前在場志工")
+            logs = load_data_from_sheet("logs")
+            present_df = get_present_volunteers(logs)
+            
+            if not present_df.empty:
+                count = len(present_df)
+                st.markdown(f"<div style='font-size:2rem; font-weight:bold; color:#4A148C; margin-bottom:10px;'>共 {count} 人</div>", unsafe_allow_html=True)
+                
+                # 美化顯示列表
+                for idx, row in present_df.iterrows():
+                    st.markdown(f"""
+                    <div style="background:white; padding:10px; border-radius:10px; border-left: 5px solid #66BB6A; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom:8px;">
+                        <div style="font-weight:bold; font-size:1.1rem;">{row['姓名']}</div>
+                        <div style="font-size:0.85rem; color:#666;">🕒 {row['時間']} | 🚩 {row['活動內容']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("目前無人簽到中")
 
     with tab2:
         df_m = load_data_from_sheet("members")
