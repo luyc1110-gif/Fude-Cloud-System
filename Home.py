@@ -18,7 +18,7 @@ st.markdown("""
 <style>
 /* 🔥 1. 這裡是【網頁大背景】的顏色 */
 .stApp {
-    background-color: #F0F2F5 !important; /* 建議用淺灰色，讓卡片浮起來 */
+    background-color: #3f84eb !important; /* 建議用淺灰色，讓卡片浮起來 */
     color: #f0f07f !important;
 }
 
