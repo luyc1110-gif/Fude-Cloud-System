@@ -432,21 +432,21 @@ elif st.session_state.page == 'checkin':
                 # 清空輸入框
                 st.session_state.input_pid = ""
 
-            # 輸入框 (綁定 Enter 觸發 callback)
-            st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
+                # 輸入框 (綁定 Enter 觸發 callback)
+                st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-            # --- JavaScript 自動 Focus 核心 ---
-            # 這段 JS 會尋找 label 為 "請輸入身分證 (Enter)" 的 input 元素並強制聚焦
-            components.html(f"""
-                <script>
-                    var input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
-                    if (input) {{
-                        input.focus();
-                    }}
-                </script>
-            """, height=0, width=0)
+                # --- JavaScript 自動 Focus 核心 ---
+                # 這段 JS 會尋找 label 為 "請輸入身分證 (Enter)" 的 input 元素並強制聚焦
+                components.html(f"""
+                    <script>
+                        var input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
+                        if (input) {{
+                            input.focus();
+                        }}
+                    </script>
+                """, height=0, width=0)
             
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
             st.markdown("#### 🟢 目前在場志工")
