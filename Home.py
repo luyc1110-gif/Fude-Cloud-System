@@ -12,23 +12,25 @@ st.set_page_config(
 )
 
 # =========================================================
-# 1) CSS 魔術：強制亮色模式 + 卡片按鈕
+# 1) CSS 魔術：強制亮色模式 + 圖片卡片 + 全版點擊
 # =========================================================
 st.markdown("""
 <style>
-/* 🔥🔥🔥 關鍵修正：強制將背景設為亮色，忽略系統深色模式 🔥🔥🔥 */
+/* 🔥 1. 這裡是【網頁大背景】的顏色 */
 .stApp {
-    background-color: #F0F2F5 !important;
-    color: #608542 !important;
+    background-color: #F0F2F5 !important; /* 建議用淺灰色，讓卡片浮起來 */
+    color: #333333 !important;
 }
 
 /* 隱藏預設側邊欄 */
 [data-testid="stSidebar"] { display: none; }
 .block-container { padding-top: 2rem; max-width: 1200px; }
 
-/* --- 卡片容器樣式 --- */
+/* --- 🔥 2. 這裡是【三個按鈕卡片】的底色 --- */
 div[data-testid="column"] {
-    background-color: white; /* 卡片本身是白色 */
+    background-color: #FFFFFF; /* 建議用白色，跟背景做出對比 */
+    
+    /* 以下是卡片陰影與外框設定 */
     border-radius: 20px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     border: 1px solid #eee;
@@ -39,10 +41,14 @@ div[data-testid="column"] {
     height: 100%;
 }
 
+/* 滑鼠移過去時的特效（會稍微浮起來） */
 div[data-testid="column"]:hover {
     transform: translateY(-8px);
     box-shadow: 0 15px 30px rgba(0,0,0,0.12);
     border-color: #ddd;
+    /* 如果想要滑鼠移過去變色，可以加這一行：
+       background-color: #FFFDE7; 
+    */
 }
 
 /* --- 圖片區域 --- */
