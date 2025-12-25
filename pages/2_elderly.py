@@ -14,10 +14,10 @@ st.set_page_config(
     page_title="長輩關懷系統",
     page_icon="👴",
     layout="wide",
-    initial_sidebar_state="expanded", # 🔥 配合側邊欄設計，預設展開
+    initial_sidebar_state="expanded", # 🔥 預設展開側邊欄
 )
 
-# --- 🔒 安全登入門禁 (保留您原本的邏輯) ---
+# --- 🔒 安全登入門禁 ---
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
@@ -34,16 +34,16 @@ if not st.session_state.authenticated:
             st.error("授權碼錯誤，請重新輸入。")
     st.stop() 
 
-# =========================================================
-# 1) 配色與 CSS 樣式 (黃橙色系 + 懸浮卡片)
-# =========================================================
 TW_TZ = timezone(timedelta(hours=8))
-# 🔥 改為黃橙色系
-PRIMARY = "#EF6C00"   # 深橙色 (用於按鈕、重要文字)
-ACCENT  = "#FFA726"   # 亮橙黃 (用於漸層、輔助)
-BG_MAIN = "#F0F2F5"   # 淺灰底
-TEXT    = "#212121"   # 黑灰字
+# 🔥 主色調設定 (黃橙色系)
+PRIMARY = "#EF6C00"   # 深橙色 (用於按鈕、強調字)
+ACCENT  = "#FFA726"   # 亮橙黃 (用於邊框、裝飾)
+BG_MAIN = "#F0F2F5"   # 淺灰背景
+TEXT    = "#212121"   # 深灰文字
 
+# =========================================================
+# 1) CSS 樣式 (懸浮卡片 + 側邊欄無縫設計)
+# =========================================================
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
@@ -53,25 +53,26 @@ html, body, [class*="css"], div, p, span, li, ul {{
     color: {TEXT} !important;
 }}
 
-/* 🔥 1. 整體背景 */
+/* 🔥 1. 整體背景設為淺灰 */
 .stApp {{
     background-color: {BG_MAIN} !important;
 }}
 
-/* 🔥 2. 側邊欄背景 */
+/* 🔥 2. 側邊欄背景 (跟主背景融合，去掉右邊框) */
 section[data-testid="stSidebar"] {{
     background-color: {BG_MAIN};
-    border-right: none;
+    border-right: none; /* 關鍵：去掉那條死板的分隔線 */
 }}
 
-/* 🔥 3. 懸浮大卡片容器 */
+/* 🔥 3. 【關鍵】將主內容區變成一張「懸浮大卡片」 */
 .block-container {{
-    background-color: #FFFFFF;
-    border-radius: 25px;
-    padding: 3rem 3rem !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-top: 2rem; margin-bottom: 2rem;
-    max-width: 95% !important;
+    background-color: #FFFFFF; /* 卡片白底 */
+    border-radius: 25px;       /* 圓角 */
+    padding: 3rem 3rem !important; /* 內距 */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05); /* 陰影讓它浮起來 */
+    margin-top: 2rem;          /* 離頂部一點距離 */
+    margin-bottom: 2rem;       /* 離底部一點距離 */
+    max-width: 95% !important; /* 寬度佔滿 95%，留邊 */
 }}
 
 /* 🔥 4. 修復 Header */
@@ -165,7 +166,7 @@ div[data-baseweb="toast"] * {{ color: #000000 !important; font-weight: 900 !impo
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic & Data (保留您原本的所有邏輯)
+# 2) Logic & Data
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 COURSE_HIERARCHY = {
@@ -278,19 +279,45 @@ if st.session_state.page == 'home':
     year_count = len(logs[pd.to_datetime(logs['日期'], errors='coerce').dt.year == this_year]) if not logs.empty else 0
     today_count = len(logs[logs['日期'] == today_str]) if not logs.empty else 0
     
+    # 總體平均年齡
     avg_age = round(members['出生年月日'].apply(calculate_age).mean(), 1) if not members.empty else 0
-    male_count = len(members[members['性別'] == '男']) if not members.empty else 0
-    female_count = len(members[members['性別'] == '女']) if not members.empty else 0
+    
+    # 🔥 [修改需求] 分別計算男、女性的平均年齡
+    male_m = members[members['性別'] == '男']
+    female_m = members[members['性別'] == '女']
+    
+    male_count = len(male_m)
+    female_count = len(female_m)
+    
+    # 計算平均歲數 (若無人則為 0)
+    male_avg_age = round(male_m['出生年月日'].apply(calculate_age).mean(), 1) if not male_m.empty else 0
+    female_avg_age = round(female_m['出生年月日'].apply(calculate_age).mean(), 1) if not female_m.empty else 0
+    
     total_members = len(members)
 
     # 頂部漸層大看板 (橙色系)
+    # 🔥🔥🔥 這裡可以修改「總服務人次」與「今日服務人次」的背景顏色 🔥🔥🔥
+    # linear-gradient(角度, 顏色1 0%, 顏色2 100%)
+    # 建議配色：
+    # 橙色漸層: #FF9800 -> #F57C00
+    # 紫色漸層: #7E57C2 -> #512DA8
+    # 綠色漸層: #66BB6A -> #388E3C
     st.markdown(f"""
-    <div style="background: linear-gradient(135deg, {PRIMARY}, {ACCENT}); padding: 40px; border-radius: 20px; color: white; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 25px rgba(239, 108, 0, 0.3);">
-        <div style="font-size: 1.3rem; opacity: 0.9; color: white !important;">📅 {this_year} 年度 - 據點總服務人次</div>
-        <div style="font-size: 4rem; font-weight: 900; margin: 15px 0; color: white !important;">
-            {year_count} <span style="font-size: 1.5rem; color: white !important;">人次</span>
+    <div style="display: flex; gap: 20px;">
+        <div style="flex: 1; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); padding: 30px; border-radius: 20px; color: white; text-align: center; box-shadow: 0 10px 25px rgba(245, 124, 0, 0.3);">
+            <div style="font-size: 1.2rem; opacity: 0.9; color: white !important;">📅 {this_year} 年度 - 據點總服務人次</div>
+            <div style="font-size: 3.5rem; font-weight: 900; margin: 10px 0; color: white !important;">
+                {year_count} <span style="font-size: 1.5rem; color: white !important;">人次</span>
+            </div>
+        </div>
+        <div style="flex: 1; background: linear-gradient(135deg, #7E57C2 0%, #512DA8 100%); padding: 30px; border-radius: 20px; color: white; text-align: center; box-shadow: 0 10px 25px rgba(126, 87, 194, 0.3);">
+            <div style="font-size: 1.2rem; opacity: 0.9; color: white !important;">☀️ 今日服務人次</div>
+            <div style="font-size: 3.5rem; font-weight: 900; margin: 10px 0; color: white !important;">
+                {today_count} <span style="font-size: 1.5rem; color: white !important;">人次</span>
+            </div>
         </div>
     </div>
+    <br>
     """, unsafe_allow_html=True)
     
     # 數據小卡
@@ -299,27 +326,30 @@ if st.session_state.page == 'home':
     with c1:
         st.markdown(f"""
         <div class="dash-card">
-            <div class="dash-label">☀️ 今日報到</div>
-            <div class="dash-value">{today_count} <span style="font-size:1rem;color:#888;">人次</span></div>
-            <div class="dash-sub">今日課程活動參與狀況</div>
+            <div class="dash-label">👥 長輩總數 / 平均年齡</div>
+            <div class="dash-value">{total_members} <span style="font-size:1rem;color:#888;">人</span></div>
+            <div class="dash-sub">全體平均：{avg_age} 歲</div>
         </div>""", unsafe_allow_html=True)
         
     with c2:
+        # 🔥 在這裡加上了「平均歲數」的顯示
         st.markdown(f"""
         <div class="dash-card">
-            <div class="dash-label">👥 目前長輩總數</div>
-            <div class="dash-value">{total_members} <span style="font-size:1rem;color:#888;">人</span></div>
-            <div class="dash-sub">已建檔之名冊總人數</div>
+            <div class="dash-label">♂ 男性長輩</div>
+            <div class="dash-value">{male_count} <span style="font-size:1rem;color:#888;">人</span></div>
+            <div class="dash-sub">
+                <span style="color:#1E88E5; font-weight:bold;">平均 {male_avg_age} 歲</span>
+            </div>
         </div>""", unsafe_allow_html=True)
         
     with c3:
+        # 🔥 在這裡加上了「平均歲數」的顯示
         st.markdown(f"""
         <div class="dash-card">
-            <div class="dash-label">🎂 平均年齡與分佈</div>
-            <div class="dash-value">{avg_age} <span style="font-size:1rem;color:#888;">歲</span></div>
+            <div class="dash-label">♀ 女性長輩</div>
+            <div class="dash-value">{female_count} <span style="font-size:1rem;color:#888;">人</span></div>
             <div class="dash-sub">
-                <span style="color:#1E88E5; font-weight:bold;">♂ 男 {male_count}</span>  / 
-                <span style="color:#E91E63; font-weight:bold;">♀ 女 {female_count}</span>
+                <span style="color:#E91E63; font-weight:bold;">平均 {female_avg_age} 歲</span>
             </div>
         </div>""", unsafe_allow_html=True)
 
