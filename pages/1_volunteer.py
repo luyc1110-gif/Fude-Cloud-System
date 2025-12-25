@@ -1,10 +1,10 @@
-import streamlit.components.v1 as components
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date, timedelta, timezone
 import gspread
 import time
 import os
+import streamlit.components.v1 as components  # 新增：用於自動對焦的元件
 
 # =========================================================
 # 0) 系統設定
@@ -15,25 +15,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
-
-# --- 🔒 安全登入門禁 (跨頁面同步) ---
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    st.markdown("### 🔒 福德里管理系統 - 登入")
-    # type="password" 會讓輸入的字變成黑點，保護隱私
-    pwd = st.text_input("請輸入管理員授權碼", type="password")
-    
-    if st.button("確認登入"):
-        # 從你剛剛改好的 secrets 中讀取密碼
-        if pwd == st.secrets["admin_password"]:
-            st.session_state.authenticated = True
-            st.success("登入成功！正在跳轉...")
-            st.rerun()
-        else:
-            st.error("授權碼錯誤，請重新輸入。")
-    st.stop() # 沒登入就攔截，不執行後面的程式碼
 
 TW_TZ = timezone(timedelta(hours=8))
 PRIMARY = "#4A148C"
@@ -184,25 +165,6 @@ def check_is_fully_retired(row):
     return not is_active
 
 def calculate_hours_year(logs_df, year):
-    def get_present_volunteers(logs_df):
-    """計算目前場內有哪些人（最後動作為簽到者）"""
-    if logs_df.empty: return pd.DataFrame()
-    today_str = get_tw_time().strftime("%Y-%m-%d")
-    # 篩選今日紀錄
-    today_logs = logs_df[logs_df['日期'] == today_str].copy()
-    if today_logs.empty: return pd.DataFrame()
-    
-    # 確保按時間排序
-    today_logs['dt'] = pd.to_datetime(today_logs['日期'] + ' ' + today_logs['時間'])
-    today_logs = today_logs.sort_values('dt')
-    
-    # 抓取每個人最後一筆狀態
-    latest_status = today_logs.groupby('身分證字號').last().reset_index()
-    
-    # 篩選出最後動作是 "簽到" 的人
-    present = latest_status[latest_status['動作'] == '簽到']
-    return present[['姓名', '時間', '活動內容']]
-    
     if logs_df.empty: return 0
     logs_df['dt'] = pd.to_datetime(logs_df['日期'] + ' ' + logs_df['時間'], errors='coerce')
     logs_df = logs_df.dropna(subset=['dt'])
@@ -224,6 +186,25 @@ def calculate_hours_year(logs_df, year):
                 i += 1
             else: i += 1
     return total_seconds
+
+def get_present_volunteers(logs_df):
+    """計算目前場內有哪些人（最後動作為簽到者）"""
+    if logs_df.empty: return pd.DataFrame()
+    today_str = get_tw_time().strftime("%Y-%m-%d")
+    # 篩選今日紀錄
+    today_logs = logs_df[logs_df['日期'] == today_str].copy()
+    if today_logs.empty: return pd.DataFrame()
+    
+    # 確保按時間排序
+    today_logs['dt'] = pd.to_datetime(today_logs['日期'] + ' ' + today_logs['時間'])
+    today_logs = today_logs.sort_values('dt')
+    
+    # 抓取每個人最後一筆狀態
+    latest_status = today_logs.groupby('身分證字號').last().reset_index()
+    
+    # 篩選出最後動作是 "簽到" 的人
+    present = latest_status[latest_status['動作'] == '簽到']
+    return present[['姓名', '時間', '活動內容']]
 
 # =========================================================
 # 3) Navigation
@@ -264,11 +245,9 @@ if st.session_state.page == 'home':
             st.markdown("<div style='text-align:center; font-size:60px;'>⏰</div>", unsafe_allow_html=True)
         
         # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
-        # 這裡是在 c1 裡面再切出 [1, 3] 兩塊巧克力
         sub_spacer, sub_button = st.columns([0.2, 3.8]) 
         
         with sub_button:
-            # key 一定要唯一，不能重複喔
             if st.button("智能打卡站", key="home_btn1_fixed"): 
                 st.session_state.page = 'checkin'
                 st.rerun()
@@ -280,11 +259,9 @@ if st.session_state.page == 'home':
             st.markdown("<div style='text-align:center; font-size:60px;'>📋</div>", unsafe_allow_html=True)
         
         # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
-        # 這裡是在 c2 裡面再切出 [1, 3] 兩塊巧克力
         sub_spacer, sub_button = st.columns([0.2, 3.8]) 
         
         with sub_button:
-            # key 一定要唯一，不能重複喔
             if st.button("志工名冊", key="home_btn2_fixed"): 
                 st.session_state.page = 'members'
                 st.rerun()
@@ -296,11 +273,9 @@ if st.session_state.page == 'home':
             st.markdown("<div style='text-align:center; font-size:60px;'>📊</div>", unsafe_allow_html=True)
         
         # --- 2. 按鈕部分 (加隔間把按鈕往右推) ---
-        # 這裡是在 c2 裡面再切出 [1, 3] 兩塊巧克力
         sub_spacer, sub_button = st.columns([0.2, 3.8]) 
         
         with sub_button:
-            # key 一定要唯一，不能重複喔
             if st.button("數據分析", key="home_btn3_fixed"): 
                 st.session_state.page = 'report'
                 st.rerun()
@@ -314,8 +289,6 @@ if st.session_state.page == 'home':
     total_mins = int((total_sec % 3600) // 60)
     
     st.markdown(f"### 📊 {this_year} 年度即時概況")
-    
-    # 年度總時數卡片
     st.markdown(f"""
     <div style="background: #ceafe3; padding: 30px; border-radius: 20px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(81, 45, 168, 0.25);">
         <div style="font-size: 1.2rem; opacity: 0.9; color: white !important;">📅 {this_year} 年度 - 全體志工總服務時數</div>
@@ -327,21 +300,7 @@ if st.session_state.page == 'home':
     """, unsafe_allow_html=True)
     
     if not members.empty:
-        # 過濾服務中的志工
         active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy()
-        
-        # 新增：計算不重複總人數
-        total_unique_count = active_m['姓名'].nunique()
-
-        # 呈現總人數卡片 (確保這裡的 f-string 括號正確)
-        st.markdown(f"""
-        <div style="background: white; padding: 20px; border-radius: 15px; border-left: 6px solid {PRIMARY}; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 25px; text-align: center;">
-            <div style="font-size: 1.1rem; color: #666; font-weight: bold;">👥 服務中志工總人數 (不重複計算)</div>
-            <div style="font-size: 2.5rem; color: {PRIMARY}; font-weight: 900; margin: 5px 0;">{total_unique_count} <span style="font-size: 1.2rem; color: #888;">人</span></div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # 分類統計資訊
         active_m['age'] = active_m['生日'].apply(calculate_age)
         valid_age = active_m[active_m['age'] > 0]
         cols = st.columns(4)
@@ -352,13 +311,7 @@ if st.session_state.page == 'home':
             age_subset = valid_age[valid_age['志工分類'].astype(str).str.contains(cat, na=False)]
             avg_age = round(age_subset['age'].mean(), 1) if not age_subset.empty else 0
             with cols[idx % 4]:
-                st.markdown(f"""
-                <div class="dash-card">
-                    <div class="dash-label">{cat.replace('志工','')}</div>
-                    <div class="dash-value">{count} <span style="font-size:1rem;color:#888;">人</span></div>
-                    <div class="dash-sub">平均 {avg_age} 歲</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"""<div class="dash-card"><div class="dash-label">{cat.replace('志工','')}</div><div class="dash-value">{count} <span style="font-size:1rem;color:#888;">人</span></div><div class="dash-sub">平均 {avg_age} 歲</div></div>""", unsafe_allow_html=True)
 
 elif st.session_state.page == 'checkin':
     render_nav()
@@ -368,8 +321,11 @@ elif st.session_state.page == 'checkin':
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
 
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
+    
+    # ------------------
+    # TAB 1: 現場打卡 (修復版)
+    # ------------------
     with tab1:
-        # --- 版面配置：左邊掃描區，右邊即時狀態 ---
         col_scan, col_status = st.columns([1.5, 1])
 
         with col_scan:
@@ -383,7 +339,6 @@ elif st.session_state.page == 'checkin':
                 if raw_act in ["專案活動", "教育訓練"]: note = st.text_input("📝 請輸入活動名稱 (必填)", placeholder="例如：社區大掃除")
                 else: st.write("") 
 
-            # 定義處理邏輯
             def process_scan():
                 pid = st.session_state.input_pid.strip().upper()
                 if not pid: return
@@ -432,21 +387,20 @@ elif st.session_state.page == 'checkin':
                 # 清空輸入框
                 st.session_state.input_pid = ""
 
-                # 輸入框 (綁定 Enter 觸發 callback)
-                st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
+            # 輸入框 (綁定 Enter 觸發 callback)
+            st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-                # --- JavaScript 自動 Focus 核心 ---
-                # 這段 JS 會尋找 label 為 "請輸入身分證 (Enter)" 的 input 元素並強制聚焦
-                components.html(f"""
-                    <script>
-                        var input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
-                        if (input) {{
-                            input.focus();
-                        }}
-                    </script>
-                """, height=0, width=0)
+            # JS 自動 Focus
+            components.html(f"""
+                <script>
+                    var input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
+                    if (input) {{
+                        input.focus();
+                    }}
+                </script>
+            """, height=0, width=0)
             
-                st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
             st.markdown("#### 🟢 目前在場志工")
@@ -456,8 +410,6 @@ elif st.session_state.page == 'checkin':
             if not present_df.empty:
                 count = len(present_df)
                 st.markdown(f"<div style='font-size:2rem; font-weight:bold; color:#4A148C; margin-bottom:10px;'>共 {count} 人</div>", unsafe_allow_html=True)
-                
-                # 美化顯示列表
                 for idx, row in present_df.iterrows():
                     st.markdown(f"""
                     <div style="background:white; padding:10px; border-radius:10px; border-left: 5px solid #66BB6A; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom:8px;">
