@@ -19,7 +19,7 @@ st.markdown("""
 /* 🔥🔥🔥 關鍵修正：強制將背景設為亮色，忽略系統深色模式 🔥🔥🔥 */
 .stApp {
     background-color: #F0F2F5 !important;
-    color: #d0f0b6 !important;
+    color: #608542 !important;
 }
 
 /* 隱藏預設側邊欄 */
