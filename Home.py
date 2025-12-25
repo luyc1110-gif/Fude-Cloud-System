@@ -1,5 +1,9 @@
 import streamlit as st
+import os
 
+# =========================================================
+# 0) 頁面設定
+# =========================================================
 st.set_page_config(
     page_title="福德里社區管理系統",
     page_icon="🏘️",
@@ -7,76 +11,158 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 🔥 莫蘭迪配色定義
-COLORS = {
-    "volunteer": "#9A8C98", # 煙燻紫
-    "elderly": "#B5838D",   # 暮色粉
-    "care": "#8E9775",      # 鼠尾草綠
-    "bg": "#F8F9FA"         # 極淺灰底
+# =========================================================
+# 1) CSS 魔術：讓整張卡片變成可點擊的按鈕
+# =========================================================
+st.markdown("""
+<style>
+/* 隱藏預設側邊欄 */
+[data-testid="stSidebar"] { display: none; }
+.block-container { padding-top: 2rem; max-width: 1200px; }
+
+/* --- 卡片容器樣式 --- */
+/* 我們利用 CSS 選擇器，把首頁的三個 column 變成卡片外觀 */
+div[data-testid="column"] {
+    background-color: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border: 1px solid #eee;
+    padding: 0px !important; /* 讓圖片可以滿版 */
+    overflow: hidden;        /* 圓角內的內容不溢出 */
+    transition: transform 0.3s, box-shadow 0.3s;
+    position: relative;      /* 為了讓按鈕可以絕對定位覆蓋 */
+    height: 100%;            /* 等高 */
 }
 
-st.markdown(f"""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
-[data-testid="stSidebar"] {{ display: none; }}
-.stApp {{ background-color: {COLORS['bg']}; }}
+/* 滑鼠移過去的特效 */
+div[data-testid="column"]:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.12);
+    border-color: #ddd;
+}
 
-.big-btn {{
+/* --- 圖片區域 --- */
+.card-img-box {
     width: 100%;
-    padding: 45px 20px;
-    border-radius: 25px;
+    height: 200px;
+    background-color: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.card-img-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 讓圖片自動填滿不變形 */
+}
+
+/* --- 文字內容區域 --- */
+.card-content {
+    padding: 25px 20px 40px 20px;
     text-align: center;
-    background-color: white;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-    border: 1px solid rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-    margin-bottom: 15px;
-}}
-.big-btn:hover {{
-    transform: translateY(-10px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
-}}
-.icon {{ font-size: 4rem; margin-bottom: 20px; display: block; }}
-.btn-title {{ font-size: 1.8rem; font-weight: 900; margin-bottom: 10px; display: block; }}
-.btn-desc {{ font-size: 0.95rem; color: #777; line-height: 1.6; display: block; }}
+}
+.card-title {
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin-bottom: 10px;
+    color: #333;
+}
+.card-desc {
+    font-size: 1rem;
+    color: #666;
+    line-height: 1.5;
+}
 
-/* 莫蘭迪色系文字設定 */
-.theme-vol {{ color: {COLORS['volunteer']}; }}
-.theme-elder {{ color: {COLORS['elderly']}; }}
-.theme-care {{ color: {COLORS['care']}; }}
-
-div[data-testid="stButton"] > button {{
-    border-radius: 50px !important;
-    font-weight: 700 !important;
-    padding: 10px 20px !important;
-    border: 1.5px solid transparent !important;
-}}
-/* 莫蘭迪按鈕樣式 */
-.st-vol button {{ background-color: {COLORS['volunteer']} !important; color: white !important; }}
-.st-elder button {{ background-color: {COLORS['elderly']} !important; color: white !important; }}
-.st-care button {{ background-color: {COLORS['care']} !important; color: white !important; }}
+/* --- 這是關鍵：透明按鈕覆蓋術 --- */
+/* 把按鈕拉大，覆蓋住整個 column，並設為透明 */
+div[data-testid="column"] [data-testid="stButton"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10; /* 確保按鈕在最上層 */
+    margin: 0;
+}
+div[data-testid="column"] [data-testid="stButton"] button {
+    width: 100%;
+    height: 100%;
+    opacity: 0; /* 透明度 0 = 看不見 */
+    border: none;
+    cursor: pointer;
+}
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align: center; color: #444; margin-top: 20px;'>🏘️ 福德里社區管理中樞</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #888; font-size: 1.2rem; margin-bottom: 40px;'>人文關懷．數位整合</p>", unsafe_allow_html=True)
+# =========================================================
+# 2) 標題區
+# =========================================================
+st.markdown("<h1 style='text-align: center; color: #333; margin-bottom: 10px;'>🏘️ 福德里 - 社區數位管理中樞</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 40px;'>志工調度．長輩照護．弱勢關懷．一站整合</p>", unsafe_allow_html=True)
 
-c1, c2, c3 = st.columns(3)
+# =========================================================
+# 3) 三大系統入口 (卡片區)
+# =========================================================
 
-with c1:
-    st.markdown(f"""<div class="big-btn"><span class="icon">💜</span><span class="btn-title theme-vol">志工管理</span><span class="btn-desc">時數統計與名冊維護</span></div>""", unsafe_allow_html=True)
-    st.markdown('<div class="st-vol">', unsafe_allow_html=True)
-    if st.button("點擊進入志工系統", use_container_width=True): st.switch_page("pages/1_volunteer.py")
-    st.markdown('</div>', unsafe_allow_html=True)
+# 定義三個系統的資訊
+systems = [
+    {
+        "title": "志工管理系統",
+        "desc": "志工打卡・時數統計<br>榮譽與名冊管理",
+        "img_file": "cover_volunteer.jpg",  # 請確認您的圖片檔名
+        "icon": "💜", # 如果沒圖片時顯示的替代 icon
+        "link": "pages/1_volunteer.py",
+        "color": "#4A148C"
+    },
+    {
+        "title": "長輩關懷系統",
+        "desc": "據點報到・血壓量測<br>健康數據追蹤",
+        "img_file": "cover_elderly.jpg",
+        "icon": "👴",
+        "link": "pages/2_elderly.py",
+        "color": "#E65100"
+    },
+    {
+        "title": "關懷戶系統",
+        "desc": "弱勢家戶名冊・物資發放<br>訪視紀錄 (建置中)",
+        "img_file": "cover_care.jpg",
+        "icon": "🏠",
+        "link": "pages/3_care.py",
+        "color": "#00695C"
+    }
+]
 
-with c2:
-    st.markdown(f"""<div class="big-btn"><span class="icon">👴</span><span class="btn-title theme-elder">長輩關懷</span><span class="btn-desc">據點報到與血壓追蹤</span></div>""", unsafe_allow_html=True)
-    st.markdown('<div class="st-elder">', unsafe_allow_html=True)
-    if st.button("點擊進入長輩系統", use_container_width=True): st.switch_page("pages/2_elderly.py")
-    st.markdown('</div>', unsafe_allow_html=True)
+# 建立三欄
+cols = st.columns(3)
 
-with c3:
-    st.markdown(f"""<div class="big-btn"><span class="icon">🏠</span><span class="btn-title theme-care">關懷戶系統</span><span class="btn-desc">弱勢名冊與物資發放</span></div>""", unsafe_allow_html=True)
-    st.markdown('<div class="st-care">', unsafe_allow_html=True)
-    if st.button("點擊進入關懷戶系統", use_container_width=True): st.switch_page("pages/3_care.py")
-    st.markdown('</div>', unsafe_allow_html=True)
+# 迴圈生成卡片
+for i, col in enumerate(cols):
+    sys = systems[i]
+    with col:
+        # 1. 顯示圖片 (如果有檔案就顯示圖片，沒有就顯示漂亮色塊+Icon)
+        if os.path.exists(sys["img_file"]):
+            st.image(sys["img_file"], use_container_width=True)
+        else:
+            # 沒圖片時的替代方案：顯示色塊與Icon
+            st.markdown(f"""
+            <div class="card-img-box" style="background-color: {sys['color']}15;">
+                <span style="font-size: 5rem;">{sys['icon']}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # 2. 顯示文字內容
+        st.markdown(f"""
+        <div class="card-content">
+            <div class="card-title" style="color: {sys['color']}">{sys['title']}</div>
+            <div class="card-desc">{sys['desc']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # 3. 放置一個「透明的巨大按鈕」在最上層
+        # 因為 CSS 設定，這個按鈕會自動拉伸蓋住整張卡片
+        if st.button(f"進入 {sys['title']}", key=f"btn_{i}"):
+            st.switch_page(sys['link'])
+
+st.markdown("---")
+st.markdown("<div style='text-align: center; color: #aaa; margin-top: 20px;'>福德里辦公處 © 2025 • 數位化服務</div>", unsafe_allow_html=True)
