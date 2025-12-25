@@ -333,15 +333,16 @@ elif st.session_state.page == 'checkin':
     st.caption(f"📅 台灣時間：{get_tw_time().strftime('%Y-%m-%d %H:%M:%S')}")
     if 'input_pid' not in st.session_state: st.session_state.input_pid = ""
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
+    
+    # 🔥 新增這一行：初始化計數器 (用來強制重整游標焦點)
     if 'scan_key' not in st.session_state: st.session_state.scan_key = 0
 
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
-    
     with tab1:
         col_scan, col_status = st.columns([1.5, 1])
 
         with col_scan:
-            st.markdown('<div style="background:#F8F9FA; padding:20px; border-radius:20px; border:1px solid #eee; margin-bottom:20px;">', unsafe_allow_html=True)
+            st.markdown('<div style="background:white; padding:20px; border-radius:20px; border:1px solid #ddd; margin-bottom:20px;">', unsafe_allow_html=True)
             st.markdown("#### ⚡️ 掃描簽到/退")
             
             c_act, c_note = st.columns([1, 2])
@@ -364,6 +365,7 @@ elif st.session_state.page == 'checkin':
                 if last and (now - last).total_seconds() < 1: 
                     st.warning(f"⏳ 刷卡過快"); st.session_state.input_pid = ""; return
                 
+                # 強制重讀資料
                 load_data_from_sheet.clear()
                 df_m = load_data_from_sheet("members")
                 df_l = load_data_from_sheet("logs")
@@ -390,20 +392,19 @@ elif st.session_state.page == 'checkin':
                         else: st.toast(f"🏠 辛苦了 {name} 簽退成功！", icon="✅")
                 else: st.error("❌ 查無此人")
                 
+                # 清空輸入框並讓計數器 +1 (這會強制更新下方的 Script)
                 st.session_state.input_pid = ""
                 st.session_state.scan_key += 1
 
             st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
+            # 🔥 修正版：改用 scan_key 計數器，完全不需要 datetime 或 time，保證不報錯
             components.html(f"""
                 <script>
-                    var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
-                    if (input) {{
-                        input.focus();
-                        input.value = '';
-                    }}
+                    const input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
+                    if (input) input.focus();
                 </script>
-            """, height=0, width=0, key=f"focus_{st.session_state.scan_key}")
+            """, height=0, width=0)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -417,10 +418,10 @@ elif st.session_state.page == 'checkin':
                 st.markdown(f"<div style='font-size:2rem; font-weight:bold; color:#4A148C; margin-bottom:10px;'>共 {count} 人</div>", unsafe_allow_html=True)
                 for idx, row in present_df.iterrows():
                     st.markdown(f"""
-                    <div style="background:#F8F9FA; padding:15px; border-radius:15px; border-left: 8px solid #4A148C; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom:12px;">
+                    <div style="background:white; padding:15px; border-radius:15px; border-left: 8px solid #4A148C; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <div style="font-weight:900; font-size:1.4rem; color:#333;">#{idx+1} {row['姓名']}</div>
-                            <div style="font-size:1rem; color:#4A148C; background:#EEE; padding:4px 12px; border-radius:20px; font-weight:bold;">{row['時間']}</div>
+                            <div style="font-size:1rem; color:#4A148C; background:#F3E5F5; padding:4px 12px; border-radius:20px; font-weight:bold;">{row['時間']}</div>
                         </div>
                         <div style="font-size:1rem; color:#555; margin-top:8px; font-weight:500;">🚩 {row['活動內容']}</div>
                     </div>
