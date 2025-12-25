@@ -398,13 +398,16 @@ elif st.session_state.page == 'checkin':
                 
                 st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             
-            # 🔥 修正版：改用 scan_key 計數器，完全不需要 datetime 或 time，保證不報錯
+            # 自動 Focus 的 JavaScript
             components.html(f"""
                 <script>
-                    const input = window.parent.document.querySelector('input[aria-label="請輸入身分證 (Enter)"]');
-                    if (input) input.focus();
+                    var input = window.parent.document.querySelector('input[placeholder="掃描或輸入後按 Enter"]');
+                    if (input) {{
+                        input.focus();
+                        input.value = '';
+                    }}
                 </script>
-            """, height=0, width=0)
+            """, height=0, width=0, key=f"focus_{st.session_state.scan_key}")
             
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -418,10 +421,10 @@ elif st.session_state.page == 'checkin':
                 st.markdown(f"<div style='font-size:2rem; font-weight:bold; color:#4A148C; margin-bottom:10px;'>共 {count} 人</div>", unsafe_allow_html=True)
                 for idx, row in present_df.iterrows():
                     st.markdown(f"""
-                    <div style="background:white; padding:15px; border-radius:15px; border-left: 8px solid #4A148C; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom:12px;">
+                    <div style="background:#F8F9FA; padding:15px; border-radius:15px; border-left: 8px solid #4A148C; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <div style="font-weight:900; font-size:1.4rem; color:#333;">#{idx+1} {row['姓名']}</div>
-                            <div style="font-size:1rem; color:#4A148C; background:#F3E5F5; padding:4px 12px; border-radius:20px; font-weight:bold;">{row['時間']}</div>
+                            <div style="font-size:1rem; color:#4A148C; background:#EEE; padding:4px 12px; border-radius:20px; font-weight:bold;">{row['時間']}</div>
                         </div>
                         <div style="font-size:1rem; color:#555; margin-top:8px; font-weight:500;">🚩 {row['活動內容']}</div>
                     </div>
