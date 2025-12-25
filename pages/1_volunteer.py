@@ -584,6 +584,11 @@ elif st.session_state.page == 'report':
                 with m1: st.markdown(f"""<div class="metric-card"><div class="metric-label">總人次</div><div class="metric-value">{tot_sess}</div></div>""", unsafe_allow_html=True)
                 with m2: st.markdown(f"""<div class="metric-card"><div class="metric-label">總時數</div><div class="metric-value">{tot_time_str}</div></div>""", unsafe_allow_html=True)
                 with m3: st.markdown(f"""<div class="metric-card"><div class="metric-label">參與志工數</div><div class="metric-value">{view_df['姓名'].nunique()}</div></div>""", unsafe_allow_html=True)
+                
+                # 🔥 新增功能：匯出按鈕
+                csv = view_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button("📥 下載此報表 (CSV)", data=csv, file_name=f"志工報表_{date.today()}.csv", mime="text/csv")
+                
                 st.markdown("### 📋 人員明細表")
                 summary = []
                 for name, g in view_df.groupby('姓名'):
@@ -598,5 +603,10 @@ elif st.session_state.page == 'report':
                 m1, m2 = st.columns(2)
                 with m1: st.markdown(f"""<div class="metric-card"><div class="metric-label">執勤次數</div><div class="metric-value">{tot_sess}</div></div>""", unsafe_allow_html=True)
                 with m2: st.markdown(f"""<div class="metric-card"><div class="metric-label">累積時數</div><div class="metric-value">{tot_time_str}</div></div>""", unsafe_allow_html=True)
+                
+                # 🔥 新增功能：匯出按鈕
+                csv = view_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button("📥 下載個人紀錄 (CSV)", data=csv, file_name=f"個人報表_{target_name}_{date.today()}.csv", mime="text/csv")
+                
                 st.markdown("### 📋 執勤紀錄明細")
                 st.dataframe(view_df[['日期', '時間', '動作', '活動內容']].sort_values(['日期', '時間'], ascending=False), use_container_width=True)
