@@ -423,7 +423,6 @@ elif st.session_state.page == 'checkin':
                     }}
                 </script>
             """, height=0, width=0, key=f"focus_{datetime.now().timestamp()}")
-            
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
