@@ -47,7 +47,7 @@ div[data-testid="column"]:hover {
     box-shadow: 0 15px 30px rgba(0,0,0,0.12);
     border-color: #ddd;
     /* 如果想要滑鼠移過去變色，可以加這一行：
-       background-color: #FFFDE7; 
+       background-color: #968e35; 
     */
 }
 
