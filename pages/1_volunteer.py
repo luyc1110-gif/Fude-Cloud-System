@@ -152,23 +152,32 @@ li[role="option"]:hover {{
    🔥 2 & 3. 按鈕配色：確認新增 (Submit) & 下載報表 (Download)
    -------------------------------------------------------------------------- */
 div[data-testid="stFormSubmitButton"] > button, 
-div[data-testid="stDownloadButton"] > button {{
-    background-color: {PRIMARY} !important; /* 🟢 按鈕背景色 (目前深紫) */
-    color: #FFFF00 !important;              /* ⚪ 按鈕字體色 (目前白) */
+div[data-testid="stDownloadButton"] > button {
+    background-color: #4A148C !important;   /* 🟢 按鈕背景色 (紫色) */
     border: none !important;
     border-radius: 12px !important;
-    font-weight: 900 !important;
     padding: 10px 20px !important;
-    transition: all 0.2s;
-}}
+}
+
+/* 🔥 強制修改按鈕內的「文字顏色」 */
+div[data-testid="stFormSubmitButton"] > button *, 
+div[data-testid="stDownloadButton"] > button * {
+    color: #FFFFFF !important;              /* ⚪ 這裡改成 #FFFFFF (白色) */
+    font-weight: 900 !important;
+}
+
 /* 按鈕滑鼠移過去的效果 */
 div[data-testid="stFormSubmitButton"] > button:hover, 
-div[data-testid="stDownloadButton"] > button:hover {{
-    background-color: {ACCENT} !important;  /* 🟣 變亮一點的紫色 */
-    color: #FFFFFF !important;
-    transform: translateY(-2px);            /* 微微浮起 */
+div[data-testid="stDownloadButton"] > button:hover {
+    background-color: #7B1FA2 !important;   /* 🟣 滑鼠移上去變亮紫色 */
+    transform: translateY(-2px);
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-}}
+}
+/* 滑鼠移過去時，文字依然保持白色 */
+div[data-testid="stFormSubmitButton"] > button:hover *, 
+div[data-testid="stDownloadButton"] > button:hover * {
+    color: #FFFFFF !important;
+}
 
 /* Toast 訊息框 */
 div[data-baseweb="toast"] {{
