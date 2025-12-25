@@ -189,19 +189,29 @@ def calculate_hours_year(logs_df, year):
 def get_present_volunteers(logs_df):
     """計算目前場內有哪些人（最後動作為簽到者）"""
     if logs_df.empty: return pd.DataFrame()
-    today_str = get_tw_time().strftime("%Y-%m-%d")
-    # 篩選今日紀錄
-    today_logs = logs_df[logs_df['日期'] == today_str].copy()
+    
+    # 1. 為了確保能抓到資料，同時支援兩種常見日期格式
+    today = get_tw_time()
+    today_str_dash = today.strftime("%Y-%m-%d") # 2025-12-25
+    today_str_slash = today.strftime("%Y/%m/%d") # 2025/12/25
+    
+    # 2. 篩選今日紀錄
+    today_logs = logs_df[
+        (logs_df['日期'] == today_str_dash) | 
+        (logs_df['日期'] == today_str_slash)
+    ].copy()
+    
     if today_logs.empty: return pd.DataFrame()
     
-    # 確保按時間排序
-    today_logs['dt'] = pd.to_datetime(today_logs['日期'] + ' ' + today_logs['時間'])
+    # 3. 確保按時間排序 (處理可能的空值)
+    today_logs['dt'] = pd.to_datetime(today_logs['日期'] + ' ' + today_logs['時間'], errors='coerce')
+    today_logs = today_logs.dropna(subset=['dt'])
     today_logs = today_logs.sort_values('dt')
     
-    # 抓取每個人最後一筆狀態
+    # 4. 抓取每個人 "最後一筆" 狀態
     latest_status = today_logs.groupby('身分證字號').last().reset_index()
     
-    # 篩選出最後動作是 "簽到" 的人
+    # 5. 篩選出最後動作是 "簽到" 的人
     present = latest_status[latest_status['動作'] == '簽到']
     return present[['姓名', '時間', '活動內容']]
 
