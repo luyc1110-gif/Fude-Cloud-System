@@ -138,7 +138,7 @@ li[role="option"] {{
 /* 滑鼠移到選項上的效果 (Hover) */
 li[role="option"]:hover {{
     background-color: #F3E5F5 !important;  /* 🟣 滑鼠移上去變淡紫色 */
-    color: #dbeb52 !important;           /* 🟣 字變深紫 */
+    color: #000000 !important;  /* 改成 #000000 (黑色) */
 }}
 /* 輸入框樣式 (一般文字框) */
 .stTextInput input, .stDateInput input, .stTimeInput input {{
