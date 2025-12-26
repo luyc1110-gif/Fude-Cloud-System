@@ -13,7 +13,20 @@ st.set_page_config(
 )
 
 # =========================================================
-# 1) CSS 樣式
+# 🛠️ 檔案檢查小工具 (除錯用)
+# =========================================================
+# 如果確定圖片都正常顯示了，這一段可以刪除
+# st.markdown("---")
+# files = os.listdir('.')
+# target_file = "volunteer.jpg" # 測試其中一張
+# if target_file in files:
+#     st.caption(f"✅ 系統檢測：已找到 {target_file}")
+# else:
+#     st.error(f"❌ 系統檢測：找不到 {target_file}，請檢查檔名大小寫！")
+# st.markdown("---")
+
+# =========================================================
+# 1) CSS 樣式 (含手機版 RWD 優化)
 # =========================================================
 st.markdown("""
 <style>
@@ -35,6 +48,13 @@ section[data-testid="stSidebar"] { background-color: #F0F2F5; border-right: none
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
     margin-top: 2rem; margin-bottom: 2rem;
     max-width: 1100px !important;
+}
+
+/* 手機版調整：讓大卡片左右邊距變小，爭取更多空間 */
+@media (max-width: 768px) {
+    .block-container {
+        padding: 1.5rem 1rem !important;
+    }
 }
 
 /* 隱藏 Header */
@@ -63,13 +83,14 @@ section[data-testid="stSidebar"] button:hover {
     font-size: 1.2rem; color: #7f8c8d; text-align: center; margin-bottom: 50px;
 }
 
-/* 服務區塊 */
+/* --- 🔥 核心修改區：服務卡片 (Service Box) --- */
 .service-box {
-    display: flex; align-items: stretch; /* 讓左右等高 */
+    display: flex; 
+    flex-direction: row; /* 預設：左右排列 */
     background-color: #F8F9FA; border-radius: 20px;
     padding: 0; margin-bottom: 30px; overflow: hidden;
     border: 1px solid #eee; transition: transform 0.3s;
-    min-height: 250px; /* 確保最小高度 */
+    min-height: 250px; 
 }
 .service-box:hover {
     transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08);
@@ -77,16 +98,36 @@ section[data-testid="stSidebar"] button:hover {
 
 /* 圖片區域 */
 .service-img {
-    width: 40%;
+    width: 40%; /* 電腦版：佔左邊 40% */
     background-size: cover; background-position: center;
     display: flex; align-items: center; justify-content: center;
 }
 
 /* 文字內容 */
 .service-content {
-    width: 60%; padding: 30px;
+    width: 60%; /* 電腦版：佔右邊 60% */
+    padding: 30px;
     display: flex; flex-direction: column; justify-content: center;
 }
+
+/* --- 📱 手機版專用設定 (RWD) --- */
+@media (max-width: 768px) {
+    .service-box {
+        flex-direction: column; /* 🔥 手機版：改為上下排列 */
+        height: auto;
+    }
+    .service-img {
+        width: 100%; /* 🔥 圖片寬度佔滿 100% */
+        height: 200px; /* 🔥 強制圖片高度，變成長方形 Banner */
+        min-height: 200px;
+    }
+    .service-content {
+        width: 100%; /* 🔥 文字寬度佔滿 100% */
+        padding: 20px;
+    }
+    .hero-title { font-size: 1.8rem; } /* 手機標題縮小一點 */
+}
+
 .service-title {
     font-size: 1.8rem; font-weight: 900; margin-bottom: 10px;
 }
@@ -95,22 +136,21 @@ section[data-testid="stSidebar"] button:hover {
 }
 .service-tag {
     display: inline-block; padding: 5px 12px; border-radius: 15px;
-    font-size: 0.85rem; font-weight: bold; color: white; margin-right: 5px;
+    font-size: 0.85rem; font-weight: bold; color: white; margin-right: 5px; margin-bottom: 5px;
 }
 .service-icon-placeholder { font-size: 5rem; }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) 輔助函式：圖片轉碼 (解決圖片不顯示問題)
+# 2) 輔助函式：圖片轉碼
 # =========================================================
 def get_image_as_base64(path):
-    """將圖片檔案轉換為 Base64 字串，讓 HTML 可以直接讀取"""
     try:
         with open(path, "rb") as f:
             data = f.read()
         return base64.b64encode(data).decode()
-    except Exception as e:
+    except Exception:
         return None
 
 # =========================================================
@@ -156,25 +196,17 @@ services = [
 ]
 
 for svc in services:
-    # 預設圖片 HTML (沒圖片時顯示色塊)
-    img_html = f"""
-    <div class="service-img" style="background-color: {svc['color']}15;">
-        <div class="service-icon-placeholder">{svc['icon']}</div>
-    </div>
-    """
+    img_html = f"""<div class="service-img" style="background-color: {svc['color']}15;"><div class="service-icon-placeholder">{svc['icon']}</div></div>"""
     
-    # 嘗試讀取圖片並轉碼
     if os.path.exists(svc['img_file']):
         img_b64 = get_image_as_base64(svc['img_file'])
         if img_b64:
-            # 判斷副檔名以設定正確的 mime type
             ext = svc['img_file'].split('.')[-1].lower()
             mime = "image/png" if ext == 'png' else "image/jpeg"
             img_html = f"""<div class="service-img" style="background-image: url('data:{mime};base64,{img_b64}');"></div>"""
 
     tags_html = "".join([f'<span class="service-tag" style="background-color:{svc["color"]}">{t}</span>' for t in svc['tags']])
 
-    # 渲染卡片
     st.markdown(f"""
 <div class="service-box">
 {img_html}
