@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="關懷戶管理系統", 
     page_icon="🏠", 
     layout="wide", 
-    initial_sidebar_state="expanded" # 🔥 1. 改為預設展開側邊欄
+    initial_sidebar_state="expanded" 
 )
 
 # --- 🔒 安全登入門禁 ---
@@ -37,14 +37,13 @@ if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
 TW_TZ = timezone(timedelta(hours=8))
-# 🔥 維持原本配色
-PRIMARY = "#4A4E69"   # 深藍灰 (按鈕、文字強調)
-GREEN   = "#8E9775"   # 苔蘚綠 (主視覺、側邊欄選中)
+PRIMARY = "#4A4E69"   # 深藍灰
+GREEN   = "#8E9775"   # 苔蘚綠
 BG_MAIN = "#F8F9FA"   # 淺灰底
 TEXT    = "#333333"
 
 # =========================================================
-# 1) CSS 樣式 (視覺大改版：懸浮卡片 + 側邊欄)
+# 1) CSS 樣式
 # =========================================================
 st.markdown(f"""
 <style>
@@ -55,18 +54,10 @@ html, body, [class*="css"], div, p, span, li, ul {{
     color: {TEXT} !important;
 }}
 
-/* 🔥 1. 整體背景 */
-.stApp {{
-    background-color: {BG_MAIN} !important;
-}}
+.stApp {{ background-color: {BG_MAIN} !important; }}
+section[data-testid="stSidebar"] {{ background-color: {BG_MAIN}; border-right: none; }}
 
-/* 🔥 2. 側邊欄背景 (無縫融合) */
-section[data-testid="stSidebar"] {{
-    background-color: {BG_MAIN};
-    border-right: none;
-}}
-
-/* 🔥 3. 主內容區：懸浮大卡片 */
+/* 懸浮大卡片容器 */
 .block-container {{
     background-color: #FFFFFF;
     border-radius: 25px;
@@ -76,40 +67,30 @@ section[data-testid="stSidebar"] {{
     max-width: 95% !important;
 }}
 
-/* 🔥 4. 修復 Header */
-header[data-testid="stHeader"] {{
-    display: block !important;
-    background-color: transparent !important;
-}}
+/* Header 隱藏 */
+header[data-testid="stHeader"] {{ display: block !important; background-color: transparent !important; }}
 header[data-testid="stHeader"] .decoration {{ display: none; }}
 
-/* --- 側邊欄按鈕 (膠囊狀) --- */
+/* 側邊欄按鈕 */
 section[data-testid="stSidebar"] button {{
-    background-color: #FFFFFF !important;
-    color: #666 !important;
-    border: 1px solid transparent !important;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important;
-    padding: 10px 0 !important;
-    font-weight: 700 !important;
-    width: 100%; margin-bottom: 8px !important;
+    background-color: #FFFFFF !important; color: #666 !important;
+    border: 1px solid transparent !important; box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+    border-radius: 25px !important; padding: 10px 0 !important;
+    font-weight: 700 !important; width: 100%; margin-bottom: 8px !important;
     transition: all 0.2s;
 }}
 section[data-testid="stSidebar"] button:hover {{
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
+    transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
     color: {GREEN} !important;
 }}
-/* 選中狀態 (苔蘚綠漸層) */
 .nav-active {{
     background: linear-gradient(135deg, {GREEN}, #6D6875);
-    color: white !important;
-    padding: 12px 0; text-align: center; border-radius: 25px;
+    color: white !important; padding: 12px 0; text-align: center; border-radius: 25px;
     font-weight: 900; box-shadow: 0 4px 10px rgba(142, 151, 117, 0.4);
     margin-bottom: 12px; cursor: default;
 }}
 
-/* --- 表格與輸入框優化 --- */
+/* 輸入框優化 */
 div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
     background-color: #FFFFFF !important; border-radius: 10px; padding: 5px;
 }}
@@ -121,11 +102,10 @@ div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{
     background-color: #FFFFFF !important; color: #000000 !important;
 }}
 li[role="option"]:hover {{
-    background-color: #E8F5E9 !important; /* 淡綠色 hover */
-    color: {GREEN} !important;
+    background-color: #E8F5E9 !important; color: {GREEN} !important;
 }}
 
-/* --- 按鈕樣式 --- */
+/* 按鈕樣式 */
 div[data-testid="stFormSubmitButton"] > button,
 div[data-testid="stDownloadButton"] > button {{
     background-color: {PRIMARY} !important; color: #FFFFFF !important;
@@ -138,7 +118,7 @@ div[data-testid="stDownloadButton"] > button:hover {{
     transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }}
 
-/* --- 數據看板卡片 (維持原本設計) --- */
+/* 數據看板卡片 */
 .care-metric-box {{
     padding: 20px; border-radius: 20px; color: #FFFFFF !important; text-align: center; margin-bottom: 15px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.1); min-height: 140px;
@@ -146,33 +126,37 @@ div[data-testid="stDownloadButton"] > button:hover {{
 }}
 .care-metric-box div, .care-metric-box span {{ color: #FFFFFF !important; font-weight: 900 !important; }}
 
-/* --- 物資卡片樣式 --- */
-.inv-card-header {{
-    font-weight: 900; font-size: 1.1rem; color: #333;
-    margin-bottom: 5px;
-}}
+/* 物資卡片 */
+.inv-card-header {{ font-weight: 900; font-size: 1.1rem; color: #333; margin-bottom: 5px; }}
 .inv-card-stock {{
     font-size: 0.9rem; color: #666; background-color: #eee;
-    padding: 2px 8px; border-radius: 10px; display: inline-block;
-    margin-bottom: 10px;
+    padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 10px;
 }}
-.inv-card-stock.low {{
-    color: #D32F2F !important; background-color: #FFEBEE !important;
-    border: 1px solid #D32F2F;
-}}
-
-/* 🔥 物資卡片懸浮特效 */
+.inv-card-stock.low {{ color: #D32F2F !important; background-color: #FFEBEE !important; border: 1px solid #D32F2F; }}
 div[data-testid="stVerticalBlockBorderWrapper"] {{
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    border: 2px solid #E0E0E0 !important;
-    background-color: #FFFFFF;
+    border: 2px solid #E0E0E0 !important; background-color: #FFFFFF;
 }}
 div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
-    transform: translateY(-8px);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.15);
-    border-color: {GREEN} !important;
-    z-index: 10;
+    transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    border-color: {GREEN} !important; z-index: 10;
 }}
+
+/* 🔥 新增：訪視紀錄時間軸卡片樣式 */
+.visit-card {{
+    background-color: #FFFFFF; border-left: 5px solid {GREEN};
+    border-radius: 10px; padding: 15px 20px; margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;
+}}
+.visit-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }}
+.visit-date {{ font-weight: 900; font-size: 1.1rem; color: #333; }}
+.visit-volunteer {{ font-size: 0.9rem; color: #666; background: #f0f0f0; padding: 4px 12px; border-radius: 15px; }}
+.visit-tag {{
+    display: inline-block; background-color: {GREEN}; color: white !important;
+    padding: 4px 10px; border-radius: 5px; font-size: 0.9rem; font-weight: bold; margin-bottom: 8px;
+}}
+.visit-tag.only {{ background-color: #9E9E9E; }} /* 僅訪視用灰色 */
+.visit-note {{ font-size: 1rem; color: #444; line-height: 1.5; background: #FAFAFA; padding: 10px; border-radius: 8px; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -214,49 +198,43 @@ def calculate_age(dob_str):
     except: return 0
 
 # =========================================================
-# 3) Navigation (改為側邊欄)
+# 3) Navigation (側邊欄)
 # =========================================================
 def render_nav():
     with st.sidebar:
         st.markdown(f"<h2 style='color:{GREEN}; margin-bottom:5px; padding-left:10px;'>🏠 關懷戶中心</h2>", unsafe_allow_html=True)
         st.write("") 
 
-        # 1. 首頁
         if st.session_state.page == 'home':
             st.markdown('<div class="nav-active">📊 關懷概況看板</div>', unsafe_allow_html=True)
         else:
             if st.button("📊 關懷概況看板", key="nav_home", use_container_width=True):
                 st.session_state.page = 'home'; st.rerun()
 
-        # 2. 名冊
         if st.session_state.page == 'members':
             st.markdown('<div class="nav-active">📋 名冊管理</div>', unsafe_allow_html=True)
         else:
             if st.button("📋 名冊管理", key="nav_members", use_container_width=True):
                 st.session_state.page = 'members'; st.rerun()
 
-        # 3. 健康
         if st.session_state.page == 'health':
             st.markdown('<div class="nav-active">🏥 健康追蹤</div>', unsafe_allow_html=True)
         else:
             if st.button("🏥 健康追蹤", key="nav_health", use_container_width=True):
                 st.session_state.page = 'health'; st.rerun()
 
-        # 4. 物資
         if st.session_state.page == 'inventory':
             st.markdown('<div class="nav-active">📦 物資庫存</div>', unsafe_allow_html=True)
         else:
             if st.button("📦 物資庫存", key="nav_inv", use_container_width=True):
                 st.session_state.page = 'inventory'; st.rerun()
 
-        # 5. 訪視
         if st.session_state.page == 'visit':
             st.markdown('<div class="nav-active">🤝 訪視發放</div>', unsafe_allow_html=True)
         else:
             if st.button("🤝 訪視發放", key="nav_visit", use_container_width=True):
                 st.session_state.page = 'visit'; st.rerun()
 
-        # 6. 統計
         if st.session_state.page == 'stats':
             st.markdown('<div class="nav-active">📈 數據統計</div>', unsafe_allow_html=True)
         else:
@@ -278,30 +256,23 @@ def render_nav():
 if st.session_state.page == 'home':
     render_nav()
     st.markdown(f"<h2 style='color: {GREEN};'>📊 關懷戶概況看板</h2>", unsafe_allow_html=True)
-    
     mems, logs = load_data("care_members", COLS_MEM), load_data("care_logs", COLS_LOG)
-    
     if not mems.empty:
         cur_y = datetime.now(TW_TZ).year
         prev_y = cur_y - 1
         mems['age'] = mems['生日'].apply(calculate_age)
-        
-        # 數據計算
         dist_df = logs.copy()
         if not logs.empty:
             dist_df['dt'] = pd.to_datetime(dist_df['發放日期'], errors='coerce')
             cur_val = dist_df[dist_df['dt'].dt.year == cur_y]['發放數量'].replace("","0").astype(float).sum()
             prev_val = dist_df[dist_df['dt'].dt.year == prev_y]['發放數量'].replace("","0").astype(float).sum()
         else: cur_val = prev_val = 0
-        
         dis_c = len(mems[mems['身分別'].str.contains("身障", na=False)])
         low_c = len(mems[mems['身分別'].str.contains("低收|中低收", na=False)])
-
         c1, c2, c3 = st.columns(3)
         with c1: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#8E9775 0%,#6D6875 100%);"><div>🏠 關懷戶總人數</div><div style="font-size:2.8rem;">{len(mems)} <span style="font-size:1.2rem;">人</span></div><div>平均 {round(mems["age"].mean(),1)} 歲</div></div>', unsafe_allow_html=True)
         with c2: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#8E9775 100%);"><div>♿ 身障關懷人數</div><div style="font-size:2.8rem;">{dis_c} <span style="font-size:1.2rem;">人</span></div></div>', unsafe_allow_html=True)
         with c3: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#6D6875 0%,#4A4E69 100%);"><div>📉 低收/中低收</div><div style="font-size:2.8rem;">{low_c} <span style="font-size:1.2rem;">人</span></div></div>', unsafe_allow_html=True)
-        
         c4, c5 = st.columns(2)
         with c4: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#BC6C25 0%,#8E9775 100%);"><div>🎁 {cur_y} 當年度發放量</div><div style="font-size:3.5rem;">{int(cur_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
         with c5: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#6D6875 100%);"><div>⏳ {prev_y} 上年度發放量</div><div style="font-size:3.5rem;">{int(prev_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
@@ -311,7 +282,6 @@ elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 關懷戶名冊管理")
     df = load_data("care_members", COLS_MEM)
-    
     with st.expander("➕ 新增關懷戶 (防重複機制)"):
         with st.form("add_care", clear_on_submit=True):
             c1, c2, c3, c4 = st.columns(4)
@@ -319,18 +289,14 @@ elif st.session_state.page == 'members':
             p = c2.text_input("身分證")
             g = c3.selectbox("性別", ["男", "女"])
             b = c4.date_input("生日", value=date(1950, 1, 1), min_value=date(1911, 1, 1), max_value=date(2025, 12, 31))
-            
             addr, ph = st.text_input("地址"), st.text_input("電話")
             ce1, ce2 = st.columns(2)
             en, ep = ce1.text_input("緊急聯絡人"), ce2.text_input("緊急聯絡電話")
-            
             cn1, cn2, cn3 = st.columns(3)
             child = cn1.number_input("18歲以下子女", min_value=0, value=0, step=1)
             adult = cn2.number_input("成人數量", min_value=0, value=0, step=1)
             senior = cn3.number_input("65歲以上長者", min_value=0, value=0, step=1)
-            
             id_t = st.multiselect("身分別 (可多選)", ["低收", "中低收", "中低老人", "身障", "獨居", "獨居有子女"])
-            
             if st.form_submit_button("確認新增關懷戶"):
                 if p.upper() in df['身分證字號'].values: st.error("❌ 該身分證號已存在！")
                 elif not n: st.error("❌ 姓名為必填")
@@ -394,61 +360,46 @@ elif st.session_state.page == 'visit':
     mems = load_data("care_members", COLS_MEM)
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
-    
-    # 1. 計算即時庫存
     stock_map = {}
     if not inv.empty:
         for itm, gp in inv.groupby('物資內容'):
             tin = gp['總數量'].replace("","0").astype(float).sum()
             tout = logs[logs['物資內容'] == itm]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
             stock_map[itm] = int(tin - tout)
-    
-    # --- 身分別篩選 ---
     st.markdown("#### 1. 選擇訪視對象")
     all_tags = set()
     if not mems.empty:
         for s in mems['身分別'].astype(str):
             for t in s.split(','):
                 if t.strip(): all_tags.add(t.strip())
-    
     c_filter, c_person = st.columns([1, 2])
     with c_filter:
         tag_opts = ["(全部顯示)"] + sorted(list(all_tags))
         sel_tag = st.selectbox("🌪️ 依身分別篩選", tag_opts)
-    
     with c_person:
         if sel_tag == "(全部顯示)": filtered_mems = mems
         else: filtered_mems = mems[mems['身分別'].str.contains(sel_tag, na=False)] if not mems.empty else mems
         p_list = filtered_mems['姓名'].tolist() if not filtered_mems.empty else []
         target_p = st.selectbox("👤 選擇關懷戶", p_list)
 
-    # --- 卡片式發放 ---
     st.markdown("#### 2. 填寫訪視內容與物資")
-    
     with st.form("visit_multi_form"):
         c1, c2 = st.columns(2)
         try:
             v_df = load_data("members", ["姓名"]) 
             v_list = v_df['姓名'].tolist() if not v_df.empty else ["預設志工"]
-        except:
-            v_list = ["預設志工"]
-            
+        except: v_list = ["預設志工"]
         visit_who = c1.selectbox("執行志工", v_list)
         visit_date = c2.date_input("日期", value=date.today())
-        
         st.write("📦 **點擊下方卡片輸入數量 (0 代表不發)**")
-        
         valid_items = {k:v for k,v in stock_map.items() if v > 0}
         quantities = {} 
-        
-        if not valid_items:
-            st.info("💡 目前無任何庫存物資，僅能進行純訪視記錄。")
+        if not valid_items: st.info("💡 目前無任何庫存物資，僅能進行純訪視記錄。")
         else:
             cols = st.columns(3) 
             for idx, (item, stock) in enumerate(valid_items.items()):
                 col = cols[idx % 3] 
                 with col:
-                    # 使用 container 當作卡片框 (懸浮效果會作用在這裡)
                     with st.container(border=True):
                         st.markdown(f'<div class="inv-card-header">{item}</div>', unsafe_allow_html=True)
                         stock_class = "low" if stock < 5 else "normal"
@@ -456,17 +407,13 @@ elif st.session_state.page == 'visit':
                         st.markdown(f'<div class="inv-card-stock {stock_class}">{stock_label}</div>', unsafe_allow_html=True)
                         qty = st.number_input("發放數量", min_value=0, max_value=stock, step=1, key=f"q_{idx}_{item}")
                         quantities[item] = qty
-
         note = st.text_area("訪視紀錄 / 備註")
         submitted = st.form_submit_button("✅ 確認提交紀錄")
-        
         if submitted:
-            if not target_p:
-                st.error("❌ 請先選擇關懷戶！")
+            if not target_p: st.error("❌ 請先選擇關懷戶！")
             else:
                 items_to_give = [(k, v) for k, v in quantities.items() if v > 0]
                 new_logs = []
-                
                 if items_to_give:
                     for item_name, amount in items_to_give:
                         new_logs.append({
@@ -478,11 +425,9 @@ elif st.session_state.page == 'visit':
                         "志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p,
                         "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note
                     })
-                
                 if save_data(pd.concat([logs, pd.DataFrame(new_logs)], ignore_index=True), "care_logs"):
                     st.success(f"✅ 已成功紀錄！(包含 {len(items_to_give)} 項物資)")
                     time.sleep(1); st.rerun()
-
     if not logs.empty:
         st.markdown("#### 📝 最近 20 筆訪視紀錄")
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
@@ -542,7 +487,7 @@ elif st.session_state.page == 'stats':
                             <div class="visit-note">{row['訪視紀錄']}</div>
                         </div>
                         """, unsafe_allow_html=True)
-    
+
     with tab2:
         if not logs.empty:
             st.markdown("#### 📊 各類物資發放排行")
