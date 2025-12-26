@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="關懷戶管理系統",
     page_icon="🏠",
     layout="wide",
-    initial_sidebar_state="expanded" # 🔥 預設展開側邊欄
+    initial_sidebar_state="expanded" # 🔥 改為預設展開
 )
 
 # --- 🔒 安全登入門禁 ---
@@ -37,7 +37,7 @@ if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
 TW_TZ = timezone(timedelta(hours=8))
-# 🔥 維持原本關懷戶系統配色
+# 🔥 維持原本配色
 PRIMARY = "#4A4E69"   # 深藍灰 (按鈕、文字強調)
 GREEN   = "#8E9775"   # 苔蘚綠 (主視覺、側邊欄選中)
 BG_MAIN = "#F8F9FA"   # 淺灰底
