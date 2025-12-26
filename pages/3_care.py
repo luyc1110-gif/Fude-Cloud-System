@@ -276,44 +276,153 @@ elif st.session_state.page == 'inventory':
         ed_i = st.data_editor(inv, use_container_width=True, num_rows="dynamic", key="inv_ed")
         if st.button("💾 儲存修改內容"): save_data(ed_i, "care_inventory")
 
-# --- [分頁 4：訪視發放] ---
+# --- [分頁 4：訪視發放 (升級版：身分篩選 + 多樣物資)] ---
 elif st.session_state.page == 'visit':
     render_nav()
     st.markdown("## 🤝 訪視與物資發放紀錄")
-    mems, inv, logs = load_data("care_members", COLS_MEM), load_data("care_inventory", COLS_INV), load_data("care_logs", COLS_LOG)
+    # 讀取資料
+    mems = load_data("care_members", COLS_MEM)
+    inv = load_data("care_inventory", COLS_INV)
+    logs = load_data("care_logs", COLS_LOG)
     
+    # 1. 計算即時庫存
     stock_map = {}
     if not inv.empty:
         for itm, gp in inv.groupby('物資內容'):
             tin = gp['總數量'].replace("","0").astype(float).sum()
             tout = logs[logs['物資內容'] == itm]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
             stock_map[itm] = int(tin - tout)
-    # 🔥 選單文字包含庫存
-    itm_list = ["(僅訪視)"] + [f"{k} (剩餘: {v})" for k, v in stock_map.items()]
+    
+    # --- 新機制二：身分別篩選名單 ---
+    st.markdown("#### 1. 選擇訪視對象")
+    
+    # 抓出所有出現過的身分別標籤
+    all_tags = set()
+    if not mems.empty:
+        for s in mems['身分別'].astype(str):
+            for t in s.split(','):
+                if t.strip(): all_tags.add(t.strip())
+    
+    # 製作篩選器 UI
+    c_filter, c_person = st.columns([1, 2])
+    with c_filter:
+        tag_opts = ["(全部顯示)"] + sorted(list(all_tags))
+        sel_tag = st.selectbox("🌪️ 依身分別篩選", tag_opts)
+    
+    with c_person:
+        # 根據選擇過濾名單
+        if sel_tag == "(全部顯示)":
+            filtered_mems = mems
+        else:
+            # 確保不會因為空值報錯
+            filtered_mems = mems[mems['身分別'].str.contains(sel_tag, na=False)] if not mems.empty else mems
+        
+        # 產生最終名單
+        p_list = filtered_mems['姓名'].tolist() if not filtered_mems.empty else []
+        target_p = st.selectbox("👤 選擇關懷戶", p_list)
 
-    with st.form("v_form"):
-        c1, c2, c3 = st.columns(3)
-        v_list = load_data("members", ["姓名"])['姓名'].tolist() if not load_data("members", ["姓名"]).empty else ["無資料"]
-        v, d, p = st.selectbox("執行志工", v_list), st.date_input("日期"), st.selectbox("關懷戶", mems['姓名'].tolist())
-        sel_i_dis = st.selectbox("選擇物資/款項/服務", itm_list)
-        sel_q = st.number_input("數量/金額", min_value=0, value=1)
+    # --- 新機制一：多樣物資發放 (表格輸入) ---
+    st.markdown("#### 2. 填寫訪視內容與物資")
+    
+    with st.form("visit_multi_form"):
+        c1, c2 = st.columns(2)
+        # 嘗試讀取志工名單 (若讀不到則顯示預設)
+        try:
+            v_df = load_data("members", ["姓名"]) 
+            v_list = v_df['姓名'].tolist() if not v_df.empty else ["預設志工"]
+        except:
+            v_list = ["預設志工"]
+            
+        visit_who = c1.selectbox("執行志工", v_list)
+        visit_date = c2.date_input("日期", value=date.today())
         
-        real_i = sel_i_dis.split(" (剩餘:")[0]
-        if real_i != "(僅訪視)":
-            hist = logs[logs['物資內容'] == real_i]['關懷戶姓名'].value_counts()
-            sug = mems[~mems['姓名'].isin(hist.index)]['姓名'].head(5).tolist()
-            if sug: st.info(f"💡 **發放優先建議**：尚未領取過「{real_i}」的人：{', '.join(sug)}")
+        st.write("📦 **發放物資 (請直接在「本次發放」欄位填寫數量，0 代表不發)**")
         
-        nt = st.text_area("訪視紀錄內容")
-        if st.form_submit_button("確認提交紀錄"):
-            if real_i != "(僅訪視)" and sel_q > stock_map.get(real_i, 0): st.error("❌ 餘額不足")
+        # 準備資料給 Data Editor 顯示
+        # 我們過濾掉庫存 <= 0 的項目，避免誤選
+        inventory_rows = []
+        for item_name, qty in stock_map.items():
+            if qty > 0:
+                inventory_rows.append({"物資名稱": item_name, "目前庫存": qty, "本次發放": 0})
+        
+        if not inventory_rows:
+            st.info("💡 目前無庫存物資，僅能進行純訪視記錄。")
+            df_inv_editor = pd.DataFrame(columns=["物資名稱", "目前庫存", "本次發放"])
+        else:
+            df_inv_input = pd.DataFrame(inventory_rows)
+            # 使用 st.data_editor 讓使用者直接在表格上打數字
+            df_inv_editor = st.data_editor(
+                df_inv_input,
+                column_config={
+                    "物資名稱": st.column_config.TextColumn(disabled=True),
+                    "目前庫存": st.column_config.NumberColumn(disabled=True),
+                    "本次發放": st.column_config.NumberColumn(min_value=0, step=1, required=True)
+                },
+                use_container_width=True,
+                hide_index=True
+            )
+
+        note = st.text_area("訪視紀錄 / 備註")
+        
+        # 提交按鈕
+        submitted = st.form_submit_button("✅ 確認提交紀錄")
+        
+        if submitted:
+            if not target_p:
+                st.error("❌ 請先選擇關懷戶！")
             else:
-                new = {"志工":v, "發放日期":str(d), "關懷戶姓名":p, "物資內容":real_i, "發放數量":sel_q, "訪視紀錄":nt}
-                if save_data(pd.concat([logs, pd.DataFrame([new])], ignore_index=True), "care_logs"): st.success("已紀錄"); time.sleep(1); st.rerun()
+                # 檢查庫存與準備寫入資料
+                over_stock = False
+                items_to_give = []
+                
+                if not df_inv_editor.empty:
+                    for index, row in df_inv_editor.iterrows():
+                        give_q = int(row['本次發放'])
+                        stock_q = int(row['目前庫存'])
+                        if give_q > 0:
+                            if give_q > stock_q:
+                                st.error(f"❌ {row['物資名稱']} 庫存不足！(庫存 {stock_q}，欲發 {give_q})")
+                                over_stock = True
+                            else:
+                                items_to_give.append((row['物資名稱'], give_q))
+                
+                if not over_stock:
+                    new_logs = []
+                    
+                    # 狀況 A: 有發放物資 -> 拆成多筆紀錄寫入 (方便統計各物資發放量)
+                    if items_to_give:
+                        for item_name, amount in items_to_give:
+                            new_logs.append({
+                                "志工": visit_who,
+                                "發放日期": str(visit_date),
+                                "關懷戶姓名": target_p,
+                                "物資內容": item_name,
+                                "發放數量": amount,
+                                "訪視紀錄": note # 每一筆都帶上紀錄，確保資料完整
+                            })
+                    # 狀況 B: 沒發物資 -> 寫入一筆「僅訪視」
+                    else:
+                        new_logs.append({
+                            "志工": visit_who,
+                            "發放日期": str(visit_date),
+                            "關懷戶姓名": target_p,
+                            "物資內容": "(僅訪視)",
+                            "發放數量": 0,
+                            "訪視紀錄": note
+                        })
+                    
+                    # 寫入 Google Sheet
+                    if save_data(pd.concat([logs, pd.DataFrame(new_logs)], ignore_index=True), "care_logs"):
+                        st.success(f"✅ 已成功紀錄！(包含 {len(items_to_give)} 項物資)")
+                        time.sleep(1)
+                        st.rerun()
 
+    # 顯示歷史紀錄
     if not logs.empty:
-        ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False), use_container_width=True, num_rows="dynamic", key="v_ed")
-        if st.button("💾 儲存修改內容"): save_data(ed_l, "care_logs")
+        st.markdown("#### 📝 最近 20 筆訪視紀錄")
+        # 顯示最近的紀錄方便確認
+        ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
+        if st.button("💾 儲存歷史紀錄修改"): save_data(ed_l, "care_logs")
 
 # --- [分頁 5：統計與個案查詢] ---
 elif st.session_state.page == 'stats':
