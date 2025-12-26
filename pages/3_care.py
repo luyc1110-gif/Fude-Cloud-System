@@ -49,13 +49,12 @@ html, body, [class*="css"], div, p, span, li, ul {{ font-family: "Noto Sans TC",
 [data-testid="stHeader"], [data-testid="stSidebar"], footer {{ display: none; }}
 .block-container {{ padding-top: 1rem !important; max-width: 1250px; }}
 
-/* 表格白底黑字 */
+/* 表格與輸入框優化 */
 div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
     background-color: #FFFFFF !important; border-radius: 10px; padding: 10px;
 }}
 .stDataFrame div, .stDataFrame span, .stDataFrame p {{ color: #000000 !important; }}
 
-/* 下拉選單與日期選擇：白底黑字 */
 div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
     background-color: #FFFFFF !important; color: #000000 !important;
     border: 2px solid #D1D1D1 !important; border-radius: 12px !important; font-weight: 700 !important;
@@ -65,7 +64,7 @@ div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{
 }}
 div[data-baseweb="select"] span {{ color: #000000 !important; }}
 
-/* 表單確認按鈕：深色背景 + 白字 */
+/* 按鈕樣式 */
 div[data-testid="stFormSubmitButton"] > button {{
     background-color: {PRIMARY} !important; color: #FFFFFF !important;
     border: none !important; border-radius: 12px !important; font-weight: 900 !important;
@@ -86,27 +85,37 @@ div[data-testid="stButton"] > button {{
     font-weight: 900 !important; transition: all 0.2s;
 }}
 div[data-testid="stButton"] > button:hover {{ background-color: {GREEN} !important; color: white !important; }}
-.inv-card-stock.low {
+
+/* --- 物資卡片樣式 --- */
+.inv-card-header {{
+    font-weight: 900; font-size: 1.1rem; color: #333;
+    margin-bottom: 5px;
+}}
+.inv-card-stock {{
+    font-size: 0.9rem; color: #666; background-color: #eee;
+    padding: 2px 8px; border-radius: 10px; display: inline-block;
+    margin-bottom: 10px;
+}}
+.inv-card-stock.low {{
     color: #D32F2F !important; background-color: #FFEBEE !important;
     border: 1px solid #D32F2F;
-}
+}}
 
 /* 🔥🔥🔥 新增：物資卡片懸浮上浮效果 🔥🔥🔥 */
-
 /* 1. 針對有邊框的容器設定動畫過渡 */
-div[data-testid="stVerticalBlockBorderWrapper"] {
+div[data-testid="stVerticalBlockBorderWrapper"] {{
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* 設定平滑動畫 */
-    border: 2px solid #E0E0E0 !important; /* 預設邊框改為淺灰色，比較有質感 */
+    border: 2px solid #E0E0E0 !important; /* 預設邊框改為淺灰色 */
     background-color: #FFFFFF; /* 確保卡片背景是白的 */
-}
+}}
 
 /* 2. 滑鼠移上去 (Hover) 時的動作 */
-div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
     transform: translateY(-8px); /* 往上浮動 8px */
-    box-shadow: 0 12px 24px rgba(0,0,0,0.15); /* 加上柔和的大陰影，製造懸浮感 */
-    border-color: #8E9775 !important; /* 邊框變成主色調 (苔蘚綠)，增加互動感 */
-    z-index: 10; /* 確保浮起來時壓在其他元素上面 */
-}
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15); /* 加上柔和的大陰影 */
+    border-color: {GREEN} !important; /* 邊框變成主色調 */
+    z-index: 10;
+}}
 </style>
 """, unsafe_allow_html=True)
 
