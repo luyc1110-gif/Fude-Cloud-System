@@ -10,10 +10,10 @@ import time
 # 0) 系統設定
 # =========================================================
 st.set_page_config(
-    page_title="關懷戶管理系統",
-    page_icon="🏠",
-    layout="wide",
-    initial_sidebar_state="expanded" # 🔥 改為預設展開
+    page_title="關懷戶管理系統", 
+    page_icon="🏠", 
+    layout="wide", 
+    initial_sidebar_state="expanded" # 🔥 1. 改為預設展開側邊欄
 )
 
 # --- 🔒 安全登入門禁 ---
@@ -44,7 +44,7 @@ BG_MAIN = "#F8F9FA"   # 淺灰底
 TEXT    = "#333333"
 
 # =========================================================
-# 1) CSS 樣式 (懸浮卡片 + 側邊欄 + 物資卡特效)
+# 1) CSS 樣式 (視覺大改版：懸浮卡片 + 側邊欄)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -138,7 +138,7 @@ div[data-testid="stDownloadButton"] > button:hover {{
     transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }}
 
-/* --- 數據看板卡片 (保留原本設計) --- */
+/* --- 數據看板卡片 (維持原本設計) --- */
 .care-metric-box {{
     padding: 20px; border-radius: 20px; color: #FFFFFF !important; text-align: center; margin-bottom: 15px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.1); min-height: 140px;
