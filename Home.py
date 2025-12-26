@@ -8,7 +8,7 @@ st.set_page_config(
     page_title="福德里社區管理系統",
     page_icon="🏘️",
     layout="wide",
-    initial_sidebar_state="expanded" # 預設展開側邊欄以便導航
+    initial_sidebar_state="expanded" 
 )
 
 # =========================================================
@@ -46,7 +46,7 @@ section[data-testid="stSidebar"] {
     max-width: 1100px !important;
 }
 
-/* 隱藏預設 Header (讓畫面更乾淨) */
+/* 隱藏預設 Header */
 header[data-testid="stHeader"] {
     background-color: transparent !important;
 }
@@ -162,15 +162,12 @@ section[data-testid="stSidebar"] button:hover {
 with st.sidebar:
     st.markdown("<h2 style='text-align:center; color:#333; margin-bottom:20px;'>🚀 系統快速入口</h2>", unsafe_allow_html=True)
     
-    # 按鈕 1: 志工
     if st.button("💜 進入 志工管理系統"):
         st.switch_page("pages/1_volunteer.py")
     
-    # 按鈕 2: 長輩
     if st.button("👴 進入 長輩關懷系統"):
         st.switch_page("pages/2_elderly.py")
         
-    # 按鈕 3: 關懷戶
     if st.button("🏠 進入 關懷戶系統"):
         st.switch_page("pages/3_care.py")
 
@@ -181,28 +178,25 @@ with st.sidebar:
 # 3) 主畫面內容 (Landing Page)
 # =========================================================
 
-# 標題區
 st.markdown('<div class="hero-title">🏘️ 福德里 - 社區數位管理中樞</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-subtitle">志工調度．長輩照護．弱勢關懷．一站整合</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 
-# 定義三大區塊的內容
-# 💡 提示：您可以將照片檔案放在同目錄下，並將檔名填入 'img_file'
 services = [
     {
         "title": "志工管理系統",
         "desc": "整合志工排班、時數統計與榮譽名冊。透過數位化管理，讓志工服務歷程清晰可見，並能快速調度人力支援社區活動。",
         "tags": ["時數統計", "排班打卡", "榮譽名冊"],
-        "color": "#4A148C", # 紫色
+        "color": "#4A148C",
         "icon": "💜",
-        "img_file": "volunteer.jpg" # 若有照片請改此檔名
+        "img_file": "volunteer.jpg"
     },
     {
         "title": "長輩關懷系統",
         "desc": "針對社區長者提供據點報到、血壓健康追蹤與活動參與記錄。透過數據分析，主動關懷長輩健康狀況，落實在地安老。",
         "tags": ["據點報到", "血壓量測", "健康追蹤"],
-        "color": "#EF6C00", # 橙色
+        "color": "#EF6C00",
         "icon": "👴",
         "img_file": "elderly.jpg"
     },
@@ -210,37 +204,33 @@ services = [
         "title": "關懷戶系統",
         "desc": "建立弱勢家庭數位名冊，記錄物資發放與訪視歷程。確保資源能精準送達需要的人手中，不遺漏任何一個角落。",
         "tags": ["弱勢名冊", "物資發放", "訪視紀錄"],
-        "color": "#2E7D32", # 綠色
+        "color": "#2E7D32",
         "icon": "🏠",
         "img_file": "care.jpg"
     }
 ]
 
-# 迴圈產生三個區塊
 for svc in services:
-    # 判斷是否有圖片，若無則顯示色塊+Icon
+    # 判斷圖片
     if os.path.exists(svc['img_file']):
+        # 🔥 修正：這裡的 HTML 字串要靠左對齊，不能有縮排
         img_html = f"""<div class="service-img" style="background-image: url('{svc['img_file']}');"></div>"""
     else:
-        img_html = f"""
-        <div class="service-img" style="background-color: {svc['color']}15;">
-            <div class="service-icon-placeholder">{svc['icon']}</div>
-        </div>
-        """
+        # 🔥 修正：這裡的 HTML 字串要靠左對齊
+        img_html = f"""<div class="service-img" style="background-color: {svc['color']}15;"><div class="service-icon-placeholder">{svc['icon']}</div></div>"""
     
-    # 產生標籤 HTML
     tags_html = "".join([f'<span class="service-tag" style="background-color:{svc["color"]}">{t}</span>' for t in svc['tags']])
 
-    # 渲染 HTML 結構
+    # 🔥🔥🔥 關鍵修正：這裡的 f-string 內容必須緊貼左邊，不能有縮排，否則會被當成程式碼區塊顯示 🔥🔥🔥
     st.markdown(f"""
-    <div class="service-box">
-        {img_html}
-        <div class="service-content">
-            <div class="service-title" style="color: {svc['color']}">{svc['title']}</div>
-            <div class="service-desc">{svc['desc']}</div>
-            <div>{tags_html}</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+<div class="service-box">
+{img_html}
+<div class="service-content">
+<div class="service-title" style="color: {svc['color']}">{svc['title']}</div>
+<div class="service-desc">{svc['desc']}</div>
+<div>{tags_html}</div>
+</div>
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
