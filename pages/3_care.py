@@ -368,13 +368,21 @@ elif st.session_state.page == 'inventory':
                 "pct": pct, "bar_color": bar_color
             })
             
-        cols = st.columns(3)
-        for idx, item in enumerate(inv_summary):
-            with cols[idx % 3]:
-                warning_html = f'<div class="stock-warning">⚠️ 庫存告急！僅剩 {item["remain"]}</div>' if item["remain"] <= 5 else ""
-                
-                # 🔥 重要：HTML 字串完全靠左，不能有任何縮排
-                st.markdown(f"""
+        # 3. 顯示卡片 Grid (🔥 修改為：每 3 個一列，確保整齊對齊)
+        # 每次抓 3 筆資料出來處理
+        for i in range(0, len(inv_summary), 3):
+            cols = st.columns(3) # 每一列都重新建立 3 個欄位
+            
+            # 填入這 3 個欄位
+            for j in range(3):
+                if i + j < len(inv_summary):
+                    item = inv_summary[i + j]
+                    with cols[j]:
+                        # 判斷是否低庫存
+                        warning_html = f'<div class="stock-warning">⚠️ 庫存告急！僅剩 {item["remain"]}</div>' if item["remain"] <= 5 else ""
+                        
+                        # 渲染卡片 HTML
+                        st.markdown(f"""
 <div class="stock-card">
 <div class="stock-top">
 <div class="stock-icon">{item['icon']}</div>
