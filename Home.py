@@ -13,20 +13,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# 🛠️ 檔案檢查小工具 (除錯用)
-# =========================================================
-# 如果確定圖片都正常顯示了，這一段可以刪除
-# st.markdown("---")
-# files = os.listdir('.')
-# target_file = "volunteer.jpg" # 測試其中一張
-# if target_file in files:
-#     st.caption(f"✅ 系統檢測：已找到 {target_file}")
-# else:
-#     st.error(f"❌ 系統檢測：找不到 {target_file}，請檢查檔名大小寫！")
-# st.markdown("---")
-
-# =========================================================
-# 1) CSS 樣式 (含手機版 RWD 優化)
+# 1) CSS 樣式 (V30.0 強力響應式修正版)
 # =========================================================
 st.markdown("""
 <style>
@@ -50,10 +37,10 @@ section[data-testid="stSidebar"] { background-color: #F0F2F5; border-right: none
     max-width: 1100px !important;
 }
 
-/* 手機版調整：讓大卡片左右邊距變小，爭取更多空間 */
-@media (max-width: 768px) {
+/* 手機版調整：減少大卡片留白 */
+@media (max-width: 1000px) {
     .block-container {
-        padding: 1.5rem 1rem !important;
+        padding: 2rem 1.5rem !important;
     }
 }
 
@@ -86,7 +73,7 @@ section[data-testid="stSidebar"] button:hover {
 /* --- 🔥 核心修改區：服務卡片 (Service Box) --- */
 .service-box {
     display: flex; 
-    flex-direction: row; /* 預設：左右排列 */
+    flex-direction: row; /* 預設：電腦版左右排列 */
     background-color: #F8F9FA; border-radius: 20px;
     padding: 0; margin-bottom: 30px; overflow: hidden;
     border: 1px solid #eee; transition: transform 0.3s;
@@ -96,36 +83,34 @@ section[data-testid="stSidebar"] button:hover {
     transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08);
 }
 
-/* 圖片區域 */
+/* 圖片與內容預設值 (電腦版) */
 .service-img {
-    width: 40%; /* 電腦版：佔左邊 40% */
+    width: 40%;
     background-size: cover; background-position: center;
     display: flex; align-items: center; justify-content: center;
 }
-
-/* 文字內容 */
 .service-content {
-    width: 60%; /* 電腦版：佔右邊 60% */
+    width: 60%;
     padding: 30px;
     display: flex; flex-direction: column; justify-content: center;
 }
 
-/* --- 📱 手機版專用設定 (RWD) --- */
-@media (max-width: 768px) {
+/* --- 📱 強力手機版設定 (Breakpoint 拉大到 1000px) --- */
+@media (max-width: 1000px) {
     .service-box {
-        flex-direction: column; /* 🔥 手機版：改為上下排列 */
-        height: auto;
+        flex-direction: column !important; /* 🔥 強制變成上下排列 */
+        height: auto !important;
     }
     .service-img {
-        width: 100%; /* 🔥 圖片寬度佔滿 100% */
-        height: 200px; /* 🔥 強制圖片高度，變成長方形 Banner */
-        min-height: 200px;
+        width: 100% !important;   /* 🔥 圖片寬度佔滿 */
+        height: 250px !important; /* 🔥 固定高度，確保圖片夠大 */
+        min-height: 250px !important;
     }
     .service-content {
-        width: 100%; /* 🔥 文字寬度佔滿 100% */
-        padding: 20px;
+        width: 100% !important;   /* 🔥 文字寬度佔滿 */
+        padding: 25px !important;
     }
-    .hero-title { font-size: 1.8rem; } /* 手機標題縮小一點 */
+    .hero-title { font-size: 2rem !important; } /* 手機標題縮小 */
 }
 
 .service-title {
