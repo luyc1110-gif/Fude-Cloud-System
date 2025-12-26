@@ -333,7 +333,7 @@ elif st.session_state.page == 'health':
         ed_h = st.data_editor(h_df, use_container_width=True, num_rows="dynamic", key="h_ed")
         if st.button("💾 儲存修改內容"): save_data(ed_h, "care_health")
 
-# --- [分頁 3：物資 (修復：縮排問題)] ---
+# --- [分頁 3：物資 (🔥 修復縮排顯示問題)] ---
 elif st.session_state.page == 'inventory':
     render_nav()
     st.markdown("## 📦 物資庫存管理")
@@ -373,27 +373,27 @@ elif st.session_state.page == 'inventory':
             with cols[idx % 3]:
                 warning_html = f'<div class="stock-warning">⚠️ 庫存告急！僅剩 {item["remain"]}</div>' if item["remain"] <= 5 else ""
                 
-                # 🔥 修正：消除縮排，避免被視為程式碼區塊
+                # 🔥 重要：HTML 字串完全靠左，不能有任何縮排
                 st.markdown(f"""
 <div class="stock-card">
-    <div class="stock-top">
-        <div class="stock-icon">{item['icon']}</div>
-        <div class="stock-info">
-            <div class="stock-name">{item['name']}</div>
-            <span class="stock-type">{item['type']}</span>
-        </div>
-    </div>
-    <div class="stock-stats">
-        <span>總入庫: {item['in']}</span>
-        <span>已發放: {item['out']}</span>
-    </div>
-    <div class="stock-bar-bg">
-        <div class="stock-bar-fill" style="width: {item['pct']}%; background-color: {item['bar_color']};"></div>
-    </div>
-    <div style="text-align:right; margin-top:5px; font-size:0.85rem; color:#888;">
-        剩餘庫存: <span style="font-size:1.2rem; color:{item['bar_color']}; font-weight:900;">{item['remain']}</span>
-    </div>
-    {warning_html}
+<div class="stock-top">
+<div class="stock-icon">{item['icon']}</div>
+<div class="stock-info">
+<div class="stock-name">{item['name']}</div>
+<span class="stock-type">{item['type']}</span>
+</div>
+</div>
+<div class="stock-stats">
+<span>總入庫: {item['in']}</span>
+<span>已發放: {item['out']}</span>
+</div>
+<div class="stock-bar-bg">
+<div class="stock-bar-fill" style="width: {item['pct']}%; background-color: {item['bar_color']};"></div>
+</div>
+<div style="text-align:right; margin-top:5px; font-size:0.85rem; color:#888;">
+剩餘庫存: <span style="font-size:1.2rem; color:{item['bar_color']}; font-weight:900;">{item['remain']}</span>
+</div>
+{warning_html}
 </div>
 """, unsafe_allow_html=True)
 
@@ -481,7 +481,7 @@ elif st.session_state.page == 'visit':
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
         if st.button("💾 儲存歷史紀錄修改"): save_data(ed_l, "care_logs")
 
-# --- [分頁 5：統計 (時間軸卡片 - 修復縮排)] ---
+# --- [分頁 5：統計 (🔥 修復縮排)] ---
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
@@ -497,20 +497,19 @@ elif st.session_state.page == 'stats':
                 p_data = mems[mems['姓名'] == target_name].iloc[0]
                 age = calculate_age(p_data['生日'])
                 with st.container():
-                    # 🔥 修正縮排
                     st.markdown(f"""
 <div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <div style="font-size: 1.8rem; font-weight: 900; color: #333;">{p_data['姓名']} <span style="font-size: 1rem; color: #666; background: #eee; padding: 2px 8px; border-radius: 10px;">{p_data['性別']} / {age} 歲</span></div>
-        <div style="font-weight: bold; color: {PRIMARY}; border: 2px solid {PRIMARY}; padding: 5px 15px; border-radius: 20px;">{p_data['身分別']}</div>
-    </div>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-        <div><b>🆔 身分證：</b> {p_data['身分證字號']}</div><div><b>🎂 生日：</b> {p_data['生日']}</div>
-        <div><b>📞 電話：</b> {p_data['電話']}</div><div><b>📍 地址：</b> {p_data['地址']}</div>
-    </div>
-    <hr style="border-top: 1px dashed #ccc;">
-    <div style="margin-top: 10px; color: #555;"><b>🏠 家庭結構：</b> 18歲以下 <b>{p_data['18歲以下子女']}</b> 人，成人 <b>{p_data['成人數量']}</b> 人，65歲以上長者 <b>{p_data['65歲以上長者']}</b> 人</div>
-    <div style="margin-top: 5px; color: #d9534f;"><b>🚨 緊急聯絡：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})</div>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+<div style="font-size: 1.8rem; font-weight: 900; color: #333;">{p_data['姓名']} <span style="font-size: 1rem; color: #666; background: #eee; padding: 2px 8px; border-radius: 10px;">{p_data['性別']} / {age} 歲</span></div>
+<div style="font-weight: bold; color: {PRIMARY}; border: 2px solid {PRIMARY}; padding: 5px 15px; border-radius: 20px;">{p_data['身分別']}</div>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+<div><b>🆔 身分證：</b> {p_data['身分證字號']}</div><div><b>🎂 生日：</b> {p_data['生日']}</div>
+<div><b>📞 電話：</b> {p_data['電話']}</div><div><b>📍 地址：</b> {p_data['地址']}</div>
+</div>
+<hr style="border-top: 1px dashed #ccc;">
+<div style="margin-top: 10px; color: #555;"><b>🏠 家庭結構：</b> 18歲以下 <b>{p_data['18歲以下子女']}</b> 人，成人 <b>{p_data['成人數量']}</b> 人，65歲以上長者 <b>{p_data['65歲以上長者']}</b> 人</div>
+<div style="margin-top: 5px; color: #d9534f;"><b>🚨 緊急聯絡：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})</div>
 </div>
 """, unsafe_allow_html=True)
                 
@@ -522,17 +521,16 @@ elif st.session_state.page == 'stats':
                     for idx, row in p_logs.iterrows():
                         tag_class = "only" if row['物資內容'] == "(僅訪視)" else ""
                         item_display = row['物資內容'] if row['物資內容'] == "(僅訪視)" else f"{row['物資內容']} x {row['發放數量']}"
-                        # 🔥 修正縮排
                         st.markdown(f"""
 <div class="visit-card">
-    <div class="visit-header">
-        <span class="visit-date">📅 {row['發放日期']}</span>
-        <span class="visit-volunteer">👮 志工：{row['志工']}</span>
-    </div>
-    <div style="margin-bottom:8px;">
-        <span class="visit-tag {tag_class}">{item_display}</span>
-    </div>
-    <div class="visit-note">{row['訪視紀錄']}</div>
+<div class="visit-header">
+<span class="visit-date">📅 {row['發放日期']}</span>
+<span class="visit-volunteer">👮 志工：{row['志工']}</span>
+</div>
+<div style="margin-bottom:8px;">
+<span class="visit-tag {tag_class}">{item_display}</span>
+</div>
+<div class="visit-note">{row['訪視紀錄']}</div>
 </div>
 """, unsafe_allow_html=True)
 
