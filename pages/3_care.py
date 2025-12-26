@@ -138,11 +138,11 @@ div[data-testid="stDownloadButton"] > button:hover {{
 .visit-tag.only {{ background-color: #9E9E9E; }} 
 .visit-note {{ font-size: 1rem; color: #444; line-height: 1.5; background: #FAFAFA; padding: 10px; border-radius: 8px; }}
 
-/* 🔥 新增：庫存管理卡片 (Inventory Card) */
+/* 庫存管理卡片 */
 .stock-card {{
     background-color: white; border: 1px solid #eee; border-radius: 15px;
     padding: 20px; margin-bottom: 20px; position: relative;
-    transition: all 0.3s ease;
+    transition: all 0.3s ease; height: 100%; /* 確保高度一致 */
 }}
 .stock-card:hover {{
     transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); border-color: {GREEN};
@@ -333,7 +333,7 @@ elif st.session_state.page == 'health':
         ed_h = st.data_editor(h_df, use_container_width=True, num_rows="dynamic", key="h_ed")
         if st.button("💾 儲存修改內容"): save_data(ed_h, "care_health")
 
-# --- [分頁 3：物資 (🔥 修復縮排顯示問題)] ---
+# --- [分頁 3：物資 (智慧庫存卡片 + 0 庫存自動隱藏)] ---
 elif st.session_state.page == 'inventory':
     render_nav()
     st.markdown("## 📦 物資庫存管理")
@@ -349,40 +349,45 @@ elif st.session_state.page == 'inventory':
 
     if not inv.empty:
         st.markdown("### 📊 庫存概況 (智慧卡片)")
+        
+        # 1. 整理數據 (並過濾掉庫存 <= 0 的項目)
         inv_summary = []
         for item_name, group in inv.groupby('物資內容'):
             total_in = group['總數量'].replace("","0").astype(float).sum()
             total_out = logs[logs['物資內容'] == item_name]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
             remain = total_in - total_out
-            m_type = group.iloc[0]['物資類型']
-            icon_map = {"食物": "🍱", "日用品": "🧻", "輔具": "🦯", "現金": "💰", "服務": "🧹"}
-            icon = icon_map.get(m_type, "📦")
-            pct = int((remain / total_in * 100)) if total_in > 0 else 0
-            if pct < 0: pct = 0
-            bar_color = "#8E9775"
-            if remain <= 5: bar_color = "#D32F2F"
-            elif pct < 30: bar_color = "#FBC02D"
-            inv_summary.append({
-                "name": item_name, "type": m_type, "icon": icon,
-                "in": int(total_in), "out": int(total_out), "remain": int(remain),
-                "pct": pct, "bar_color": bar_color
-            })
             
-        # 3. 顯示卡片 Grid (🔥 修改為：每 3 個一列，確保整齊對齊)
-        # 每次抓 3 筆資料出來處理
-        for i in range(0, len(inv_summary), 3):
-            cols = st.columns(3) # 每一列都重新建立 3 個欄位
-            
-            # 填入這 3 個欄位
-            for j in range(3):
-                if i + j < len(inv_summary):
-                    item = inv_summary[i + j]
-                    with cols[j]:
-                        # 判斷是否低庫存
-                        warning_html = f'<div class="stock-warning">⚠️ 庫存告急！僅剩 {item["remain"]}</div>' if item["remain"] <= 5 else ""
-                        
-                        # 渲染卡片 HTML
-                        st.markdown(f"""
+            # 🔥 關鍵：只有當剩餘庫存 > 0 才加入顯示清單
+            if remain > 0:
+                m_type = group.iloc[0]['物資類型']
+                icon_map = {"食物": "🍱", "日用品": "🧻", "輔具": "🦯", "現金": "💰", "服務": "🧹"}
+                icon = icon_map.get(m_type, "📦")
+                pct = int((remain / total_in * 100)) if total_in > 0 else 0
+                if pct < 0: pct = 0
+                bar_color = "#8E9775"
+                if remain <= 5: bar_color = "#D32F2F"
+                elif pct < 30: bar_color = "#FBC02D"
+                
+                inv_summary.append({
+                    "name": item_name, "type": m_type, "icon": icon,
+                    "in": int(total_in), "out": int(total_out), "remain": int(remain),
+                    "pct": pct, "bar_color": bar_color
+                })
+        
+        # 2. 如果篩選後列表為空，顯示提示
+        if not inv_summary:
+            st.info("💡 目前所有物資庫存皆為 0，請點選上方「新增捐贈」進行補貨。")
+        else:
+            # 3. 顯示卡片 Grid (每 3 個一列)
+            for i in range(0, len(inv_summary), 3):
+                cols = st.columns(3)
+                for j in range(3):
+                    if i + j < len(inv_summary):
+                        item = inv_summary[i + j]
+                        with cols[j]:
+                            warning_html = f'<div class="stock-warning">⚠️ 庫存告急！僅剩 {item["remain"]}</div>' if item["remain"] <= 5 else ""
+                            
+                            st.markdown(f"""
 <div class="stock-card">
 <div class="stock-top">
 <div class="stock-icon">{item['icon']}</div>
@@ -489,7 +494,7 @@ elif st.session_state.page == 'visit':
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
         if st.button("💾 儲存歷史紀錄修改"): save_data(ed_l, "care_logs")
 
-# --- [分頁 5：統計 (🔥 修復縮排)] ---
+# --- [分頁 5：統計 (時間軸卡片)] ---
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
