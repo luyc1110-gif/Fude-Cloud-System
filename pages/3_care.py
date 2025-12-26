@@ -86,6 +86,27 @@ div[data-testid="stButton"] > button {{
     font-weight: 900 !important; transition: all 0.2s;
 }}
 div[data-testid="stButton"] > button:hover {{ background-color: {GREEN} !important; color: white !important; }}
+.inv-card-stock.low {
+    color: #D32F2F !important; background-color: #FFEBEE !important;
+    border: 1px solid #D32F2F;
+}
+
+/* 🔥🔥🔥 新增：物資卡片懸浮上浮效果 🔥🔥🔥 */
+
+/* 1. 針對有邊框的容器設定動畫過渡 */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* 設定平滑動畫 */
+    border: 2px solid #E0E0E0 !important; /* 預設邊框改為淺灰色，比較有質感 */
+    background-color: #FFFFFF; /* 確保卡片背景是白的 */
+}
+
+/* 2. 滑鼠移上去 (Hover) 時的動作 */
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+    transform: translateY(-8px); /* 往上浮動 8px */
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15); /* 加上柔和的大陰影，製造懸浮感 */
+    border-color: #8E9775 !important; /* 邊框變成主色調 (苔蘚綠)，增加互動感 */
+    z-index: 10; /* 確保浮起來時壓在其他元素上面 */
+}
 </style>
 """, unsafe_allow_html=True)
 
