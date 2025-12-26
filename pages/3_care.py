@@ -488,7 +488,7 @@ elif st.session_state.page == 'visit':
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
         if st.button("💾 儲存歷史紀錄修改"): save_data(ed_l, "care_logs")
 
-# --- [分頁 5：統計] ---
+# --- [分頁 5：統計 (🔥 卡片化歷史紀錄)] ---
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
@@ -519,10 +519,29 @@ elif st.session_state.page == 'stats':
                         <div style="margin-top: 5px; color: #d9534f;"><b>🚨 緊急聯絡：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})</div>
                     </div>
                     """, unsafe_allow_html=True)
+                
                 st.markdown("### 🤝 歷史訪視與領取紀錄")
                 p_logs = logs[logs['關懷戶姓名'] == target_name]
                 if p_logs.empty: st.info("此人目前尚無訪視或物資領取紀錄。")
-                else: st.dataframe(p_logs.sort_values("發放日期", ascending=False)[['發放日期', '物資內容', '發放數量', '訪視紀錄', '志工']], use_container_width=True, hide_index=True)
+                else:
+                    # 🔥 改為時間軸卡片顯示
+                    p_logs = p_logs.sort_values("發放日期", ascending=False)
+                    for idx, row in p_logs.iterrows():
+                        tag_class = "only" if row['物資內容'] == "(僅訪視)" else ""
+                        item_display = row['物資內容'] if row['物資內容'] == "(僅訪視)" else f"{row['物資內容']} x {row['發放數量']}"
+                        
+                        st.markdown(f"""
+                        <div class="visit-card">
+                            <div class="visit-header">
+                                <span class="visit-date">📅 {row['發放日期']}</span>
+                                <span class="visit-volunteer">👮 志工：{row['志工']}</span>
+                            </div>
+                            <div style="margin-bottom:8px;">
+                                <span class="visit-tag {tag_class}">{item_display}</span>
+                            </div>
+                            <div class="visit-note">{row['訪視紀錄']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
     
     with tab2:
         if not logs.empty:
