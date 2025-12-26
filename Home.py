@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import base64
 
 # =========================================================
 # 0) 系統設定
@@ -12,175 +13,119 @@ st.set_page_config(
 )
 
 # =========================================================
-# 1) CSS 樣式 (首頁專用視覺)
+# 1) CSS 樣式
 # =========================================================
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
 
-/* 全域字體 */
 html, body, [class*="css"], div, p, span, li, ul {
     font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     color: #333333;
 }
 
-/* 背景色設定 */
-.stApp {
-    background-color: #F0F2F5 !important;
-}
+.stApp { background-color: #F0F2F5 !important; }
+section[data-testid="stSidebar"] { background-color: #F0F2F5; border-right: none; }
 
-/* 側邊欄樣式 */
-section[data-testid="stSidebar"] {
-    background-color: #F0F2F5;
-    border-right: none;
-}
-
-/* 🔥 主內容區：懸浮大卡片 */
+/* 懸浮大卡片 */
 .block-container {
     background-color: #FFFFFF;
     border-radius: 25px;
     padding: 3rem 4rem !important;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-top: 2rem;
-    margin-bottom: 2rem;
+    margin-top: 2rem; margin-bottom: 2rem;
     max-width: 1100px !important;
 }
 
-/* 隱藏預設 Header */
-header[data-testid="stHeader"] {
-    background-color: transparent !important;
-}
-header[data-testid="stHeader"] .decoration {
-    display: none;
-}
+/* 隱藏 Header */
+header[data-testid="stHeader"] { background-color: transparent !important; }
+header[data-testid="stHeader"] .decoration { display: none; }
 
-/* --- 側邊欄導航按鈕 (膠囊風格) --- */
+/* 側邊欄按鈕 */
 section[data-testid="stSidebar"] button {
-    background-color: #FFFFFF !important;
-    color: #555 !important;
-    border: 1px solid transparent !important;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important;
-    padding: 12px 0 !important;
-    font-weight: 700 !important;
-    width: 100%;
-    margin-bottom: 10px !important;
+    background-color: #FFFFFF !important; color: #555 !important;
+    border: 1px solid transparent !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+    border-radius: 25px !important; padding: 12px 0 !important;
+    font-weight: 700 !important; width: 100%; margin-bottom: 10px !important;
     transition: all 0.3s;
 }
 section[data-testid="stSidebar"] button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
-    color: #000 !important;
-    border: 1px solid #ddd !important;
+    transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    color: #000 !important; border: 1px solid #ddd !important;
 }
 
-/* --- 首頁內容區塊樣式 --- */
+/* 首頁標題 */
 .hero-title {
-    font-size: 2.5rem;
-    font-weight: 900;
-    color: #2c3e50;
-    text-align: center;
-    margin-bottom: 10px;
+    font-size: 2.5rem; font-weight: 900; color: #2c3e50;
+    text-align: center; margin-bottom: 10px;
 }
 .hero-subtitle {
-    font-size: 1.2rem;
-    color: #7f8c8d;
-    text-align: center;
-    margin-bottom: 50px;
+    font-size: 1.2rem; color: #7f8c8d; text-align: center; margin-bottom: 50px;
 }
 
-/* 服務介紹區塊 (Service Section) */
+/* 服務區塊 */
 .service-box {
-    display: flex;
-    align-items: center;
-    background-color: #F8F9FA;
-    border-radius: 20px;
-    padding: 0;
-    margin-bottom: 30px;
-    overflow: hidden;
-    border: 1px solid #eee;
-    transition: transform 0.3s;
+    display: flex; align-items: stretch; /* 讓左右等高 */
+    background-color: #F8F9FA; border-radius: 20px;
+    padding: 0; margin-bottom: 30px; overflow: hidden;
+    border: 1px solid #eee; transition: transform 0.3s;
+    min-height: 250px; /* 確保最小高度 */
 }
 .service-box:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08);
 }
 
 /* 圖片區域 */
 .service-img {
     width: 40%;
-    height: 250px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-size: cover;
-    background-position: center;
+    background-size: cover; background-position: center;
+    display: flex; align-items: center; justify-content: center;
 }
 
-/* 若無圖片時的圖示替代區 */
-.service-icon-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 5rem;
-}
-
-/* 文字內容區域 */
+/* 文字內容 */
 .service-content {
-    width: 60%;
-    padding: 30px;
+    width: 60%; padding: 30px;
+    display: flex; flex-direction: column; justify-content: center;
 }
 .service-title {
-    font-size: 1.8rem;
-    font-weight: 900;
-    margin-bottom: 10px;
+    font-size: 1.8rem; font-weight: 900; margin-bottom: 10px;
 }
 .service-desc {
-    font-size: 1rem;
-    color: #666;
-    line-height: 1.6;
-    margin-bottom: 15px;
+    font-size: 1rem; color: #666; line-height: 1.6; margin-bottom: 15px;
 }
 .service-tag {
-    display: inline-block;
-    padding: 5px 12px;
-    border-radius: 15px;
-    font-size: 0.85rem;
-    font-weight: bold;
-    color: white;
-    margin-right: 5px;
+    display: inline-block; padding: 5px 12px; border-radius: 15px;
+    font-size: 0.85rem; font-weight: bold; color: white; margin-right: 5px;
 }
-
+.service-icon-placeholder { font-size: 5rem; }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) 側邊欄導航 (Navigation)
+# 2) 輔助函式：圖片轉碼 (解決圖片不顯示問題)
+# =========================================================
+def get_image_as_base64(path):
+    """將圖片檔案轉換為 Base64 字串，讓 HTML 可以直接讀取"""
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except Exception as e:
+        return None
+
+# =========================================================
+# 3) 側邊欄與主畫面
 # =========================================================
 with st.sidebar:
     st.markdown("<h2 style='text-align:center; color:#333; margin-bottom:20px;'>🚀 系統快速入口</h2>", unsafe_allow_html=True)
-    
-    if st.button("💜 進入 志工管理系統"):
-        st.switch_page("pages/1_volunteer.py")
-    
-    if st.button("👴 進入 長輩關懷系統"):
-        st.switch_page("pages/2_elderly.py")
-        
-    if st.button("🏠 進入 關懷戶系統"):
-        st.switch_page("pages/3_care.py")
-
+    if st.button("💜 進入 志工管理系統"): st.switch_page("pages/1_volunteer.py")
+    if st.button("👴 進入 長輩關懷系統"): st.switch_page("pages/2_elderly.py")
+    if st.button("🏠 進入 關懷戶系統"): st.switch_page("pages/3_care.py")
     st.markdown("---")
     st.markdown("<div style='text-align:center; color:#999; font-size:0.8rem; margin-top:20px;'>福德里辦公處 © 2025</div>", unsafe_allow_html=True)
 
-# =========================================================
-# 3) 主畫面內容 (Landing Page)
-# =========================================================
-
 st.markdown('<div class="hero-title">🏘️ 福德里 - 社區數位管理中樞</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-subtitle">志工調度．長輩照護．弱勢關懷．一站整合</div>', unsafe_allow_html=True)
-
 st.markdown("---")
 
 services = [
@@ -211,17 +156,25 @@ services = [
 ]
 
 for svc in services:
-    # 判斷圖片
-    if os.path.exists(svc['img_file']):
-        # 🔥 修正：這裡的 HTML 字串要靠左對齊，不能有縮排
-        img_html = f"""<div class="service-img" style="background-image: url('{svc['img_file']}');"></div>"""
-    else:
-        # 🔥 修正：這裡的 HTML 字串要靠左對齊
-        img_html = f"""<div class="service-img" style="background-color: {svc['color']}15;"><div class="service-icon-placeholder">{svc['icon']}</div></div>"""
+    # 預設圖片 HTML (沒圖片時顯示色塊)
+    img_html = f"""
+    <div class="service-img" style="background-color: {svc['color']}15;">
+        <div class="service-icon-placeholder">{svc['icon']}</div>
+    </div>
+    """
     
+    # 嘗試讀取圖片並轉碼
+    if os.path.exists(svc['img_file']):
+        img_b64 = get_image_as_base64(svc['img_file'])
+        if img_b64:
+            # 判斷副檔名以設定正確的 mime type
+            ext = svc['img_file'].split('.')[-1].lower()
+            mime = "image/png" if ext == 'png' else "image/jpeg"
+            img_html = f"""<div class="service-img" style="background-image: url('data:{mime};base64,{img_b64}');"></div>"""
+
     tags_html = "".join([f'<span class="service-tag" style="background-color:{svc["color"]}">{t}</span>' for t in svc['tags']])
 
-    # 🔥🔥🔥 關鍵修正：這裡的 f-string 內容必須緊貼左邊，不能有縮排，否則會被當成程式碼區塊顯示 🔥🔥🔥
+    # 渲染卡片
     st.markdown(f"""
 <div class="service-box">
 {img_html}
