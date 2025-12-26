@@ -142,7 +142,7 @@ div[data-testid="stDownloadButton"] > button:hover {{
 .stock-card {{
     background-color: white; border: 1px solid #eee; border-radius: 15px;
     padding: 20px; margin-bottom: 20px; position: relative;
-    transition: all 0.3s ease; height: 100%; /* 確保高度一致 */
+    transition: all 0.3s ease; height: 100%;
 }}
 .stock-card:hover {{
     transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); border-color: {GREEN};
@@ -157,7 +157,7 @@ div[data-testid="stDownloadButton"] > button:hover {{
 .stock-stats {{ display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.9rem; color: #666; font-weight: bold; }}
 .stock-warning {{ color: #D32F2F; font-weight: bold; display: flex; align-items: center; gap: 5px; margin-top: 10px; font-size: 0.9rem; }}
 
-/* 卡片上浮效果 (訪視發放用) */
+/* 卡片上浮效果 */
 div[data-testid="stVerticalBlockBorderWrapper"] {{
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     border: 2px solid #E0E0E0 !important; background-color: #FFFFFF;
@@ -333,7 +333,7 @@ elif st.session_state.page == 'health':
         ed_h = st.data_editor(h_df, use_container_width=True, num_rows="dynamic", key="h_ed")
         if st.button("💾 儲存修改內容"): save_data(ed_h, "care_health")
 
-# --- [分頁 3：物資 (智慧庫存卡片 + 0 庫存自動隱藏)] ---
+# --- [分頁 3：物資] ---
 elif st.session_state.page == 'inventory':
     render_nav()
     st.markdown("## 📦 物資庫存管理")
@@ -349,15 +349,11 @@ elif st.session_state.page == 'inventory':
 
     if not inv.empty:
         st.markdown("### 📊 庫存概況 (智慧卡片)")
-        
-        # 1. 整理數據 (並過濾掉庫存 <= 0 的項目)
         inv_summary = []
         for item_name, group in inv.groupby('物資內容'):
             total_in = group['總數量'].replace("","0").astype(float).sum()
             total_out = logs[logs['物資內容'] == item_name]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
             remain = total_in - total_out
-            
-            # 🔥 關鍵：只有當剩餘庫存 > 0 才加入顯示清單
             if remain > 0:
                 m_type = group.iloc[0]['物資類型']
                 icon_map = {"食物": "🍱", "日用品": "🧻", "輔具": "🦯", "現金": "💰", "服務": "🧹"}
@@ -367,18 +363,14 @@ elif st.session_state.page == 'inventory':
                 bar_color = "#8E9775"
                 if remain <= 5: bar_color = "#D32F2F"
                 elif pct < 30: bar_color = "#FBC02D"
-                
                 inv_summary.append({
                     "name": item_name, "type": m_type, "icon": icon,
                     "in": int(total_in), "out": int(total_out), "remain": int(remain),
                     "pct": pct, "bar_color": bar_color
                 })
         
-        # 2. 如果篩選後列表為空，顯示提示
-        if not inv_summary:
-            st.info("💡 目前所有物資庫存皆為 0，請點選上方「新增捐贈」進行補貨。")
+        if not inv_summary: st.info("💡 目前所有物資庫存皆為 0，請點選上方「新增捐贈」進行補貨。")
         else:
-            # 3. 顯示卡片 Grid (每 3 個一列)
             for i in range(0, len(inv_summary), 3):
                 cols = st.columns(3)
                 for j in range(3):
@@ -386,7 +378,6 @@ elif st.session_state.page == 'inventory':
                         item = inv_summary[i + j]
                         with cols[j]:
                             warning_html = f'<div class="stock-warning">⚠️ 庫存告急！僅剩 {item["remain"]}</div>' if item["remain"] <= 5 else ""
-                            
                             st.markdown(f"""
 <div class="stock-card">
 <div class="stock-top">
@@ -414,7 +405,7 @@ elif st.session_state.page == 'inventory':
             ed_i = st.data_editor(inv, use_container_width=True, num_rows="dynamic", key="inv_ed")
             if st.button("💾 儲存修改內容"): save_data(ed_i, "care_inventory")
 
-# --- [分頁 4：訪視 (卡片式)] ---
+# --- [分頁 4：訪視] ---
 elif st.session_state.page == 'visit':
     render_nav()
     st.markdown("## 🤝 訪視與物資發放紀錄")
@@ -494,7 +485,7 @@ elif st.session_state.page == 'visit':
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
         if st.button("💾 儲存歷史紀錄修改"): save_data(ed_l, "care_logs")
 
-# --- [分頁 5：統計 (時間軸卡片)] ---
+# --- [分頁 5：統計 (🔥 新增：雙重驗證)] ---
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
@@ -509,22 +500,61 @@ elif st.session_state.page == 'stats':
             if target_name:
                 p_data = mems[mems['姓名'] == target_name].iloc[0]
                 age = calculate_age(p_data['生日'])
+                
+                # 計算家庭結構總人數 (安全顯示)
+                try:
+                    c = int(p_data['18歲以下子女']) if p_data['18歲以下子女'] else 0
+                    a = int(p_data['成人數量']) if p_data['成人數量'] else 0
+                    s = int(p_data['65歲以上長者']) if p_data['65歲以上長者'] else 0
+                    total_fam = c + a + s
+                except: total_fam = 0
+
+                # 🟢 1. 基本資料卡 (公開資訊)
                 with st.container():
                     st.markdown(f"""
-<div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+<div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 10px;">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
 <div style="font-size: 1.8rem; font-weight: 900; color: #333;">{p_data['姓名']} <span style="font-size: 1rem; color: #666; background: #eee; padding: 2px 8px; border-radius: 10px;">{p_data['性別']} / {age} 歲</span></div>
 <div style="font-weight: bold; color: {PRIMARY}; border: 2px solid {PRIMARY}; padding: 5px 15px; border-radius: 20px;">{p_data['身分別']}</div>
 </div>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-<div><b>🆔 身分證：</b> {p_data['身分證字號']}</div><div><b>🎂 生日：</b> {p_data['生日']}</div>
-<div><b>📞 電話：</b> {p_data['電話']}</div><div><b>📍 地址：</b> {p_data['地址']}</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+<div><b>📞 電話：</b> {p_data['電話']}</div>
+<div><b>📍 地址：</b> {p_data['地址']}</div>
 </div>
-<hr style="border-top: 1px dashed #ccc;">
-<div style="margin-top: 10px; color: #555;"><b>🏠 家庭結構：</b> 18歲以下 <b>{p_data['18歲以下子女']}</b> 人，成人 <b>{p_data['成人數量']}</b> 人，65歲以上長者 <b>{p_data['65歲以上長者']}</b> 人</div>
-<div style="margin-top: 5px; color: #d9534f;"><b>🚨 緊急聯絡：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})</div>
+<div style="color: #555;"><b>🏠 家庭結構：</b> 總人數 <b>{total_fam}</b> 人 (點擊下方按鈕查看明細)</div>
 </div>
 """, unsafe_allow_html=True)
+
+                # 🟡 2. 隱私資料開關 (雙重驗證)
+                show_details = st.toggle("🔐 顯示完整機敏資料 (需二次密碼驗證)")
+
+                if show_details:
+                    re_pwd = st.text_input("🛡️ 敏感資料保護：請再次輸入管理員密碼", type="password", key="verify_stats_pwd")
+                    
+                    if re_pwd == st.secrets["admin_password"]:
+                        st.markdown(f"""
+<div style="background-color: #FFF8E1; padding: 20px; border-radius: 15px; border: 1px dashed #FFB74D; margin-bottom: 20px;">
+<div style="font-weight:bold; color:#F57C00; margin-bottom:10px;">⚠️ 機敏個資區域 (請注意隱私)</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+<div><b>🆔 身分證：</b> {p_data['身分證字號']}</div>
+<div><b>🎂 生日：</b> {p_data['生日']}</div>
+</div>
+<hr style="border-top: 1px dashed #ccc;">
+<div style="margin-top: 10px; color: #555;">
+<b>🏠 家庭結構明細：</b><br>
+18歲以下 <b>{p_data['18歲以下子女']}</b> 人，
+成人 <b>{p_data['成人數量']}</b> 人，
+65歲以上長者 <b>{p_data['65歲以上長者']}</b> 人
+</div>
+<div style="margin-top: 10px; color: #D32F2F;">
+<b>🚨 緊急聯絡人：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})
+</div>
+</div>
+""", unsafe_allow_html=True)
+                    elif re_pwd:
+                        st.error("❌ 密碼錯誤，拒絕存取機敏資料。")
+                    else:
+                        st.info("請輸入密碼以解鎖檢視。")
                 
                 st.markdown("### 🤝 歷史訪視與領取紀錄")
                 p_logs = logs[logs['關懷戶姓名'] == target_name]
