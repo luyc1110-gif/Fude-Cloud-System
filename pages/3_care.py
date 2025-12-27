@@ -16,15 +16,13 @@ st.set_page_config(
     initial_sidebar_state="expanded" 
 )
 
-# 1. 初始化登入狀態
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-
-# 2. 頁面狀態初始化
+# 頁面狀態初始化
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
-# 🔥 重要：這裡已經移除了「全域門禁 st.stop()」，所以首頁不會被擋住！
+# 初始化局部解鎖狀態
+if 'unlock_members' not in st.session_state: st.session_state.unlock_members = False
+if 'unlock_details' not in st.session_state: st.session_state.unlock_details = False
 
 TW_TZ = timezone(timedelta(hours=8))
 PRIMARY = "#4A4E69"   # 深藍灰
@@ -147,7 +145,7 @@ div[data-testid="stDownloadButton"] > button:hover {{
 .stock-stats {{ display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.9rem; color: #666; font-weight: bold; }}
 .stock-warning {{ color: #D32F2F; font-weight: bold; display: flex; align-items: center; gap: 5px; margin-top: 10px; font-size: 0.9rem; }}
 
-/* 卡片上浮效果與發放輸入框 */
+/* 卡片上浮效果 */
 div[data-testid="stVerticalBlockBorderWrapper"] {{
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     border: 2px solid #E0E0E0 !important; background-color: #FFFFFF;
@@ -199,24 +197,6 @@ def calculate_age(dob_str):
         today = date.today(); return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
     except: return 0
 
-# 🔥 分頁專用門禁檢查函數
-def check_password():
-    """ 檢查是否登入，未登入則顯示輸入框並停止執行後續代碼 """
-    if not st.session_state.authenticated:
-        st.markdown("### 🔒 受保護的資料區域")
-        st.info("此頁面包含個資或編輯功能，請先登入管理員權限。")
-        pwd = st.text_input("請輸入管理員授權碼", type="password", key="page_login_pwd")
-        
-        if st.button("確認登入", key="page_login_btn"):
-            if pwd == st.secrets["admin_password"]:
-                st.session_state.authenticated = True
-                st.success("登入成功！正在載入...")
-                time.sleep(0.5)
-                st.rerun()
-            else:
-                st.error("❌ 授權碼錯誤，請重新輸入。")
-        st.stop() # ⛔️ 這裡會擋住，確保沒登入的人看不到下面的資料
-
 # =========================================================
 # 3) Navigation
 # =========================================================
@@ -264,11 +244,9 @@ def render_nav():
 # 4) Pages
 # =========================================================
 
-# --- [分頁 0：首頁 (⚠️ 公開區域 - 不用密碼)] ---
+# --- [分頁 0：首頁 (完全公開)] ---
 if st.session_state.page == 'home':
     render_nav()
-    # 這裡沒有 check_password()，所以大家都能看
-    
     st.markdown(f"<h2 style='color: {GREEN};'>📊 關懷戶概況看板</h2>", unsafe_allow_html=True)
     mems, logs = load_data("care_members", COLS_MEM), load_data("care_logs", COLS_LOG)
     if not mems.empty:
@@ -291,14 +269,14 @@ if st.session_state.page == 'home':
         with c4: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#BC6C25 0%,#8E9775 100%);"><div>🎁 {cur_y} 當年度發放量</div><div style="font-size:3.5rem;">{int(cur_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
         with c5: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#6D6875 100%);"><div>⏳ {prev_y} 上年度發放量</div><div style="font-size:3.5rem;">{int(prev_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
 
-# --- [分頁 1：名冊 (🔒 需要登入)] ---
+# --- [分頁 1：名冊 (⚠️ 表格需密碼)] ---
 elif st.session_state.page == 'members':
     render_nav()
-    check_password() # 🔥 門禁卡
-    
     st.markdown("## 📋 關懷戶名冊管理")
     df = load_data("care_members", COLS_MEM)
-    with st.expander("➕ 新增關懷戶 (防重複機制)"):
+    
+    # 新增功能 - 公開
+    with st.expander("➕ 新增關懷戶 (展開填寫)", expanded=False):
         with st.form("add_care", clear_on_submit=True):
             c1, c2, c3, c4 = st.columns(4)
             n, p = c1.text_input("姓名"), c2.text_input("身分證")
@@ -320,17 +298,31 @@ elif st.session_state.page == 'members':
                            "18歲以下子女": str(child), "成人數量": str(adult), "65歲以上長者": str(senior)}
                     if save_data(pd.concat([df, pd.DataFrame([new])], ignore_index=True), "care_members"):
                         st.success("✅ 已新增！"); time.sleep(1); st.rerun()
-    if not df.empty:
-        df['歲數'] = df['生日'].apply(calculate_age)
-        ed = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="mem_ed")
-        if st.button("💾 儲存修改"): 
-            if save_data(ed, "care_members"): st.success("已更新")
+    
+    # 🔥 表格鎖定機制
+    st.markdown("### 📝 完整名冊 (需權限)")
+    if st.session_state.unlock_members:
+        # 已解鎖：顯示表格
+        if not df.empty:
+            df['歲數'] = df['生日'].apply(calculate_age)
+            ed = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="mem_ed")
+            if st.button("💾 儲存修改"): 
+                if save_data(ed, "care_members"): st.success("已更新")
+    else:
+        # 未解鎖：顯示密碼框
+        st.info("🔒 為保護個資，編輯表格需輸入管理員密碼。")
+        pwd_m = st.text_input("請輸入密碼以解鎖名冊", type="password", key="unlock_m_pwd")
+        if st.button("解鎖名冊"):
+            if pwd_m == st.secrets["admin_password"]:
+                st.session_state.unlock_members = True
+                st.success("✅ 解鎖成功！")
+                st.rerun()
+            else:
+                st.error("❌ 密碼錯誤")
 
-# --- [分頁 2：健康 (🔒 需要登入)] ---
+# --- [分頁 2：健康 (完全公開)] ---
 elif st.session_state.page == 'health':
     render_nav()
-    check_password() # 🔥 門禁卡
-    
     st.markdown("## 🏥 關懷戶健康指標管理")
     h_df, m_df = load_data("care_health", COLS_HEALTH), load_data("care_members", COLS_MEM)
     with st.expander("➕ 登記健康指標數據"):
@@ -347,11 +339,9 @@ elif st.session_state.page == 'health':
         ed_h = st.data_editor(h_df, use_container_width=True, num_rows="dynamic", key="h_ed")
         if st.button("💾 儲存修改內容"): save_data(ed_h, "care_health")
 
-# --- [分頁 3：物資 (🔒 需要登入)] ---
+# --- [分頁 3：物資 (完全公開 + 庫存0隱藏)] ---
 elif st.session_state.page == 'inventory':
     render_nav()
-    check_password() # 🔥 門禁卡
-    
     st.markdown("## 📦 物資庫存管理")
     inv, logs = load_data("care_inventory", COLS_INV), load_data("care_logs", COLS_LOG)
     
@@ -421,44 +411,35 @@ elif st.session_state.page == 'inventory':
             ed_i = st.data_editor(inv, use_container_width=True, num_rows="dynamic", key="inv_ed")
             if st.button("💾 儲存修改內容"): save_data(ed_i, "care_inventory")
 
-# --- [分頁 4：訪視 (🔒 需要登入 + 購物車式發放)] ---
+# --- [分頁 4：訪視 (完全公開)] ---
 elif st.session_state.page == 'visit':
     render_nav()
-    check_password() # 🔥 門禁卡
-    
     st.markdown("## 🤝 訪視與物資發放紀錄")
     mems = load_data("care_members", COLS_MEM)
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
-    
-    # 計算即時庫存
     stock_map = {}
     if not inv.empty:
         for itm, gp in inv.groupby('物資內容'):
             tin = gp['總數量'].replace("","0").astype(float).sum()
             tout = logs[logs['物資內容'] == itm]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
             stock_map[itm] = int(tin - tout)
-    
-    # 1. 選擇訪視對象 (身分篩選)
     st.markdown("#### 1. 選擇訪視對象")
     all_tags = set()
     if not mems.empty:
         for s in mems['身分別'].astype(str):
             for t in s.split(','):
                 if t.strip(): all_tags.add(t.strip())
-    
     c_filter, c_person = st.columns([1, 2])
     with c_filter:
         tag_opts = ["(全部顯示)"] + sorted(list(all_tags))
         sel_tag = st.selectbox("🌪️ 依身分別篩選", tag_opts)
-    
     with c_person:
         if sel_tag == "(全部顯示)": filtered_mems = mems
         else: filtered_mems = mems[mems['身分別'].str.contains(sel_tag, na=False)] if not mems.empty else mems
         p_list = filtered_mems['姓名'].tolist() if not filtered_mems.empty else []
         target_p = st.selectbox("👤 選擇關懷戶", p_list)
 
-    # 2. 填寫內容 (卡片式)
     st.markdown("#### 2. 填寫訪視內容與物資")
     with st.form("visit_multi_form"):
         c1, c2 = st.columns(2)
@@ -468,14 +449,10 @@ elif st.session_state.page == 'visit':
         except: v_list = ["預設志工"]
         visit_who = c1.selectbox("執行志工", v_list)
         visit_date = c2.date_input("日期", value=date.today())
-        
         st.write("📦 **點擊下方卡片輸入數量 (0 代表不發)**")
-        
         valid_items = {k:v for k,v in stock_map.items() if v > 0}
         quantities = {} 
-        
-        if not valid_items:
-            st.info("💡 目前無任何庫存物資，僅能進行純訪視記錄。")
+        if not valid_items: st.info("💡 目前無任何庫存物資，僅能進行純訪視記錄。")
         else:
             cols = st.columns(3) 
             for idx, (item, stock) in enumerate(valid_items.items()):
@@ -488,16 +465,13 @@ elif st.session_state.page == 'visit':
                         st.markdown(f'<div class="inv-card-stock {stock_class}">{stock_label}</div>', unsafe_allow_html=True)
                         qty = st.number_input("發放數量", min_value=0, max_value=stock, step=1, key=f"q_{idx}_{item}")
                         quantities[item] = qty
-
         note = st.text_area("訪視紀錄 / 備註")
         submitted = st.form_submit_button("✅ 確認提交紀錄")
-        
         if submitted:
             if not target_p: st.error("❌ 請先選擇關懷戶！")
             else:
                 items_to_give = [(k, v) for k, v in quantities.items() if v > 0]
                 new_logs = []
-                
                 if items_to_give:
                     for item_name, amount in items_to_give:
                         new_logs.append({
@@ -509,21 +483,17 @@ elif st.session_state.page == 'visit':
                         "志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p,
                         "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note
                     })
-                
                 if save_data(pd.concat([logs, pd.DataFrame(new_logs)], ignore_index=True), "care_logs"):
                     st.success(f"✅ 已成功紀錄！(包含 {len(items_to_give)} 項物資)")
                     time.sleep(1); st.rerun()
-
     if not logs.empty:
         st.markdown("#### 📝 最近 20 筆訪視紀錄")
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
         if st.button("💾 儲存歷史紀錄修改"): save_data(ed_l, "care_logs")
 
-# --- [分頁 5：統計 (🔒 需要登入)] ---
+# --- [分頁 5：統計 (⚠️ 個資需密碼)] ---
 elif st.session_state.page == 'stats':
     render_nav()
-    check_password() # 🔥 門禁卡
-    
     st.markdown("## 📊 數據統計與個案查詢")
     logs, mems = load_data("care_logs", COLS_LOG), load_data("care_members", COLS_MEM)
     tab1, tab2 = st.tabs(["👤 個案詳細檔案", "📈 整體物資統計"])
@@ -536,7 +506,6 @@ elif st.session_state.page == 'stats':
             if target_name:
                 p_data = mems[mems['姓名'] == target_name].iloc[0]
                 age = calculate_age(p_data['生日'])
-                
                 try:
                     c = int(p_data['18歲以下子女']) if p_data['18歲以下子女'] else 0
                     a = int(p_data['成人數量']) if p_data['成人數量'] else 0
@@ -544,6 +513,7 @@ elif st.session_state.page == 'stats':
                     total_fam = c + a + s
                 except: total_fam = 0
 
+                # 🟢 1. 基本資料卡 (公開)
                 with st.container():
                     st.markdown(f"""
 <div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 10px;">
@@ -559,16 +529,30 @@ elif st.session_state.page == 'stats':
 </div>
 """, unsafe_allow_html=True)
 
-                # 🔐 隱私資料開關 (雙重驗證)
-                show_details = st.toggle("🔐 顯示完整機敏資料 (需二次密碼驗證)")
-
-                if show_details:
-                    re_pwd = st.text_input("🛡️ 敏感資料保護：請再次輸入管理員密碼", type="password", key="verify_stats_pwd")
+                # 🟡 2. 隱私資料 (需密碼解鎖)
+                if not st.session_state.unlock_details:
+                    if st.button("🔐 解鎖查看完整機敏資料 (身分證、緊急聯絡)"):
+                        st.session_state.show_pwd_input = True
                     
-                    if re_pwd == st.secrets["admin_password"]:
-                        st.markdown(f"""
+                    if st.session_state.get("show_pwd_input"):
+                        pwd_stat = st.text_input("請輸入管理員密碼", type="password", key="unlock_stat_pwd")
+                        if st.button("確認解鎖"):
+                            if pwd_stat == st.secrets["admin_password"]:
+                                st.session_state.unlock_details = True
+                                st.success("✅ 解鎖成功")
+                                st.rerun()
+                            else:
+                                st.error("❌ 密碼錯誤")
+                else:
+                    # 已解鎖狀態
+                    if st.button("🔒 隱藏機敏資料"):
+                        st.session_state.unlock_details = False
+                        st.session_state.show_pwd_input = False
+                        st.rerun()
+                        
+                    st.markdown(f"""
 <div style="background-color: #FFF8E1; padding: 20px; border-radius: 15px; border: 1px dashed #FFB74D; margin-bottom: 20px;">
-<div style="font-weight:bold; color:#F57C00; margin-bottom:10px;">⚠️ 機敏個資區域 (請注意隱私)</div>
+<div style="font-weight:bold; color:#F57C00; margin-bottom:10px;">⚠️ 機敏個資區域 (已解鎖)</div>
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
 <div><b>🆔 身分證：</b> {p_data['身分證字號']}</div>
 <div><b>🎂 生日：</b> {p_data['生日']}</div>
@@ -585,10 +569,6 @@ elif st.session_state.page == 'stats':
 </div>
 </div>
 """, unsafe_allow_html=True)
-                    elif re_pwd:
-                        st.error("❌ 密碼錯誤，拒絕存取機敏資料。")
-                    else:
-                        st.info("請輸入密碼以解鎖檢視。")
                 
                 st.markdown("### 🤝 歷史訪視與領取紀錄")
                 p_logs = logs[logs['關懷戶姓名'] == target_name]
