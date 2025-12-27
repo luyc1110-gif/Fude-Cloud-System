@@ -16,11 +16,15 @@ st.set_page_config(
     initial_sidebar_state="expanded" 
 )
 
-# 頁面狀態初始化
+# 1. 初始化登入狀態
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+# 2. 頁面狀態初始化
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
-# 初始化局部解鎖狀態
+# 3. 初始化局部解鎖狀態
 if 'unlock_members' not in st.session_state: st.session_state.unlock_members = False
 if 'unlock_details' not in st.session_state: st.session_state.unlock_details = False
 
@@ -126,7 +130,7 @@ div[data-testid="stDownloadButton"] > button:hover {{
 .visit-tag.only {{ background-color: #9E9E9E; }} 
 .visit-note {{ font-size: 1rem; color: #444; line-height: 1.5; background: #FAFAFA; padding: 10px; border-radius: 8px; }}
 
-/* 庫存管理卡片 */
+/* 庫存管理卡片 (增強版) */
 .stock-card {{
     background-color: white; border: 1px solid #eee; border-radius: 15px;
     padding: 20px; margin-bottom: 20px; position: relative;
@@ -137,9 +141,10 @@ div[data-testid="stDownloadButton"] > button:hover {{
 }}
 .stock-top {{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }}
 .stock-icon {{ font-size: 2.5rem; background: #F5F5F5; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }}
-.stock-info {{ text-align: right; }}
-.stock-name {{ font-size: 1.3rem; font-weight: 900; color: #333; margin-bottom: 5px; }}
-.stock-type {{ font-size: 0.85rem; color: #888; background: #f0f0f0; padding: 3px 10px; border-radius: 12px; }}
+.stock-info {{ text-align: right; width: 100%; padding-left: 10px; }}
+.stock-name {{ font-size: 1.3rem; font-weight: 900; color: #333; margin-bottom: 3px; line-height: 1.2; }}
+.stock-donor {{ font-size: 0.9rem; color: {PRIMARY}; background: #EFEBE9; padding: 2px 8px; border-radius: 8px; font-weight: bold; display: inline-block; margin-bottom: 5px; }}
+.stock-type {{ font-size: 0.8rem; color: #888; background: #f0f0f0; padding: 2px 8px; border-radius: 8px; display: inline-block; }}
 .stock-bar-bg {{ width: 100%; height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin-top: 10px; }}
 .stock-bar-fill {{ height: 100%; border-radius: 5px; transition: width 0.5s ease; }}
 .stock-stats {{ display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.9rem; color: #666; font-weight: bold; }}
@@ -197,6 +202,22 @@ def calculate_age(dob_str):
         today = date.today(); return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
     except: return 0
 
+def check_password():
+    """ 檢查是否登入，未登入則顯示輸入框並停止執行後續代碼 """
+    if not st.session_state.authenticated:
+        st.markdown("### 🔒 受保護的資料區域")
+        st.info("此頁面包含個資或編輯功能，請先登入管理員權限。")
+        pwd = st.text_input("請輸入管理員授權碼", type="password", key="page_login_pwd")
+        if st.button("確認登入", key="page_login_btn"):
+            if pwd == st.secrets["admin_password"]:
+                st.session_state.authenticated = True
+                st.success("登入成功！正在載入...")
+                time.sleep(0.5)
+                st.rerun()
+            else:
+                st.error("❌ 授權碼錯誤，請重新輸入。")
+        st.stop()
+
 # =========================================================
 # 3) Navigation
 # =========================================================
@@ -204,37 +225,30 @@ def render_nav():
     with st.sidebar:
         st.markdown(f"<h2 style='color:{GREEN}; margin-bottom:5px; padding-left:10px;'>🏠 關懷戶中心</h2>", unsafe_allow_html=True)
         st.write("") 
-
         if st.session_state.page == 'home':
             st.markdown('<div class="nav-active">📊 關懷概況看板</div>', unsafe_allow_html=True)
         else:
             if st.button("📊 關懷概況看板", key="nav_home", use_container_width=True): st.session_state.page = 'home'; st.rerun()
-
         if st.session_state.page == 'members':
             st.markdown('<div class="nav-active">📋 名冊管理</div>', unsafe_allow_html=True)
         else:
             if st.button("📋 名冊管理", key="nav_members", use_container_width=True): st.session_state.page = 'members'; st.rerun()
-
         if st.session_state.page == 'health':
             st.markdown('<div class="nav-active">🏥 健康追蹤</div>', unsafe_allow_html=True)
         else:
             if st.button("🏥 健康追蹤", key="nav_health", use_container_width=True): st.session_state.page = 'health'; st.rerun()
-
         if st.session_state.page == 'inventory':
             st.markdown('<div class="nav-active">📦 物資庫存</div>', unsafe_allow_html=True)
         else:
             if st.button("📦 物資庫存", key="nav_inv", use_container_width=True): st.session_state.page = 'inventory'; st.rerun()
-
         if st.session_state.page == 'visit':
             st.markdown('<div class="nav-active">🤝 訪視發放</div>', unsafe_allow_html=True)
         else:
             if st.button("🤝 訪視發放", key="nav_visit", use_container_width=True): st.session_state.page = 'visit'; st.rerun()
-
         if st.session_state.page == 'stats':
             st.markdown('<div class="nav-active">📈 數據統計</div>', unsafe_allow_html=True)
         else:
             if st.button("📈 數據統計", key="nav_stats", use_container_width=True): st.session_state.page = 'stats'; st.rerun()
-
         st.markdown("---")
         if st.button("🚪 回系統大廳", key="nav_back", use_container_width=True): st.switch_page("Home.py")
         st.markdown("<br><br><br>", unsafe_allow_html=True)
@@ -269,13 +283,13 @@ if st.session_state.page == 'home':
         with c4: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#BC6C25 0%,#8E9775 100%);"><div>🎁 {cur_y} 當年度發放量</div><div style="font-size:3.5rem;">{int(cur_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
         with c5: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#6D6875 100%);"><div>⏳ {prev_y} 上年度發放量</div><div style="font-size:3.5rem;">{int(prev_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
 
-# --- [分頁 1：名冊 (⚠️ 表格需密碼)] ---
+# --- [分頁 1：名冊 (局部上鎖)] ---
 elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 關懷戶名冊管理")
     df = load_data("care_members", COLS_MEM)
     
-    # 新增功能 - 公開
+    # 1. 新增功能 (公開)
     with st.expander("➕ 新增關懷戶 (展開填寫)", expanded=False):
         with st.form("add_care", clear_on_submit=True):
             c1, c2, c3, c4 = st.columns(4)
@@ -299,26 +313,23 @@ elif st.session_state.page == 'members':
                     if save_data(pd.concat([df, pd.DataFrame([new])], ignore_index=True), "care_members"):
                         st.success("✅ 已新增！"); time.sleep(1); st.rerun()
     
-    # 🔥 表格鎖定機制
+    # 2. 表格瀏覽與編輯 (🔐 需密碼)
     st.markdown("### 📝 完整名冊 (需權限)")
     if st.session_state.unlock_members:
-        # 已解鎖：顯示表格
         if not df.empty:
             df['歲數'] = df['生日'].apply(calculate_age)
             ed = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="mem_ed")
             if st.button("💾 儲存修改"): 
                 if save_data(ed, "care_members"): st.success("已更新")
     else:
-        # 未解鎖：顯示密碼框
-        st.info("🔒 為保護個資，編輯表格需輸入管理員密碼。")
-        pwd_m = st.text_input("請輸入密碼以解鎖名冊", type="password", key="unlock_m_pwd")
-        if st.button("解鎖名冊"):
-            if pwd_m == st.secrets["admin_password"]:
-                st.session_state.unlock_members = True
-                st.success("✅ 解鎖成功！")
-                st.rerun()
-            else:
-                st.error("❌ 密碼錯誤")
+        st.info("🔒 為保護個資，查看完整表格需輸入管理員密碼。")
+        c_pwd, c_btn = st.columns([2, 1])
+        with c_pwd: pwd_m = st.text_input("請輸入密碼", type="password", key="unlock_m_pwd")
+        with c_btn: 
+            if st.button("🔓 解鎖名冊"):
+                if pwd_m == st.secrets["admin_password"]:
+                    st.session_state.unlock_members = True; st.rerun()
+                else: st.error("❌ 密碼錯誤")
 
 # --- [分頁 2：健康 (完全公開)] ---
 elif st.session_state.page == 'health':
@@ -339,27 +350,65 @@ elif st.session_state.page == 'health':
         ed_h = st.data_editor(h_df, use_container_width=True, num_rows="dynamic", key="h_ed")
         if st.button("💾 儲存修改內容"): save_data(ed_h, "care_health")
 
-# --- [分頁 3：物資 (完全公開 + 庫存0隱藏)] ---
+# --- [分頁 3：物資 (完全公開 + 分流計算 + 捐贈快捷)] ---
 elif st.session_state.page == 'inventory':
     render_nav()
     st.markdown("## 📦 物資庫存管理")
     inv, logs = load_data("care_inventory", COLS_INV), load_data("care_logs", COLS_LOG)
     
+    # 🔥 新功能：捐贈者快捷選單
     with st.expander("➕ 新增捐贈物資 / 款項", expanded=False):
+        # 取得歷史捐贈者清單
+        existing_donors = sorted(list(set(inv['捐贈者'].dropna().unique()))) if not inv.empty else []
+        
         with st.form("add_inv"):
-            c1, c2, co, qt = st.columns(4)
-            do, ty, co, qt = c1.text_input("捐贈者"), c2.selectbox("類型",["食物","日用品","輔具","現金","服務"]), co.text_input("名稱 (如: 白米)"), qt.number_input("數量/金額", min_value=1)
-            if st.form_submit_button("錄入捐贈資料"):
-                new = {"捐贈者":do, "物資類型":ty, "物資內容":co, "總數量":qt, "捐贈日期":str(date.today())}
-                if save_data(pd.concat([inv, pd.DataFrame([new])], ignore_index=True), "care_inventory"): st.rerun()
+            st.write("###### 1. 捐贈來源")
+            # 使用 Radio 切換模式
+            donor_mode = st.radio("來源模式", ["從歷史名單選擇", "輸入新單位"], horizontal=True, label_visibility="collapsed")
+            
+            c_d1, c_d2 = st.columns(2)
+            final_donor = ""
+            
+            if donor_mode == "從歷史名單選擇":
+                if existing_donors:
+                    final_donor = st.selectbox("選擇捐贈單位", existing_donors)
+                else:
+                    st.warning("尚無歷史名單，請切換至「輸入新單位」")
+            else:
+                final_donor = st.text_input("輸入新單位名稱", placeholder="例如：善心人士張先生")
+
+            st.write("###### 2. 物資細節")
+            c1, c2, c3 = st.columns(3)
+            ty = c1.selectbox("類型",["食物","日用品","輔具","現金","服務"])
+            co = c2.text_input("名稱 (如: 白米)")
+            qt = c3.number_input("數量/金額", min_value=1)
+            
+            if st.form_submit_button("✅ 錄入庫存"):
+                if not final_donor or not co:
+                    st.error("請完整填寫捐贈者與物資名稱")
+                else:
+                    new = {"捐贈者":final_donor, "物資類型":ty, "物資內容":co, "總數量":qt, "捐贈日期":str(date.today())}
+                    if save_data(pd.concat([inv, pd.DataFrame([new])], ignore_index=True), "care_inventory"): 
+                        st.success("已錄入！"); st.rerun()
 
     if not inv.empty:
         st.markdown("### 📊 庫存概況 (智慧卡片)")
+        
+        # 🔥 新功能：庫存分流計算 (Name + Donor 作為唯一 Key)
         inv_summary = []
-        for item_name, group in inv.groupby('物資內容'):
+        # 使用 groupby 同時對 '物資內容' 和 '捐贈者' 分組
+        for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
             total_in = group['總數量'].replace("","0").astype(float).sum()
-            total_out = logs[logs['物資內容'] == item_name]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
+            
+            # 組合出 Log 中儲存的名稱格式: "白米 (保安宮)"
+            composite_name = f"{item_name} ({donor_name})"
+            
+            # 從 Logs 中找對應的發放量
+            total_out = logs[logs['物資內容'] == composite_name]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
+            
             remain = total_in - total_out
+            
+            # 只有當剩餘量 > 0 才顯示
             if remain > 0:
                 m_type = group.iloc[0]['物資類型']
                 icon_map = {"食物": "🍱", "日用品": "🧻", "輔具": "🦯", "現金": "💰", "服務": "🧹"}
@@ -369,14 +418,17 @@ elif st.session_state.page == 'inventory':
                 bar_color = "#8E9775"
                 if remain <= 5: bar_color = "#D32F2F"
                 elif pct < 30: bar_color = "#FBC02D"
+                
                 inv_summary.append({
-                    "name": item_name, "type": m_type, "icon": icon,
+                    "name": item_name, "donor": donor_name, "type": m_type, "icon": icon,
                     "in": int(total_in), "out": int(total_out), "remain": int(remain),
                     "pct": pct, "bar_color": bar_color
                 })
         
-        if not inv_summary: st.info("💡 目前所有物資庫存皆為 0，請點選上方「新增捐贈」進行補貨。")
+        if not inv_summary:
+            st.info("💡 目前無庫存 (或已全數發放完畢)")
         else:
+            # Grid 排版 (每3個一列)
             for i in range(0, len(inv_summary), 3):
                 cols = st.columns(3)
                 for j in range(3):
@@ -390,7 +442,7 @@ elif st.session_state.page == 'inventory':
 <div class="stock-icon">{item['icon']}</div>
 <div class="stock-info">
 <div class="stock-name">{item['name']}</div>
-<span class="stock-type">{item['type']}</span>
+<div class="stock-donor">{item['donor']}</div>
 </div>
 </div>
 <div class="stock-stats">
@@ -411,19 +463,26 @@ elif st.session_state.page == 'inventory':
             ed_i = st.data_editor(inv, use_container_width=True, num_rows="dynamic", key="inv_ed")
             if st.button("💾 儲存修改內容"): save_data(ed_i, "care_inventory")
 
-# --- [分頁 4：訪視 (完全公開)] ---
+# --- [分頁 4：訪視 (完全公開 + 分流扣庫存)] ---
 elif st.session_state.page == 'visit':
     render_nav()
     st.markdown("## 🤝 訪視與物資發放紀錄")
     mems = load_data("care_members", COLS_MEM)
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
-    stock_map = {}
+    
+    # 1. 計算即時庫存 (含捐贈者區分)
+    stock_map = {} # Key: "白米 (保安宮)", Value: 剩餘數量
     if not inv.empty:
-        for itm, gp in inv.groupby('物資內容'):
-            tin = gp['總數量'].replace("","0").astype(float).sum()
-            tout = logs[logs['物資內容'] == itm]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
-            stock_map[itm] = int(tin - tout)
+        for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
+            total_in = group['總數量'].replace("","0").astype(float).sum()
+            composite_name = f"{item_name} ({donor_name})"
+            total_out = logs[logs['物資內容'] == composite_name]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
+            remain = int(total_in - total_out)
+            if remain > 0:
+                stock_map[composite_name] = remain # 只有大於0的才放入選單
+    
+    # 1. 選擇訪視對象
     st.markdown("#### 1. 選擇訪視對象")
     all_tags = set()
     if not mems.empty:
@@ -440,6 +499,7 @@ elif st.session_state.page == 'visit':
         p_list = filtered_mems['姓名'].tolist() if not filtered_mems.empty else []
         target_p = st.selectbox("👤 選擇關懷戶", p_list)
 
+    # 2. 填寫內容 (卡片式)
     st.markdown("#### 2. 填寫訪視內容與物資")
     with st.form("visit_multi_form"):
         c1, c2 = st.columns(2)
@@ -449,49 +509,63 @@ elif st.session_state.page == 'visit':
         except: v_list = ["預設志工"]
         visit_who = c1.selectbox("執行志工", v_list)
         visit_date = c2.date_input("日期", value=date.today())
+        
         st.write("📦 **點擊下方卡片輸入數量 (0 代表不發)**")
-        valid_items = {k:v for k,v in stock_map.items() if v > 0}
+        
         quantities = {} 
-        if not valid_items: st.info("💡 目前無任何庫存物資，僅能進行純訪視記錄。")
+        
+        if not stock_map:
+            st.info("💡 目前無任何庫存物資，僅能進行純訪視記錄。")
         else:
-            cols = st.columns(3) 
-            for idx, (item, stock) in enumerate(valid_items.items()):
-                col = cols[idx % 3] 
-                with col:
-                    with st.container(border=True):
-                        st.markdown(f'<div class="inv-card-header">{item}</div>', unsafe_allow_html=True)
-                        stock_class = "low" if stock < 5 else "normal"
-                        stock_label = f"⚠️ 庫存告急: {stock}" if stock < 5 else f"庫存: {stock}"
-                        st.markdown(f'<div class="inv-card-stock {stock_class}">{stock_label}</div>', unsafe_allow_html=True)
-                        qty = st.number_input("發放數量", min_value=0, max_value=stock, step=1, key=f"q_{idx}_{item}")
-                        quantities[item] = qty
+            # 轉換 stock_map 為 list 以便排序顯示
+            valid_items = sorted(stock_map.items()) # [("白米 (保安宮)", 5), ...]
+            
+            # Grid 排版
+            for i in range(0, len(valid_items), 3):
+                cols = st.columns(3)
+                for j in range(3):
+                    if i + j < len(valid_items):
+                        c_name, c_stock = valid_items[i+j]
+                        with cols[j]:
+                            with st.container(border=True):
+                                st.markdown(f'<div class="inv-card-header">{c_name}</div>', unsafe_allow_html=True)
+                                stock_class = "low" if c_stock < 5 else "normal"
+                                stock_label = f"⚠️ 庫存告急: {c_stock}" if c_stock < 5 else f"庫存: {c_stock}"
+                                st.markdown(f'<div class="inv-card-stock {stock_class}">{stock_label}</div>', unsafe_allow_html=True)
+                                qty = st.number_input("發放數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
+                                quantities[c_name] = qty
+
         note = st.text_area("訪視紀錄 / 備註")
         submitted = st.form_submit_button("✅ 確認提交紀錄")
+        
         if submitted:
             if not target_p: st.error("❌ 請先選擇關懷戶！")
             else:
                 items_to_give = [(k, v) for k, v in quantities.items() if v > 0]
                 new_logs = []
+                
                 if items_to_give:
                     for item_name, amount in items_to_give:
                         new_logs.append({
                             "志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p,
-                            "物資內容": item_name, "發放數量": amount, "訪視紀錄": note
+                            "物資內容": item_name, # 這裡存的是 "白米 (保安宮)"
+                            "發放數量": amount, "訪視紀錄": note
                         })
                 else:
                     new_logs.append({
                         "志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p,
                         "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note
                     })
+                
                 if save_data(pd.concat([logs, pd.DataFrame(new_logs)], ignore_index=True), "care_logs"):
-                    st.success(f"✅ 已成功紀錄！(包含 {len(items_to_give)} 項物資)")
-                    time.sleep(1); st.rerun()
+                    st.success(f"✅ 已成功紀錄！(包含 {len(items_to_give)} 項物資)"); time.sleep(1); st.rerun()
+
     if not logs.empty:
         st.markdown("#### 📝 最近 20 筆訪視紀錄")
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
         if st.button("💾 儲存歷史紀錄修改"): save_data(ed_l, "care_logs")
 
-# --- [分頁 5：統計 (⚠️ 個資需密碼)] ---
+# --- [分頁 5：統計 (⚠️ 機敏個資需密碼)] ---
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
@@ -513,7 +587,7 @@ elif st.session_state.page == 'stats':
                     total_fam = c + a + s
                 except: total_fam = 0
 
-                # 🟢 1. 基本資料卡 (公開)
+                # 🟢 1. 基本資料 (公開)
                 with st.container():
                     st.markdown(f"""
 <div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 10px;">
@@ -529,26 +603,19 @@ elif st.session_state.page == 'stats':
 </div>
 """, unsafe_allow_html=True)
 
-                # 🟡 2. 隱私資料 (需密碼解鎖)
+                # 🟡 2. 隱私資料 (需密碼)
                 if not st.session_state.unlock_details:
-                    if st.button("🔐 解鎖查看完整機敏資料 (身分證、緊急聯絡)"):
-                        st.session_state.show_pwd_input = True
-                    
-                    if st.session_state.get("show_pwd_input"):
-                        pwd_stat = st.text_input("請輸入管理員密碼", type="password", key="unlock_stat_pwd")
-                        if st.button("確認解鎖"):
+                    st.info("🔒 詳細個資(身分證、緊急聯絡) 已隱藏。")
+                    c_pwd, c_btn = st.columns([2, 1])
+                    with c_pwd: pwd_stat = st.text_input("請輸入密碼解鎖個資", type="password", key="unlock_stat_pwd")
+                    with c_btn:
+                        if st.button("🔓 解鎖查看"):
                             if pwd_stat == st.secrets["admin_password"]:
-                                st.session_state.unlock_details = True
-                                st.success("✅ 解鎖成功")
-                                st.rerun()
-                            else:
-                                st.error("❌ 密碼錯誤")
+                                st.session_state.unlock_details = True; st.rerun()
+                            else: st.error("❌ 密碼錯誤")
                 else:
-                    # 已解鎖狀態
                     if st.button("🔒 隱藏機敏資料"):
-                        st.session_state.unlock_details = False
-                        st.session_state.show_pwd_input = False
-                        st.rerun()
+                        st.session_state.unlock_details = False; st.rerun()
                         
                     st.markdown(f"""
 <div style="background-color: #FFF8E1; padding: 20px; border-radius: 15px; border: 1px dashed #FFB74D; margin-bottom: 20px;">
@@ -559,10 +626,7 @@ elif st.session_state.page == 'stats':
 </div>
 <hr style="border-top: 1px dashed #ccc;">
 <div style="margin-top: 10px; color: #555;">
-<b>🏠 家庭結構明細：</b><br>
-18歲以下 <b>{p_data['18歲以下子女']}</b> 人，
-成人 <b>{p_data['成人數量']}</b> 人，
-65歲以上長者 <b>{p_data['65歲以上長者']}</b> 人
+<b>🏠 家庭結構明細：</b> 18歲以下 <b>{p_data['18歲以下子女']}</b> 人，成人 <b>{p_data['成人數量']}</b> 人，65歲以上 <b>{p_data['65歲以上長者']}</b> 人
 </div>
 <div style="margin-top: 10px; color: #D32F2F;">
 <b>🚨 緊急聯絡人：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})
