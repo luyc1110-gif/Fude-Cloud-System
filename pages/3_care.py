@@ -130,7 +130,7 @@ div[data-testid="stDownloadButton"] > button:hover {{
 .visit-tag.only {{ background-color: #9E9E9E; }} 
 .visit-note {{ font-size: 1rem; color: #444; line-height: 1.5; background: #FAFAFA; padding: 10px; border-radius: 8px; }}
 
-/* 庫存管理卡片 (增強版) */
+/* 庫存管理卡片 */
 .stock-card {{
     background-color: white; border: 1px solid #eee; border-radius: 15px;
     padding: 20px; margin-bottom: 20px; position: relative;
@@ -360,6 +360,7 @@ elif st.session_state.page == 'inventory':
         existing_donors = sorted(list(set(inv['捐贈者'].dropna().unique()))) if not inv.empty else []
         
         st.write("###### 1. 捐贈來源")
+        
         # 🔥 將 radio 移出 form，確保點擊後能立即刷新畫面
         donor_mode = st.radio("來源模式", ["從歷史名單選擇", "輸入新單位"], horizontal=True, label_visibility="collapsed")
         
@@ -390,7 +391,10 @@ elif st.session_state.page == 'inventory':
 
     if not inv.empty:
         st.markdown("### 📊 庫存概況 (智慧卡片)")
+        
+        # 🔥 新功能：庫存分流計算 (Name + Donor 作為唯一 Key)
         inv_summary = []
+        # 使用 groupby 同時對 '物資內容' 和 '捐贈者' 分組
         for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
             total_in = group['總數量'].replace("","0").astype(float).sum()
             composite_name = f"{item_name} ({donor_name})"
@@ -414,6 +418,7 @@ elif st.session_state.page == 'inventory':
         if not inv_summary:
             st.info("💡 目前無庫存 (或已全數發放完畢)")
         else:
+            # Grid 排版 (每3個一列)
             for i in range(0, len(inv_summary), 3):
                 cols = st.columns(3)
                 for j in range(3):
@@ -520,7 +525,7 @@ elif st.session_state.page == 'visit':
                                 qty = st.number_input("發放數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
                                 quantities[c_name] = qty
 
-        note = st.text_area("訪視紀錄 /備註")
+        note = st.text_area("訪視紀錄 / 備註")
         submitted = st.form_submit_button("✅ 確認提交紀錄")
         
         if submitted:
@@ -641,11 +646,38 @@ elif st.session_state.page == 'stats':
 """, unsafe_allow_html=True)
 
     with tab2:
-        if not logs.empty:
-            st.markdown("#### 📊 各類物資發放排行")
-            bar_data = logs.groupby('物資內容')['發放數量'].apply(lambda x: x.replace("","0").astype(float).sum()).reset_index()
-            fig = px.bar(bar_data, x='物資內容', y='發放數量', color='物資內容')
-            st.plotly_chart(fig, use_container_width=True)
-            st.markdown("#### 📝 所有發放流水帳")
-            st.dataframe(logs, use_container_width=True)
-        else: st.info("目前無任何發放紀錄")
+        # 🔥🔥🔥 視覺化升級：甜甜圈圖 + 旭日圖 🔥🔥🔥
+        inv = load_data("care_inventory", COLS_INV)
+        if not inv.empty:
+            # 確保數字型態
+            inv['qty'] = pd.to_numeric(inv['總數量'], errors='coerce').fillna(0)
+            
+            st.markdown("### 🎁 捐贈來源與物資分析")
+            
+            c1, c2 = st.columns(2)
+            
+            with c1:
+                st.markdown("#### 🏆 愛心捐贈芳名錄 (依捐贈量)")
+                # 依捐贈者加總
+                donor_stat = inv.groupby('捐贈者')['qty'].sum().reset_index().sort_values('qty', ascending=False)
+                
+                # 使用 Donut Chart (甜甜圈圖) 取代長條圖
+                fig_donor = px.pie(donor_stat, values='qty', names='捐贈者', hole=0.4, 
+                                   color_discrete_sequence=px.colors.qualitative.Pastel)
+                fig_donor.update_traces(textposition='inside', textinfo='percent+label')
+                st.plotly_chart(fig_donor, use_container_width=True)
+                
+            with c2:
+                st.markdown("#### 📦 物資種類結構 (不分單位)")
+                # 依類型 -> 名稱 加總 (Sunburst 旭日圖)
+                # 這能很好地顯示「什麼類型的物資」底下有「什麼東西」，且自動加總
+                fig_sun = px.sunburst(inv, path=['物資類型', '物資內容'], values='qty',
+                                      color='物資類型', color_discrete_sequence=px.colors.qualitative.Set3)
+                st.plotly_chart(fig_sun, use_container_width=True)
+
+            st.markdown("---")
+            st.markdown("#### 📝 歷年捐贈明細總表")
+            st.dataframe(inv, use_container_width=True)
+            
+        else:
+            st.info("目前尚無捐贈紀錄")
