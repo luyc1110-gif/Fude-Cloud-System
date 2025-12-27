@@ -350,24 +350,21 @@ elif st.session_state.page == 'health':
         ed_h = st.data_editor(h_df, use_container_width=True, num_rows="dynamic", key="h_ed")
         if st.button("💾 儲存修改內容"): save_data(ed_h, "care_health")
 
-# --- [分頁 3：物資 (完全公開 + 分流計算 + 捐贈快捷)] ---
+# --- [分頁 3：物資 (修正版：輸入框絕對可見)] ---
 elif st.session_state.page == 'inventory':
     render_nav()
     st.markdown("## 📦 物資庫存管理")
     inv, logs = load_data("care_inventory", COLS_INV), load_data("care_logs", COLS_LOG)
     
-    # 🔥 新功能：捐贈者快捷選單 (上下排列，確保絕對可見)
     with st.expander("➕ 新增捐贈物資 / 款項", expanded=False):
-        # 取得歷史捐贈者清單
         existing_donors = sorted(list(set(inv['捐贈者'].dropna().unique()))) if not inv.empty else []
         
-        with st.form("add_inv"):
-            st.write("###### 1. 捐贈來源")
-            
-            # 使用 Radio 切換模式
-            donor_mode = st.radio("來源模式", ["從歷史名單選擇", "輸入新單位"], horizontal=True, label_visibility="collapsed")
-            
-            # 🔥 [修改重點]：垂直排列，確保輸入框一定出現
+        st.write("###### 1. 捐贈來源")
+        # 🔥 將 radio 移出 form，確保點擊後能立即刷新畫面
+        donor_mode = st.radio("來源模式", ["從歷史名單選擇", "輸入新單位"], horizontal=True, label_visibility="collapsed")
+        
+        # 🔥 接下來使用 form 讓使用者填寫
+        with st.form("add_inv_form"):
             final_donor = ""
             if donor_mode == "從歷史名單選擇":
                 if existing_donors:
@@ -393,22 +390,12 @@ elif st.session_state.page == 'inventory':
 
     if not inv.empty:
         st.markdown("### 📊 庫存概況 (智慧卡片)")
-        
-        # 🔥 新功能：庫存分流計算 (Name + Donor 作為唯一 Key)
         inv_summary = []
-        # 使用 groupby 同時對 '物資內容' 和 '捐贈者' 分組
         for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
             total_in = group['總數量'].replace("","0").astype(float).sum()
-            
-            # 組合出 Log 中儲存的名稱格式: "白米 (保安宮)"
             composite_name = f"{item_name} ({donor_name})"
-            
-            # 從 Logs 中找對應的發放量
             total_out = logs[logs['物資內容'] == composite_name]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
-            
             remain = total_in - total_out
-            
-            # 只有當剩餘量 > 0 才顯示
             if remain > 0:
                 m_type = group.iloc[0]['物資類型']
                 icon_map = {"食物": "🍱", "日用品": "🧻", "輔具": "🦯", "現金": "💰", "服務": "🧹"}
@@ -418,7 +405,6 @@ elif st.session_state.page == 'inventory':
                 bar_color = "#8E9775"
                 if remain <= 5: bar_color = "#D32F2F"
                 elif pct < 30: bar_color = "#FBC02D"
-                
                 inv_summary.append({
                     "name": item_name, "donor": donor_name, "type": m_type, "icon": icon,
                     "in": int(total_in), "out": int(total_out), "remain": int(remain),
@@ -428,7 +414,6 @@ elif st.session_state.page == 'inventory':
         if not inv_summary:
             st.info("💡 目前無庫存 (或已全數發放完畢)")
         else:
-            # Grid 排版 (每3個一列)
             for i in range(0, len(inv_summary), 3):
                 cols = st.columns(3)
                 for j in range(3):
@@ -535,7 +520,7 @@ elif st.session_state.page == 'visit':
                                 qty = st.number_input("發放數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
                                 quantities[c_name] = qty
 
-        note = st.text_area("訪視紀錄 / 備註")
+        note = st.text_area("訪視紀錄 /備註")
         submitted = st.form_submit_button("✅ 確認提交紀錄")
         
         if submitted:
