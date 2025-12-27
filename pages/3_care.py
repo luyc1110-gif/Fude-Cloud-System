@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded" 
 )
 
-# 1. 初始化登入狀態 (如果沒有的話)
+# 1. 初始化登入狀態
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
@@ -25,7 +25,7 @@ if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
 # 🔥 注意：原本這裡的「全域門禁」已經移除了！
-# 這樣程式才會繼續往下跑，不會一開始就被 st.stop() 擋住。
+# 程式會繼續往下跑，首頁不會被擋住。
 
 TW_TZ = timezone(timedelta(hours=8))
 PRIMARY = "#4A4E69"   # 深藍灰
@@ -200,7 +200,7 @@ def calculate_age(dob_str):
         today = date.today(); return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
     except: return 0
 
-# 🔥 新增：分頁專用門禁檢查函數
+# 🔥 分頁專用門禁檢查函數
 def check_password():
     """ 檢查是否登入，未登入則顯示輸入框並停止執行後續代碼 """
     if not st.session_state.authenticated:
