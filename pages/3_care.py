@@ -356,7 +356,7 @@ elif st.session_state.page == 'inventory':
     st.markdown("## 📦 物資庫存管理")
     inv, logs = load_data("care_inventory", COLS_INV), load_data("care_logs", COLS_LOG)
     
-    # 🔥 新功能：捐贈者快捷選單 (左右並排設計)
+    # 🔥 新功能：捐贈者快捷選單 (上下排列，確保絕對可見)
     with st.expander("➕ 新增捐贈物資 / 款項", expanded=False):
         # 取得歷史捐贈者清單
         existing_donors = sorted(list(set(inv['捐贈者'].dropna().unique()))) if not inv.empty else []
@@ -364,21 +364,18 @@ elif st.session_state.page == 'inventory':
         with st.form("add_inv"):
             st.write("###### 1. 捐贈來源")
             
-            # 🔥 這裡使用 columns 將「選項」與「輸入框」並排
-            c_mode, c_input = st.columns([1, 2])
+            # 使用 Radio 切換模式
+            donor_mode = st.radio("來源模式", ["從歷史名單選擇", "輸入新單位"], horizontal=True, label_visibility="collapsed")
             
-            with c_mode:
-                donor_mode = st.radio("模式選擇", ["從歷史名單選擇", "輸入新單位"], label_visibility="collapsed")
-            
-            with c_input:
-                final_donor = ""
-                if donor_mode == "從歷史名單選擇":
-                    if existing_donors:
-                        final_donor = st.selectbox("請選擇捐贈單位", existing_donors)
-                    else:
-                        st.warning("⚠️ 尚無歷史名單，請切換至「輸入新單位」")
+            # 🔥 [修改重點]：垂直排列，確保輸入框一定出現
+            final_donor = ""
+            if donor_mode == "從歷史名單選擇":
+                if existing_donors:
+                    final_donor = st.selectbox("👉 請選擇捐贈單位", existing_donors)
                 else:
-                    final_donor = st.text_input("請輸入新單位/人名", placeholder="例如：善心人士張先生")
+                    st.warning("⚠️ 尚無歷史名單，請切換至「輸入新單位」")
+            else:
+                final_donor = st.text_input("✍️ 請輸入新單位/人名", placeholder="例如：善心人士張先生")
 
             st.write("###### 2. 物資細節")
             c1, c2, c3 = st.columns(3)
