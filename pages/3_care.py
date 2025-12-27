@@ -24,8 +24,7 @@ if 'authenticated' not in st.session_state:
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
-# 🔥 注意：原本這裡的「全域門禁」已經移除了！
-# 程式會繼續往下跑，首頁不會被擋住。
+# 🔥 重要：這裡已經移除了「全域門禁 st.stop()」，所以首頁不會被擋住！
 
 TW_TZ = timezone(timedelta(hours=8))
 PRIMARY = "#4A4E69"   # 深藍灰
@@ -148,7 +147,7 @@ div[data-testid="stDownloadButton"] > button:hover {{
 .stock-stats {{ display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.9rem; color: #666; font-weight: bold; }}
 .stock-warning {{ color: #D32F2F; font-weight: bold; display: flex; align-items: center; gap: 5px; margin-top: 10px; font-size: 0.9rem; }}
 
-/* 卡片上浮效果 */
+/* 卡片上浮效果與發放輸入框 */
 div[data-testid="stVerticalBlockBorderWrapper"] {{
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     border: 2px solid #E0E0E0 !important; background-color: #FFFFFF;
@@ -422,7 +421,7 @@ elif st.session_state.page == 'inventory':
             ed_i = st.data_editor(inv, use_container_width=True, num_rows="dynamic", key="inv_ed")
             if st.button("💾 儲存修改內容"): save_data(ed_i, "care_inventory")
 
-# --- [分頁 4：訪視 (🔒 需要登入)] ---
+# --- [分頁 4：訪視 (🔒 需要登入 + 購物車式發放)] ---
 elif st.session_state.page == 'visit':
     render_nav()
     check_password() # 🔥 門禁卡
@@ -431,28 +430,35 @@ elif st.session_state.page == 'visit':
     mems = load_data("care_members", COLS_MEM)
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
+    
+    # 計算即時庫存
     stock_map = {}
     if not inv.empty:
         for itm, gp in inv.groupby('物資內容'):
             tin = gp['總數量'].replace("","0").astype(float).sum()
             tout = logs[logs['物資內容'] == itm]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
             stock_map[itm] = int(tin - tout)
+    
+    # 1. 選擇訪視對象 (身分篩選)
     st.markdown("#### 1. 選擇訪視對象")
     all_tags = set()
     if not mems.empty:
         for s in mems['身分別'].astype(str):
             for t in s.split(','):
                 if t.strip(): all_tags.add(t.strip())
+    
     c_filter, c_person = st.columns([1, 2])
     with c_filter:
         tag_opts = ["(全部顯示)"] + sorted(list(all_tags))
         sel_tag = st.selectbox("🌪️ 依身分別篩選", tag_opts)
+    
     with c_person:
         if sel_tag == "(全部顯示)": filtered_mems = mems
         else: filtered_mems = mems[mems['身分別'].str.contains(sel_tag, na=False)] if not mems.empty else mems
         p_list = filtered_mems['姓名'].tolist() if not filtered_mems.empty else []
         target_p = st.selectbox("👤 選擇關懷戶", p_list)
 
+    # 2. 填寫內容 (卡片式)
     st.markdown("#### 2. 填寫訪視內容與物資")
     with st.form("visit_multi_form"):
         c1, c2 = st.columns(2)
@@ -462,10 +468,14 @@ elif st.session_state.page == 'visit':
         except: v_list = ["預設志工"]
         visit_who = c1.selectbox("執行志工", v_list)
         visit_date = c2.date_input("日期", value=date.today())
+        
         st.write("📦 **點擊下方卡片輸入數量 (0 代表不發)**")
+        
         valid_items = {k:v for k,v in stock_map.items() if v > 0}
         quantities = {} 
-        if not valid_items: st.info("💡 目前無任何庫存物資，僅能進行純訪視記錄。")
+        
+        if not valid_items:
+            st.info("💡 目前無任何庫存物資，僅能進行純訪視記錄。")
         else:
             cols = st.columns(3) 
             for idx, (item, stock) in enumerate(valid_items.items()):
@@ -478,13 +488,16 @@ elif st.session_state.page == 'visit':
                         st.markdown(f'<div class="inv-card-stock {stock_class}">{stock_label}</div>', unsafe_allow_html=True)
                         qty = st.number_input("發放數量", min_value=0, max_value=stock, step=1, key=f"q_{idx}_{item}")
                         quantities[item] = qty
+
         note = st.text_area("訪視紀錄 / 備註")
         submitted = st.form_submit_button("✅ 確認提交紀錄")
+        
         if submitted:
             if not target_p: st.error("❌ 請先選擇關懷戶！")
             else:
                 items_to_give = [(k, v) for k, v in quantities.items() if v > 0]
                 new_logs = []
+                
                 if items_to_give:
                     for item_name, amount in items_to_give:
                         new_logs.append({
@@ -496,9 +509,11 @@ elif st.session_state.page == 'visit':
                         "志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p,
                         "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note
                     })
+                
                 if save_data(pd.concat([logs, pd.DataFrame(new_logs)], ignore_index=True), "care_logs"):
                     st.success(f"✅ 已成功紀錄！(包含 {len(items_to_give)} 項物資)")
                     time.sleep(1); st.rerun()
+
     if not logs.empty:
         st.markdown("#### 📝 最近 20 筆訪視紀錄")
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
