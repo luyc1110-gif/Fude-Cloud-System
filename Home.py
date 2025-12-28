@@ -104,7 +104,7 @@ section[data-testid="stSidebar"] button:hover {
 .service-desc { font-size: 1rem; color: #666; line-height: 1.6; margin-bottom: 15px; }
 .service-icon-placeholder { font-size: 5rem; }
 
-/* 🔥 新增：數據統計樣式 */
+/* 數據統計樣式 */
 .stats-row {
     display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;
 }
@@ -138,6 +138,40 @@ def calculate_age(dob_str):
         today = date.today()
         return today.year - b_date.year - ((today.month, today.day) < (b_date.month, b_date.day))
     except: return 0
+
+# 🔥 新增：檢查是否已完全退役的函數
+def check_is_fully_retired(row):
+    """
+    邏輯：
+    1. 檢查四個組別 (祥和, 週二, 週三, 環保)
+    2. 如果有加入日期，但沒有退出日期，視為 Active (在職)
+    3. 如果完全沒填加入日期，視為 Active (可能是新人)
+    4. 只有當「所有曾加入的組別」都填了「退出日期」，才視為 Retired (退役)
+    """
+    roles = [
+        ('祥和_加入日期', '祥和_退出日期'), 
+        ('據點週二_加入日期', '據點週二_退出日期'), 
+        ('據點週三_加入日期', '據點週三_退出日期'), 
+        ('環保_加入日期', '環保_退出日期')
+    ]
+    has_any = False # 是否有參加過任何一組
+    is_active = False # 是否目前仍在職
+    
+    for join_col, exit_col in roles:
+        # 使用 .get 避免欄位不存在報錯
+        join_val = str(row.get(join_col, '')).strip()
+        if join_val:
+            has_any = True
+            exit_val = str(row.get(exit_col, '')).strip()
+            # 有加入且沒退出 -> Active
+            if not exit_val: 
+                is_active = True
+    
+    # 如果完全沒參加過 (或是資料空白)，預設為 Active
+    if not has_any: return False 
+    
+    # 如果有參加過，且 is_active 仍為 False (代表所有參加的都退了) -> Retired
+    return not is_active
 
 def calculate_year_hours(logs_df):
     """計算當年度志工總時數"""
@@ -181,10 +215,16 @@ def load_dashboard_stats():
         df_vl = pd.DataFrame(sh.worksheet("logs").get_all_records()).astype(str)
         
         if not df_v.empty:
-            stats["vol_count"] = len(df_v)
-            df_v['age'] = df_v['生日'].apply(calculate_age)
-            # 過濾掉計算失敗的年齡
-            valid_ages = df_v[df_v['age'] > 0]['age']
+            # 🔥 關鍵修改：過濾掉已退役的志工
+            # apply(axis=1) 會對每一列執行 check_is_fully_retired
+            # 我們保留那些 return False (即 check_is_fully_retired 為假，代表還在職) 的人
+            active_volunteers = df_v[~df_v.apply(check_is_fully_retired, axis=1)]
+            
+            stats["vol_count"] = len(active_volunteers)
+            
+            # 計算平均年齡 (只算在職的)
+            active_volunteers['age'] = active_volunteers['生日'].apply(calculate_age)
+            valid_ages = active_volunteers[active_volunteers['age'] > 0]['age']
             stats["vol_age"] = round(valid_ages.mean(), 1) if not valid_ages.empty else 0
             
         if not df_vl.empty:
@@ -251,7 +291,7 @@ services = [
         "icon": "💜",
         "img_file": "volunteer.jpg",
         "stats": [
-            f"👥 志工總數: <b>{data['vol_count']}</b> 人",
+            f"👥 志工總數: <b>{data['vol_count']}</b> 人 (已扣除退役)",
             f"🎂 平均年齡: <b>{data['vol_age']}</b> 歲",
             f"⏳ 本年服務: <b>{data['vol_hours']}</b> 小時"
         ]
@@ -274,7 +314,7 @@ services = [
         "icon": "🏠",
         "img_file": "care.jpg",
         "stats": [
-            f"👥 關懷戶數: <b>{data['care_count']}</b> 戶",
+            f"📉 關懷戶數: <b>{data['care_count']}</b> 戶",
             f"📦 本年發放: <b>{data['care_items']}</b> 份"
         ]
     }
