@@ -283,7 +283,7 @@ if st.session_state.page == 'home':
         with c4: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#BC6C25 0%,#8E9775 100%);"><div>🎁 {cur_y} 當年度發放量</div><div style="font-size:3.5rem;">{int(cur_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
         with c5: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#6D6875 100%);"><div>⏳ {prev_y} 上年度發放量</div><div style="font-size:3.5rem;">{int(prev_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
 
-# --- [分頁 1：名冊 (局部上鎖)] ---
+# --- [分頁 1：名冊 (局部上鎖 + 雙重重複檢查)] ---
 elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 關懷戶名冊管理")
@@ -293,23 +293,43 @@ elif st.session_state.page == 'members':
     with st.expander("➕ 新增關懷戶 (展開填寫)", expanded=False):
         with st.form("add_care", clear_on_submit=True):
             c1, c2, c3, c4 = st.columns(4)
-            n, p = c1.text_input("姓名"), c2.text_input("身分證")
-            g, b = c3.selectbox("性別", ["男", "女"]), c4.date_input("生日", value=date(1950, 1, 1), min_value=date(1911, 1, 1), max_value=date(2025, 12, 31))
-            addr, ph = st.text_input("地址"), st.text_input("電話")
+            n = c1.text_input("姓名")
+            p = c2.text_input("身分證")
+            g = c3.selectbox("性別", ["男", "女"])
+            b = c4.date_input("生日", value=date(1950, 1, 1), min_value=date(1911, 1, 1), max_value=date(2025, 12, 31))
+            addr = st.text_input("地址")
+            ph = st.text_input("電話")
             ce1, ce2 = st.columns(2)
-            en, ep = ce1.text_input("緊急聯絡人"), ce2.text_input("緊急聯絡電話")
+            en = ce1.text_input("緊急聯絡人")
+            ep = ce2.text_input("緊急聯絡電話")
             cn1, cn2, cn3 = st.columns(3)
             child = cn1.number_input("18歲以下子女", min_value=0, value=0, step=1)
             adult = cn2.number_input("成人數量", min_value=0, value=0, step=1)
             senior = cn3.number_input("65歲以上長者", min_value=0, value=0, step=1)
             id_t = st.multiselect("身分別", ["低收", "中低收", "中低老人", "身障", "獨居", "獨居有子女"])
+            
             if st.form_submit_button("確認新增"):
-                if p.upper() in df['身分證字號'].values: st.error("❌ 已存在！")
-                elif not n: st.error("❌ 姓名必填")
+                # 🔥 修正邏輯：必須「姓名」與「身分證」同時吻合才算重複
+                is_duplicate = False
+                if not df.empty:
+                    # 建立檢查遮罩
+                    mask = (df['姓名'] == n) & (df['身分證字號'] == p.upper())
+                    if not df[mask].empty:
+                        is_duplicate = True
+
+                if is_duplicate:
+                    st.error(f"❌ 資料重複！名冊中已有「{n} ({p})」的資料。")
+                elif not n:
+                    st.error("❌ 姓名必填")
+                elif not p:
+                    st.error("❌ 身分證字號必填")
                 else:
-                    new = {"姓名": n, "身分證字號": p.upper(), "性別": g, "生日": str(b), "地址": addr, "電話": ph, 
-                           "緊急聯絡人": en, "緊急聯絡人電話": ep, "身分別": ",".join(id_t),
-                           "18歲以下子女": str(child), "成人數量": str(adult), "65歲以上長者": str(senior)}
+                    new = {
+                        "姓名": n, "身分證字號": p.upper(), "性別": g, "生日": str(b), 
+                        "地址": addr, "電話": ph, "緊急聯絡人": en, "緊急聯絡人電話": ep, 
+                        "身分別": ",".join(id_t),
+                        "18歲以下子女": str(child), "成人數量": str(adult), "65歲以上長者": str(senior)
+                    }
                     if save_data(pd.concat([df, pd.DataFrame([new])], ignore_index=True), "care_members"):
                         st.success("✅ 已新增！"); time.sleep(1); st.rerun()
     
@@ -391,10 +411,7 @@ elif st.session_state.page == 'inventory':
 
     if not inv.empty:
         st.markdown("### 📊 庫存概況 (智慧卡片)")
-        
-        # 🔥 新功能：庫存分流計算 (Name + Donor 作為唯一 Key)
         inv_summary = []
-        # 使用 groupby 同時對 '物資內容' 和 '捐贈者' 分組
         for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
             total_in = group['總數量'].replace("","0").astype(float).sum()
             composite_name = f"{item_name} ({donor_name})"
@@ -418,7 +435,6 @@ elif st.session_state.page == 'inventory':
         if not inv_summary:
             st.info("💡 目前無庫存 (或已全數發放完畢)")
         else:
-            # Grid 排版 (每3個一列)
             for i in range(0, len(inv_summary), 3):
                 cols = st.columns(3)
                 for j in range(3):
