@@ -274,7 +274,7 @@ services = [
         "icon": "🏠",
         "img_file": "care.jpg",
         "stats": [
-            f"📉 關懷戶數: <b>{data['care_count']}</b> 戶",
+            f"👥 關懷戶數: <b>{data['care_count']}</b> 戶",
             f"📦 本年發放: <b>{data['care_items']}</b> 份"
         ]
     }
