@@ -291,7 +291,7 @@ services = [
         "icon": "💜",
         "img_file": "volunteer.jpg",
         "stats": [
-            f"👥 志工總數: <b>{data['vol_count']}</b> 人 (已扣除退役)",
+            f"👥 志工總數: <b>{data['vol_count']}</b> 人",
             f"🎂 平均年齡: <b>{data['vol_age']}</b> 歲",
             f"⏳ 本年服務: <b>{data['vol_hours']}</b> 小時"
         ]
