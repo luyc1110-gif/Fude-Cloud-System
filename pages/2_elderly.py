@@ -8,127 +8,129 @@ import plotly.express as px
 import random
 
 # =========================================================
-# 0) 系統設定
+# 0) 系統設定 (🎨 這裡可以調整全站基礎設定)
 # =========================================================
 st.set_page_config(
     page_title="長輩關懷系統",
     page_icon="👴",
     layout="wide",
-    initial_sidebar_state="expanded", # 🔥 預設展開側邊欄
+    initial_sidebar_state="expanded", 
 )
 
-# --- 🔒 安全登入門禁 ---
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
+# 初始化頁面狀態
+if 'page' not in st.session_state: st.session_state.page = 'home'
+# 初始化名冊解鎖狀態 (預設鎖住)
+if 'unlock_elder_list' not in st.session_state: st.session_state.unlock_elder_list = False
 
-if not st.session_state.authenticated:
-    st.markdown("### 🔒 福德里管理系統 - 登入")
-    pwd = st.text_input("請輸入管理員授權碼", type="password")
-    
-    if st.button("確認登入"):
-        if pwd == st.secrets["admin_password"]:
-            st.session_state.authenticated = True
-            st.success("登入成功！正在跳轉...")
-            st.rerun()
-        else:
-            st.error("授權碼錯誤，請重新輸入。")
-    st.stop() 
+# 🔥 [移除] 原本這裡的「全域門禁」程式碼已刪除，現在進入系統不用馬上打密碼了！
 
 TW_TZ = timezone(timedelta(hours=8))
-# 🔥 主色調設定 (黃橙色系)
-PRIMARY = "#EF6C00"   # 深橙色 (用於按鈕、強調字)
-ACCENT  = "#FFA726"   # 亮橙黃 (用於邊框、裝飾)
-BG_MAIN = "#F0F2F5"   # 淺灰背景
-TEXT    = "#212121"   # 深灰文字
+
+# 🎨【配色調整區】修改這邊的色碼，可以改變整站的主題色
+PRIMARY = "#EF6C00"   # 🔥 主色調：用於按鈕背景、強調文字 (目前是深橙色)
+ACCENT  = "#FFA726"   # ✨ 輔助色：用於邊框、裝飾線條 (目前是亮橙色)
+BG_MAIN = "#F0F2F5"   # 🌫️ 網頁大背景顏色 (目前是淺灰)
+TEXT    = "#212121"   # 📝 主要文字顏色 (目前是深灰)
 
 # =========================================================
-# 1) CSS 樣式 (懸浮卡片 + 側邊欄無縫設計)
+# 1) CSS 樣式 (已加入詳細註解，方便您調整)
 # =========================================================
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
 
+/* 全站文字字型設定 */
 html, body, [class*="css"], div, p, span, li, ul {{
     font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     color: {TEXT} !important;
 }}
 
-/* 🔥 1. 整體背景設為淺灰 */
+/* 🌫️ 1. 整體網頁背景顏色 */
 .stApp {{
     background-color: {BG_MAIN} !important;
 }}
 
-/* 🔥 2. 側邊欄背景 (跟主背景融合，去掉右邊框) */
+/* 🗂️ 2. 側邊欄 (Sidebar) 設定 */
 section[data-testid="stSidebar"] {{
-    background-color: {BG_MAIN};
-    border-right: none; /* 關鍵：去掉那條死板的分隔線 */
+    background-color: {BG_MAIN}; /* 讓側邊欄跟背景同色，看起來更寬闊 */
+    border-right: none;           /* 去掉側邊欄右邊那條死板的分隔線 */
 }}
 
-/* 🔥 3. 【關鍵】將主內容區變成一張「懸浮大卡片」 */
+/* ⬜ 3. 【關鍵】主內容區的「懸浮大卡片」樣式 */
 .block-container {{
-    background-color: #FFFFFF; /* 卡片白底 */
-    border-radius: 25px;       /* 圓角 */
-    padding: 3rem 3rem !important; /* 內距 */
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05); /* 陰影讓它浮起來 */
-    margin-top: 2rem;          /* 離頂部一點距離 */
-    margin-bottom: 2rem;       /* 離底部一點距離 */
-    max-width: 95% !important; /* 寬度佔滿 95%，留邊 */
+    background-color: #FFFFFF;      /* ⬜ 卡片背景色 (白色) */
+    border-radius: 25px;            /* 📏 圓角大小 (數字越大越圓) */
+    padding: 3rem 3rem !important;  /* ↔️ 內距：控制內容離邊框的距離 */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05); /* 🌫️ 陰影：讓卡片有浮起來的感覺 */
+    margin-top: 2rem;               /* ⬆️ 距離視窗頂部的距離 */
+    margin-bottom: 2rem;            /* ⬇️ 距離視窗底部的距離 */
+    max-width: 95% !important;      /* ↔️ 卡片寬度 (佔螢幕 95%) */
 }}
 
-/* 🔥 4. 修復 Header */
+/* 頂部 Header 設定 (保持透明，不擋住內容) */
 header[data-testid="stHeader"] {{
     display: block !important;
     background-color: transparent !important;
 }}
 header[data-testid="stHeader"] .decoration {{ display: none; }}
 
-/* --- 側邊欄按鈕 (膠囊狀) --- */
+/* 🔘 4. 側邊欄按鈕樣式 */
 section[data-testid="stSidebar"] button {{
     background-color: #FFFFFF !important;
     color: #666 !important;
     border: 1px solid transparent !important;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important;
-    padding: 10px 0 !important;
+    border-radius: 25px !important;  /* 📏 按鈕圓角 */
+    padding: 10px 0 !important;      /* ↕️ 按鈕高度 */
     font-weight: 700 !important;
-    width: 100%; margin-bottom: 8px !important;
-    transition: all 0.2s;
+    width: 100%; 
+    margin-bottom: 8px !important;   /* ⬇️ 按鈕之間的間距 */
+    transition: all 0.2s;            /* 動畫過渡效果 */
 }}
+/* 滑鼠移過去按鈕時的特效 */
 section[data-testid="stSidebar"] button:hover {{
-    transform: translateY(-2px);
+    transform: translateY(-2px);     /* 微微上浮 */
     box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
-    color: {PRIMARY} !important;
-}}
-/* 選中狀態 (橙色漸層) */
-.nav-active {{
-    background: linear-gradient(135deg, {PRIMARY}, {ACCENT});
-    color: white !important;
-    padding: 12px 0; text-align: center; border-radius: 25px;
-    font-weight: 900; box-shadow: 0 4px 10px rgba(239, 108, 0, 0.3);
-    margin-bottom: 12px; cursor: default;
+    color: {PRIMARY} !important;     /* 變色 */
 }}
 
-/* --- 內部統計小卡片 --- */
+/* 🌟 5. 側邊欄「目前選中」的按鈕樣式 */
+.nav-active {{
+    background: linear-gradient(135deg, {PRIMARY}, {ACCENT}); /* 🌈 漸層背景 */
+    color: white !important;
+    padding: 12px 0; 
+    text-align: center; 
+    border-radius: 25px;
+    font-weight: 900; 
+    box-shadow: 0 4px 10px rgba(239, 108, 0, 0.3); /* 發光陰影 */
+    margin-bottom: 12px; 
+    cursor: default;
+}}
+
+/* 📊 6. 內部統計小卡片 (Dash Card) */
 .dash-card {{
-    background-color: #F8F9FA; padding: 20px; border-radius: 15px;
-    border-left: 6px solid {ACCENT}; margin-bottom: 15px;
+    background-color: #F8F9FA;       /* 淺灰底色 */
+    padding: 20px; 
+    border-radius: 15px;             /* 圓角 */
+    border-left: 6px solid {ACCENT}; /* 👈 左邊那條裝飾線的顏色 */
+    margin-bottom: 15px;
 }}
 .dash-label {{ font-size: 1.1rem; color: #444 !important; font-weight: bold; margin-bottom: 5px; }}
-.dash-value {{ font-size: 2.2rem; color: {PRIMARY} !important; font-weight: 900; margin: 10px 0; }}
+.dash-value {{ font-size: 2.2rem; color: {PRIMARY} !important; font-weight: 900; margin: 10px 0; }} /* 數字顏色 */
 .dash-sub {{ font-size: 0.95rem; color: #666 !important; line-height: 1.6; }}
 
-/* --- 下拉選單與輸入框優化 --- */
+/* 📝 7. 輸入框與下拉選單樣式 */
 div[data-baseweb="select"] > div {{
     background-color: #FFFFFF !important;
     color: #000000 !important;
-    border: 2px solid #E0E0E0 !important;
+    border: 2px solid #E0E0E0 !important; /* 邊框顏色 */
     border-radius: 12px !important;
 }}
 div[data-baseweb="select"] span {{ color: #000000 !important; }}
 ul[data-baseweb="menu"] {{ background-color: #FFFFFF !important; }}
 li[role="option"] {{ color: #000000 !important; background-color: #FFFFFF !important; }}
 li[role="option"]:hover {{
-    background-color: #FFF3E0 !important; /* 淡橙色背景 */
+    background-color: #FFF3E0 !important; /* 滑鼠移過去的背景色 */
     color: {PRIMARY} !important;
 }}
 .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
@@ -138,21 +140,25 @@ li[role="option"]:hover {{
     color: #333 !important;
 }}
 
-/* --- 按鈕樣式 (Form Submit & Download) --- */
+/* 🖱️ 8. 主要操作按鈕 (提交、下載) */
 div[data-testid="stFormSubmitButton"] > button,
 div[data-testid="stDownloadButton"] > button {{
-    background-color: {PRIMARY} !important; color: #FFFFFF !important;
-    border: none !important; border-radius: 12px !important;
+    background-color: {PRIMARY} !important; /* 按鈕背景色 */
+    color: #FFFFFF !important;              /* 文字顏色 */
+    border: none !important; 
+    border-radius: 12px !important;
     padding: 10px 20px !important;
 }}
 div[data-testid="stFormSubmitButton"] > button *, 
 div[data-testid="stDownloadButton"] > button * {{
     color: #FFFFFF !important; font-weight: 900 !important;
 }}
+/* 滑鼠移過去按鈕 */
 div[data-testid="stFormSubmitButton"] > button:hover,
 div[data-testid="stDownloadButton"] > button:hover {{
     background-color: {ACCENT} !important;
-    transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }}
 
 /* Toast 訊息框 */
@@ -172,7 +178,7 @@ SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 COURSE_HIERARCHY = {
     "手作": ["藝術手作", "生活用品"], "講座": ["消防", "反詐", "道路安全", "環境", "心靈成長", "家庭關係", "健康"],
     "外出": ["觀摩", "出遊"], "延緩失能": ["手作", "料理", "運動", "健康講座"],
-    "運動": ["有氧", "毛巾操", "其他運動"], "園藝療癒": ["手作"], "烹飪": ["甜品", "飲品", "鹹食", "醃漬品"], "歌唱": ["歡唱"]
+    "運動": ["有氧", "毛巾操", "其他運動"], "園藝療癒": ["手作"], "烹飪": ["甜品", "鹹食", "醃漬品"], "歌唱": ["歡唱"]
 }
 M_COLS = ["姓名", "身分證字號", "性別", "出生年月日", "電話", "地址", "備註", "加入日期"]
 L_COLS = ["姓名", "身分證字號", "日期", "時間", "課程分類", "課程名稱", "收縮壓", "舒張壓", "脈搏"]
@@ -221,8 +227,6 @@ def calculate_age(dob_str):
 # =========================================================
 # 3) Navigation (側邊欄版)
 # =========================================================
-if 'page' not in st.session_state: st.session_state.page = 'home'
-
 def render_nav():
     with st.sidebar:
         # 標題區
@@ -268,6 +272,8 @@ def render_nav():
 # =========================================================
 # 4) Pages
 # =========================================================
+
+# --- [分頁 0：首頁 (完全公開)] ---
 if st.session_state.page == 'home':
     render_nav()
     st.markdown(f"<h2 style='color: {PRIMARY};'>📊 據點關懷概況</h2>", unsafe_allow_html=True)
@@ -282,26 +288,17 @@ if st.session_state.page == 'home':
     # 總體平均年齡
     avg_age = round(members['出生年月日'].apply(calculate_age).mean(), 1) if not members.empty else 0
     
-    # 🔥 [修改需求] 分別計算男、女性的平均年齡
     male_m = members[members['性別'] == '男']
     female_m = members[members['性別'] == '女']
     
     male_count = len(male_m)
     female_count = len(female_m)
-    
-    # 計算平均歲數 (若無人則為 0)
     male_avg_age = round(male_m['出生年月日'].apply(calculate_age).mean(), 1) if not male_m.empty else 0
     female_avg_age = round(female_m['出生年月日'].apply(calculate_age).mean(), 1) if not female_m.empty else 0
     
     total_members = len(members)
 
-    # 頂部漸層大看板 (橙色系)
-    # 🔥🔥🔥 這裡可以修改「總服務人次」與「今日服務人次」的背景顏色 🔥🔥🔥
-    # linear-gradient(角度, 顏色1 0%, 顏色2 100%)
-    # 建議配色：
-    # 橙色漸層: #FF9800 -> #F57C00
-    # 紫色漸層: #7E57C2 -> #512DA8
-    # 綠色漸層: #66BB6A -> #388E3C
+    # 頂部看板
     st.markdown(f"""
     <div style="display: flex; gap: 20px;">
         <div style="flex: 1; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); padding: 30px; border-radius: 20px; color: white; text-align: center; box-shadow: 0 10px 25px rgba(245, 124, 0, 0.3);">
@@ -320,7 +317,6 @@ if st.session_state.page == 'home':
     <br>
     """, unsafe_allow_html=True)
     
-    # 數據小卡
     c1, c2, c3 = st.columns(3)
     
     with c1:
@@ -332,7 +328,6 @@ if st.session_state.page == 'home':
         </div>""", unsafe_allow_html=True)
         
     with c2:
-        # 🔥 在這裡加上了「平均歲數」的顯示
         st.markdown(f"""
         <div class="dash-card">
             <div class="dash-label">♂ 男性長輩</div>
@@ -343,7 +338,6 @@ if st.session_state.page == 'home':
         </div>""", unsafe_allow_html=True)
         
     with c3:
-        # 🔥 在這裡加上了「平均歲數」的顯示
         st.markdown(f"""
         <div class="dash-card">
             <div class="dash-label">♀ 女性長輩</div>
@@ -353,11 +347,14 @@ if st.session_state.page == 'home':
             </div>
         </div>""", unsafe_allow_html=True)
 
+# --- [分頁 1：名冊 (局部上鎖)] ---
 elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 長輩名冊管理")
     df = load_data("elderly_members")
-    with st.expander("➕ 新增長輩資料", expanded=True):
+    
+    # 🟢 1. 新增功能 (公開，方便填寫)
+    with st.expander("➕ 新增長輩資料 (展開填寫)", expanded=True):
         with st.form("add_elder"):
             c1, c2, c3 = st.columns(3)
             name, pid, gender = c1.text_input("姓名"), c2.text_input("身分證字號"), c3.selectbox("性別", ["男", "女"])
@@ -370,10 +367,36 @@ elif st.session_state.page == 'members':
                     new_row = {"姓名": name, "身分證字號": pid.upper(), "性別": gender, "出生年月日": str(dob), "電話": phone, "地址": addr, "備註": note, "加入日期": str(date.today())}
                     if save_data(pd.concat([df, pd.DataFrame([new_row])], ignore_index=True), "elderly_members"):
                         st.success(f"已新增：{name}"); time.sleep(1); st.rerun()
-    if not df.empty:
-        df['年齡'] = df['出生年月日'].apply(calculate_age)
-        st.data_editor(df[["姓名", "性別", "年齡", "電話", "地址", "身分證字號", "出生年月日", "備註"]], use_container_width=True, num_rows="dynamic", key="elder_editor")
+    
+    # 🔒 2. 完整名冊 (需密碼才能看)
+    st.markdown("### 📝 完整名冊資料 (需管理員權限)")
+    
+    if st.session_state.unlock_elder_list:
+        # 已解鎖狀態：顯示表格
+        if st.button("🔒 鎖定表格"):
+            st.session_state.unlock_elder_list = False
+            st.rerun()
+            
+        if not df.empty:
+            df['年齡'] = df['出生年月日'].apply(calculate_age)
+            st.data_editor(df[["姓名", "性別", "年齡", "電話", "地址", "身分證字號", "出生年月日", "備註"]], use_container_width=True, num_rows="dynamic", key="elder_editor")
+    else:
+        # 未解鎖狀態：顯示密碼框
+        st.info("為了保護長輩個資，查看完整名冊請輸入密碼。")
+        c_pwd, c_btn = st.columns([2, 1])
+        with c_pwd:
+            pwd = st.text_input("請輸入管理員密碼", type="password", key="unlock_list_pwd")
+        with c_btn:
+            st.markdown("<br>", unsafe_allow_html=True) # 排版用
+            if st.button("🔓 解鎖名冊"):
+                if pwd == st.secrets["admin_password"]:
+                    st.session_state.unlock_elder_list = True
+                    st.success("✅ 解鎖成功！")
+                    st.rerun()
+                else:
+                    st.error("❌ 密碼錯誤")
 
+# --- [分頁 2：據點報到 (完全公開)] ---
 elif st.session_state.page == 'checkin':
     render_nav()
     st.markdown("## 🩸 據點報到與健康量測")
@@ -504,6 +527,7 @@ elif st.session_state.page == 'checkin':
                         if save_data(updated_logs, "elderly_logs"):
                             st.success(f"✅ 已成功補登 {len(new_entries)} 筆紀錄"); time.sleep(1); st.rerun()
 
+# --- [分頁 4：統計 (完全公開)] ---
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 統計數據")
