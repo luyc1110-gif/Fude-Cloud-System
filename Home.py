@@ -1,4 +1,7 @@
 import streamlit as st
+import pandas as pd
+from datetime import datetime, date, timedelta
+import gspread
 import os
 import base64
 
@@ -13,7 +16,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# 1) CSS 樣式 (V30.0 強力響應式修正版)
+# 1) CSS 樣式 (V31.0 數據儀表板版)
 # =========================================================
 st.markdown("""
 <style>
@@ -37,14 +40,10 @@ section[data-testid="stSidebar"] { background-color: #F0F2F5; border-right: none
     max-width: 1100px !important;
 }
 
-/* 手機版調整：減少大卡片留白 */
 @media (max-width: 1000px) {
-    .block-container {
-        padding: 2rem 1.5rem !important;
-    }
+    .block-container { padding: 2rem 1.5rem !important; }
 }
 
-/* 隱藏 Header */
 header[data-testid="stHeader"] { background-color: transparent !important; }
 header[data-testid="stHeader"] .decoration { display: none; }
 
@@ -70,10 +69,10 @@ section[data-testid="stSidebar"] button:hover {
     font-size: 1.2rem; color: #7f8c8d; text-align: center; margin-bottom: 50px;
 }
 
-/* --- 🔥 核心修改區：服務卡片 (Service Box) --- */
+/* --- 服務卡片 (Service Box) --- */
 .service-box {
     display: flex; 
-    flex-direction: row; /* 預設：電腦版左右排列 */
+    flex-direction: row; 
     background-color: #F8F9FA; border-radius: 20px;
     padding: 0; margin-bottom: 30px; overflow: hidden;
     border: 1px solid #eee; transition: transform 0.3s;
@@ -83,7 +82,6 @@ section[data-testid="stSidebar"] button:hover {
     transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08);
 }
 
-/* 圖片與內容預設值 (電腦版) */
 .service-img {
     width: 40%;
     background-size: cover; background-position: center;
@@ -95,41 +93,129 @@ section[data-testid="stSidebar"] button:hover {
     display: flex; flex-direction: column; justify-content: center;
 }
 
-/* --- 📱 強力手機版設定 (Breakpoint 拉大到 1000px) --- */
 @media (max-width: 1000px) {
-    .service-box {
-        flex-direction: column !important; /* 🔥 強制變成上下排列 */
-        height: auto !important;
-    }
-    .service-img {
-        width: 100% !important;   /* 🔥 圖片寬度佔滿 */
-        height: 250px !important; /* 🔥 固定高度，確保圖片夠大 */
-        min-height: 250px !important;
-    }
-    .service-content {
-        width: 100% !important;   /* 🔥 文字寬度佔滿 */
-        padding: 25px !important;
-    }
-    .hero-title { font-size: 2rem !important; } /* 手機標題縮小 */
+    .service-box { flex-direction: column !important; height: auto !important; }
+    .service-img { width: 100% !important; height: 200px !important; min-height: 200px !important; }
+    .service-content { width: 100% !important; padding: 25px !important; }
+    .hero-title { font-size: 2rem !important; }
 }
 
-.service-title {
-    font-size: 1.8rem; font-weight: 900; margin-bottom: 10px;
-}
-.service-desc {
-    font-size: 1rem; color: #666; line-height: 1.6; margin-bottom: 15px;
-}
-.service-tag {
-    display: inline-block; padding: 5px 12px; border-radius: 15px;
-    font-size: 0.85rem; font-weight: bold; color: white; margin-right: 5px; margin-bottom: 5px;
-}
+.service-title { font-size: 1.8rem; font-weight: 900; margin-bottom: 10px; }
+.service-desc { font-size: 1rem; color: #666; line-height: 1.6; margin-bottom: 15px; }
 .service-icon-placeholder { font-size: 5rem; }
+
+/* 🔥 新增：數據統計樣式 */
+.stats-row {
+    display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;
+}
+.stat-item {
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 10px;
+    padding: 8px 15px;
+    font-size: 0.9rem;
+    color: #444;
+    font-weight: 500;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+.stat-item b { color: #000; font-size: 1.1rem; margin-left: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) 輔助函式：圖片轉碼
+# 2) 邏輯處理：資料讀取與計算
 # =========================================================
+SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
+
+@st.cache_resource
+def get_client():
+    return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+
+def calculate_age(dob_str):
+    try:
+        b_date = datetime.strptime(str(dob_str).strip(), "%Y-%m-%d").date()
+        today = date.today()
+        return today.year - b_date.year - ((today.month, today.day) < (b_date.month, b_date.day))
+    except: return 0
+
+def calculate_year_hours(logs_df):
+    """計算當年度志工總時數"""
+    try:
+        cur_year = datetime.now().year
+        logs_df['dt'] = pd.to_datetime(logs_df['日期'] + ' ' + logs_df['時間'], errors='coerce')
+        logs_df = logs_df.dropna(subset=['dt'])
+        year_logs = logs_df[logs_df['dt'].dt.year == cur_year].sort_values(['姓名', 'dt'])
+        
+        total_seconds = 0
+        for (name, d), group in year_logs.groupby(['姓名', '日期']):
+            actions = group['動作'].tolist()
+            times = group['dt'].tolist()
+            i = 0
+            while i < len(actions):
+                if actions[i] == '簽到':
+                    for j in range(i + 1, len(actions)):
+                        if actions[j] == '簽退':
+                            total_seconds += (times[j] - times[i]).total_seconds()
+                            i = j
+                            break
+                    i += 1
+                else: i += 1
+        return int(total_seconds // 3600)
+    except: return 0
+
+@st.cache_data(ttl=60) # 緩存 60 秒
+def load_dashboard_stats():
+    client = get_client()
+    sh = client.open_by_key(SHEET_ID)
+    
+    stats = {
+        "vol_count": 0, "vol_age": 0, "vol_hours": 0,
+        "eld_count": 0, "eld_age": 0,
+        "care_count": 0, "care_items": 0
+    }
+    
+    try:
+        # 1. 志工數據
+        df_v = pd.DataFrame(sh.worksheet("members").get_all_records()).astype(str)
+        df_vl = pd.DataFrame(sh.worksheet("logs").get_all_records()).astype(str)
+        
+        if not df_v.empty:
+            stats["vol_count"] = len(df_v)
+            df_v['age'] = df_v['生日'].apply(calculate_age)
+            # 過濾掉計算失敗的年齡
+            valid_ages = df_v[df_v['age'] > 0]['age']
+            stats["vol_age"] = round(valid_ages.mean(), 1) if not valid_ages.empty else 0
+            
+        if not df_vl.empty:
+            stats["vol_hours"] = calculate_year_hours(df_vl)
+
+        # 2. 長輩數據
+        df_e = pd.DataFrame(sh.worksheet("elderly_members").get_all_records()).astype(str)
+        if not df_e.empty:
+            stats["eld_count"] = len(df_e)
+            df_e['age'] = df_e['出生年月日'].apply(calculate_age)
+            valid_ages = df_e[df_e['age'] > 0]['age']
+            stats["eld_age"] = round(valid_ages.mean(), 1) if not valid_ages.empty else 0
+
+        # 3. 關懷戶數據
+        df_c = pd.DataFrame(sh.worksheet("care_members").get_all_records()).astype(str)
+        df_cl = pd.DataFrame(sh.worksheet("care_logs").get_all_records()).astype(str)
+        
+        if not df_c.empty:
+            stats["care_count"] = len(df_c)
+            
+        if not df_cl.empty:
+            cur_year = datetime.now().year
+            df_cl['dt'] = pd.to_datetime(df_cl['發放日期'], errors='coerce')
+            df_cl['qty'] = pd.to_numeric(df_cl['發放數量'], errors='coerce').fillna(0)
+            stats["care_items"] = int(df_cl[df_cl['dt'].dt.year == cur_year]['qty'].sum())
+
+    except Exception as e:
+        print(f"Stats Error: {e}")
+    
+    return stats
+
 def get_image_as_base64(path):
     try:
         with open(path, "rb") as f:
@@ -139,7 +225,7 @@ def get_image_as_base64(path):
         return None
 
 # =========================================================
-# 3) 側邊欄與主畫面
+# 3) 頁面渲染
 # =========================================================
 with st.sidebar:
     st.markdown("<h2 style='text-align:center; color:#333; margin-bottom:20px;'>🚀 系統快速入口</h2>", unsafe_allow_html=True)
@@ -150,39 +236,54 @@ with st.sidebar:
     st.markdown("<div style='text-align:center; color:#999; font-size:0.8rem; margin-top:20px;'>福德里辦公處 © 2025</div>", unsafe_allow_html=True)
 
 st.markdown('<div class="hero-title">🏘️ 福德里 - 社區數位管理中樞</div>', unsafe_allow_html=True)
-st.markdown('<div class="hero-subtitle">志工調度．長輩照護．弱勢關懷．一站整合</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="hero-subtitle">志工調度．長輩照護．弱勢關懷．一站整合 ({datetime.now().year} 年度數據)</div>', unsafe_allow_html=True)
 st.markdown("---")
 
+# 讀取數據
+data = load_dashboard_stats()
+
+# 定義服務內容與對應數據
 services = [
     {
         "title": "志工管理系統",
         "desc": "整合志工排班、時數統計與榮譽名冊。透過數位化管理，讓志工服務歷程清晰可見，並能快速調度人力支援社區活動。",
-        "tags": ["時數統計", "排班打卡", "榮譽名冊"],
         "color": "#4A148C",
         "icon": "💜",
-        "img_file": "volunteer.jpg"
+        "img_file": "volunteer.jpg",
+        "stats": [
+            f"👥 志工總數: <b>{data['vol_count']}</b> 人",
+            f"🎂 平均年齡: <b>{data['vol_age']}</b> 歲",
+            f"⏳ 本年服務: <b>{data['vol_hours']}</b> 小時"
+        ]
     },
     {
         "title": "長輩關懷系統",
         "desc": "針對社區長者提供據點報到、血壓健康追蹤與活動參與記錄。透過數據分析，主動關懷長輩健康狀況，落實在地安老。",
-        "tags": ["據點報到", "血壓量測", "健康追蹤"],
         "color": "#EF6C00",
         "icon": "👴",
-        "img_file": "elderly.jpg"
+        "img_file": "elderly.jpg",
+        "stats": [
+            f"👥 長者總數: <b>{data['eld_count']}</b> 人",
+            f"🎂 平均年齡: <b>{data['eld_age']}</b> 歲"
+        ]
     },
     {
         "title": "關懷戶系統",
         "desc": "建立弱勢家庭數位名冊，記錄物資發放與訪視歷程。確保資源能精準送達需要的人手中，不遺漏任何一個角落。",
-        "tags": ["弱勢名冊", "物資發放", "訪視紀錄"],
         "color": "#2E7D32",
         "icon": "🏠",
-        "img_file": "care.jpg"
+        "img_file": "care.jpg",
+        "stats": [
+            f"📉 關懷戶數: <b>{data['care_count']}</b> 戶",
+            f"📦 本年發放: <b>{data['care_items']}</b> 份"
+        ]
     }
 ]
 
+# 渲染卡片
 for svc in services:
+    # 處理圖片
     img_html = f"""<div class="service-img" style="background-color: {svc['color']}15;"><div class="service-icon-placeholder">{svc['icon']}</div></div>"""
-    
     if os.path.exists(svc['img_file']):
         img_b64 = get_image_as_base64(svc['img_file'])
         if img_b64:
@@ -190,7 +291,8 @@ for svc in services:
             mime = "image/png" if ext == 'png' else "image/jpeg"
             img_html = f"""<div class="service-img" style="background-image: url('data:{mime};base64,{img_b64}');"></div>"""
 
-    tags_html = "".join([f'<span class="service-tag" style="background-color:{svc["color"]}">{t}</span>' for t in svc['tags']])
+    # 產生數據 HTML
+    stats_html = "".join([f'<div class="stat-item" style="border-left: 4px solid {svc["color"]};">{s}</div>' for s in svc['stats']])
 
     st.markdown(f"""
 <div class="service-box">
@@ -198,7 +300,9 @@ for svc in services:
 <div class="service-content">
 <div class="service-title" style="color: {svc['color']}">{svc['title']}</div>
 <div class="service-desc">{svc['desc']}</div>
-<div>{tags_html}</div>
+<div class="stats-row">
+{stats_html}
+</div>
 </div>
 </div>
 """, unsafe_allow_html=True)
