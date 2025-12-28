@@ -23,7 +23,7 @@ BG_MAIN = "#F0F2F5" # 背景色 (淺灰)
 TEXT    = "#212121"
 
 # =========================================================
-# 1) CSS 樣式 (V20.0 懸浮大卡片 + 修復側邊欄 + 男女統計)
+# 1) CSS 樣式 (V21.0 卡片化報表 + 密碼鎖樣式)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -35,160 +35,96 @@ html, body, [class*="css"], div, p, span, li, ul {{
 }}
 
 /* 🔥 1. 整體背景設為淺灰 */
-.stApp {{
-    background-color: {BG_MAIN} !important;
-}}
+.stApp {{ background-color: {BG_MAIN} !important; }}
 
-/* 🔥 2. 側邊欄背景 (跟主背景融合) */
-section[data-testid="stSidebar"] {{
-    background-color: {BG_MAIN};
-    border-right: none; /* 去掉那條死板的分隔線 */
-}}
+/* 🔥 2. 側邊欄背景 */
+section[data-testid="stSidebar"] {{ background-color: {BG_MAIN}; border-right: none; }}
 
-/* 🔥 3. 【關鍵】將主內容區變成一張「懸浮大卡片」 */
+/* 🔥 3. 主內容區懸浮大卡片 */
 .block-container {{
-    background-color: #FFFFFF; /* 卡片白底 */
-    border-radius: 25px;       /* 圓角 */
-    padding: 3rem 3rem !important; /* 內距 */
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05); /* 陰影讓它浮起來 */
-    margin-top: 2rem;          /* 離頂部一點距離 */
-    margin-bottom: 2rem;       /* 離底部一點距離 */
-    max-width: 95% !important; /* 寬度佔滿 95%，留邊 */
+    background-color: #FFFFFF;
+    border-radius: 25px;
+    padding: 3rem 3rem !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    margin-top: 2rem; margin-bottom: 2rem;
+    max-width: 95% !important;
 }}
 
-/* 🔥 4. 修復側邊欄開關 (Header) */
-/* 之前隱藏了 header 導致按鈕消失，現在恢復顯示，但讓背景透明 */
-header[data-testid="stHeader"] {{
-    display: block !important;
-    background-color: transparent !important;
-}}
-/* 隱藏 header 裡面的彩虹線和裝飾，只留按鈕 */
-header[data-testid="stHeader"] .decoration {{
-    display: none;
-}}
+/* Header 設定 */
+header[data-testid="stHeader"] {{ display: block !important; background-color: transparent !important; }}
+header[data-testid="stHeader"] .decoration {{ display: none; }}
 
-/* --- 側邊欄導航按鈕樣式 (膠囊) --- */
+/* 側邊欄按鈕 */
 section[data-testid="stSidebar"] button {{
-    background-color: #FFFFFF !important;
-    color: #666 !important;
-    border: 1px solid transparent !important;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important;
-    padding: 10px 0 !important;
-    font-weight: 700 !important;
-    transition: all 0.2s;
-    width: 100%;
-    margin-bottom: 8px !important;
+    background-color: #FFFFFF !important; color: #666 !important;
+    border: 1px solid transparent !important; box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+    border-radius: 25px !important; padding: 10px 0 !important;
+    font-weight: 700 !important; width: 100%; margin-bottom: 8px !important; transition: all 0.2s;
 }}
 section[data-testid="stSidebar"] button:hover {{
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
-    color: {PRIMARY} !important;
+    transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important; color: {PRIMARY} !important;
 }}
-
 .nav-active {{
     background: linear-gradient(135deg, {PRIMARY}, {ACCENT});
-    color: white !important;
-    padding: 12px 0;
+    color: white !important; padding: 12px 0; text-align: center; border-radius: 25px;
+    font-weight: 900; box-shadow: 0 4px 10px rgba(123, 31, 162, 0.4); margin-bottom: 12px; cursor: default;
+}}
+
+/* --- 📊 數據報表：指標卡片 (Metric Card) --- */
+.metric-box {{
+    background-color: #F8F9FA;
+    border-radius: 15px;
+    padding: 20px;
     text-align: center;
-    border-radius: 25px;
-    font-weight: 900;
-    box-shadow: 0 4px 10px rgba(123, 31, 162, 0.4);
-    margin-bottom: 12px;
-    font-size: 1rem;
-    cursor: default;
+    border-bottom: 5px solid {PRIMARY};
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
 }}
+.metric-box:hover {{ transform: translateY(-5px); }}
+.metric-label {{ font-size: 1.1rem; color: #666 !important; font-weight: bold; margin-bottom: 5px; }}
+.metric-value {{ font-size: 2.5rem; color: {PRIMARY} !important; font-weight: 900; }}
 
-/* --- 內部卡片 (例如統計數字) 微調 --- */
-/* 因為底已經是白色的，內部的卡片改用淺灰底或邊框區隔 */
-.dash-card {{
-    background-color: #F8F9FA; /* 稍微深一點的灰白，跟大白底區隔 */
-    padding: 20px; 
-    border-radius: 15px; 
-    border-left: 6px solid {ACCENT};
+/* --- 📋 數據報表：志工明細卡片 (Volunteer Card) --- */
+.vol-card {{
+    background-color: #FFFFFF;
+    border: 1px solid #EEE;
+    border-radius: 15px;
+    padding: 15px;
     margin-bottom: 15px;
+    border-left: 6px solid {ACCENT};
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    display: flex; justify-content: space-between; align-items: center;
 }}
-.dash-label {{ font-size: 1.1rem; color: #444 !important; font-weight: bold; margin-bottom: 5px; }}
-.dash-value {{ font-size: 2.2rem; color: {PRIMARY} !important; font-weight: 900; margin: 10px 0; }}
-.dash-sub {{ font-size: 0.95rem; color: #666 !important; line-height: 1.6; }}
+.vol-card-name {{ font-size: 1.3rem; font-weight: 900; color: #333; }}
+.vol-card-stats {{ text-align: right; }}
+.vol-card-tag {{ background: #F3E5F5; color: {PRIMARY}; padding: 3px 10px; border-radius: 10px; font-size: 0.85rem; font-weight: bold; margin-left: 10px; }}
+.vol-log-card {{
+    background-color: #FAFAFA; border-radius: 12px; padding: 12px; margin-bottom: 10px;
+    border-left: 4px solid #aaa; display: flex; justify-content: space-between; align-items: center;
+}}
+.vol-log-date {{ font-weight: bold; color: #333; }}
+.vol-log-action {{ font-weight: bold; padding: 2px 8px; border-radius: 5px; font-size: 0.9rem; }}
+.action-in {{ background-color: #E8F5E9; color: #2E7D32; }}
+.action-out {{ background-color: #FFEBEE; color: #C62828; }}
 
-/* --------------------------------------------------------------------------
-   🔥 1. 下拉選單 (Selectbox) 配色設定
-   -------------------------------------------------------------------------- */
-/* 主框 (還沒點開時) */
-div[data-baseweb="select"] > div {{
-    background-color: #FFFFFF !important;  /* 🟢 這裡改背景色 (目前白) */
-    color: #000000 !important;             /* 🟢 這裡改字體色 (目前黑) */
-    border: 2px solid #E0E0E0 !important;
-    border-radius: 12px !important;
+/* 輸入框優化 */
+div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input {{
+    background-color: #FFFFFF !important; border: 2px solid #E0E0E0 !important; border-radius: 12px !important; color: #000 !important;
 }}
-/* 主框內的文字 */
-div[data-baseweb="select"] span {{
-    color: #000000 !important;             /* 🟢 確保選到的文字是黑色 */
-}}
-/* 點開後的選單列表 (背景) */
-ul[data-baseweb="menu"] {{
-    background-color: #FFFFFF !important;  /* 🟢 下拉清單背景色 */
-}}
-/* 選項 (個別項目) */
-li[role="option"] {{
-    color: #000000 !important;             /* 🟢 選項字體色 */
-    background-color: #FFFFFF !important;  /* 🟢 選項背景色 */
-}}
-/* 滑鼠移到選項上的效果 (Hover) */
-li[role="option"]:hover {{
-    background-color: #F3E5F5 !important;  /* 🟣 滑鼠移上去變淡紫色 */
-    color: #000000 !important;  /* 改成 #000000 (黑色) */
-}}
-/* 輸入框樣式 (一般文字框) */
-.stTextInput input, .stDateInput input, .stTimeInput input {{
-    background-color: #F8F9FA !important;
-    border: 1px solid #E0E0E0 !important;
-    border-radius: 12px !important;
-    color: #333 !important;
-}}
+div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{ background-color: #FFFFFF !important; color: #000 !important; }}
+li[role="option"]:hover {{ background-color: #F3E5F5 !important; }}
 
-/* --------------------------------------------------------------------------
-   🔥 2 & 3. 按鈕配色：確認新增 (Submit) & 下載報表 (Download)
-   -------------------------------------------------------------------------- */
-/* 設定按鈕本體 */
-div[data-testid="stFormSubmitButton"] > button, 
-div[data-testid="stDownloadButton"] > button {{
-    background-color: {PRIMARY} !important;   /* 🟢 按鈕背景色 (紫色) */
-    border: none !important;
-    border-radius: 12px !important;
-    padding: 10px 20px !important;
+/* 按鈕樣式 */
+div[data-testid="stFormSubmitButton"] > button, div[data-testid="stDownloadButton"] > button {{
+    background-color: {PRIMARY} !important; color: #FFFFFF !important; border: none !important; border-radius: 12px !important; padding: 10px 20px !important; font-weight: 900 !important;
 }}
+div[data-testid="stFormSubmitButton"] > button:hover, div[data-testid="stDownloadButton"] > button:hover {{
+    background-color: {ACCENT} !important; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}}
+div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadButton"] > button * {{ color: #FFFFFF !important; }}
 
-/* 🔥 強制設定按鈕內的所有文字元素為白色 */
-div[data-testid="stFormSubmitButton"] > button *, 
-div[data-testid="stDownloadButton"] > button * {{
-    color: #FFFFFF !important;              /* ⚪ 強制變白 */
-    font-weight: 900 !important;
-}}
-
-/* 按鈕滑鼠移過去的效果 */
-div[data-testid="stFormSubmitButton"] > button:hover, 
-div[data-testid="stDownloadButton"] > button:hover {{
-    background-color: {ACCENT} !important;   /* 🟣 變亮一點的紫色 */
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-}}
-/* 滑鼠移過去時，文字依然保持白色 */
-div[data-testid="stFormSubmitButton"] > button:hover *, 
-div[data-testid="stDownloadButton"] > button:hover * {{
-    color: #FFFFFF !important;
-}}
-
-/* Toast 訊息框 */
-div[data-baseweb="toast"] {{
-    background-color: #FFFFFF !important;
-    border: 3px solid {PRIMARY} !important;
-    border-radius: 15px !important;
-    padding: 15px !important;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.3) !important;
-}}
-div[data-baseweb="toast"] * {{ color: #000000 !important; font-weight: 900 !important; }}
+/* Toast */
+div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px solid {PRIMARY} !important; border-radius: 15px !important; padding: 15px !important; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -291,6 +227,7 @@ def get_present_volunteers(logs_df):
 # 3) Navigation
 # =========================================================
 if 'page' not in st.session_state: st.session_state.page = 'home'
+if 'unlock_vol_members' not in st.session_state: st.session_state.unlock_vol_members = False
 
 def render_nav():
     with st.sidebar:
@@ -353,34 +290,27 @@ if st.session_state.page == 'home':
     """, unsafe_allow_html=True)
     
     if not members.empty:
-        # 篩選服務中的志工
         active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy()
         active_m['age'] = active_m['生日'].apply(calculate_age)
         
-        # 統計各分類
         cols = st.columns(4)
         for idx, cat in enumerate(ALL_CATEGORIES):
             if cat == "臨時志工": continue
             subset = active_m[active_m['志工分類'].astype(str).str.contains(cat, na=False)]
             count = len(subset)
-            
-            # 平均年齡
             age_subset = subset[subset['age'] > 0]
             avg_age = round(age_subset['age'].mean(), 1) if not age_subset.empty else 0
-            
-            # 🔥 新增：男女統計
             male_count = len(subset[subset['性別'] == '男'])
             female_count = len(subset[subset['性別'] == '女'])
             
             with cols[idx % 4]:
                 st.markdown(f"""
-                <div class="dash-card">
-                    <div class="dash-label">{cat.replace('志工','')}</div>
-                    <div class="dash-value">{count} <span style="font-size:1rem;color:#888;">人</span></div>
-                    <div class="dash-sub">
-                        平均 {avg_age} 歲<br>
-                        <span style="color:#1E88E5; font-weight:bold;">♂ 男 {male_count}</span>  / 
-                        <span style="color:#E91E63; font-weight:bold;">♀ 女 {female_count}</span>
+                <div class="metric-box" style="border-left: 5px solid {ACCENT}; border-bottom: none; text-align:left;">
+                    <div style="font-size:1.1rem; font-weight:bold; color:#666;">{cat.replace('志工','')}</div>
+                    <div style="font-size:2.2rem; font-weight:900; color:{PRIMARY}; margin:5px 0;">{count} <span style="font-size:1rem;color:#999;">人</span></div>
+                    <div style="font-size:0.9rem; color:#888;">
+                        均齡 {avg_age} 歲<br>
+                        <span style="color:#1976D2;">♂ {male_count}</span> / <span style="color:#D81B60;">♀ {female_count}</span>
                     </div>
                 </div>""", unsafe_allow_html=True)
 
@@ -391,9 +321,6 @@ elif st.session_state.page == 'checkin':
     if 'input_pid' not in st.session_state: st.session_state.input_pid = ""
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
     
-    # 🔥 新增這一行：初始化計數器 (用來強制重整游標焦點)
-    if 'scan_key' not in st.session_state: st.session_state.scan_key = 0
-
     tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
     with tab1:
         col_scan, col_status = st.columns([1.5, 1])
@@ -450,9 +377,7 @@ elif st.session_state.page == 'checkin':
                 
                 st.session_state.input_pid = ""
 
-            # 🔥 完全移除 components.html 自動對焦代碼，確保不報錯
             st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
-            
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
@@ -479,7 +404,7 @@ elif st.session_state.page == 'checkin':
         df_m = load_data_from_sheet("members")
         if not df_m.empty:
             active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)]
-            name_list = active_m['姓名'].tolist()
+            name_list = sorted(active_m['姓名'].tolist()) # Sort names for dropdown
             with st.form("manual_entry"):
                 st.markdown("### 🛠️ 補登操作")
                 entry_mode = st.radio("模式", ["單筆補登", "整批補登"], horizontal=True)
@@ -511,7 +436,9 @@ elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 志工名冊管理")
     df = load_data_from_sheet("members")
-    with st.expander("➕ 新增志工 (展開填寫)", expanded=True):
+    
+    # 公開區域：新增志工
+    with st.expander("➕ 新增志工 (展開填寫)", expanded=False):
         with st.form("add_m"):
             c1, c2, c3 = st.columns(3)
             n = c1.text_input("姓名")
@@ -549,29 +476,55 @@ elif st.session_state.page == 'members':
                         if c not in new.columns: new[c] = ""
                     save_data_to_sheet(pd.concat([df, new], ignore_index=True), "members")
                     st.success("新增成功"); time.sleep(1); st.rerun()
-    if not df.empty:
-        st.write("")
-        df['狀態'] = df.apply(lambda r: '已退隊' if check_is_fully_retired(r) else '服務中', axis=1)
-        df['年齡'] = df['生日'].apply(calculate_age)
-        cols = ['姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
-        cols = [c for c in cols if c in df.columns]
-        tab_active, tab_retired = st.tabs(["🔥 服務中", "🍂 已退隊"])
-        with tab_active:
-            active_df = df[df['狀態'] == '服務中']
-            st.data_editor(active_df[cols], use_container_width=True, num_rows="dynamic", key="editor_active")
-        with tab_retired:
-            retired_df = df[df['狀態'] == '已退隊']
-            st.data_editor(retired_df[cols], use_container_width=True, num_rows="dynamic", key="editor_retired")
+    
+    # 🔒 密碼保護區域：完整名冊
+    st.markdown("### 📝 完整志工名冊 (需密碼)")
+    if not st.session_state.unlock_vol_members:
+        c_pwd, c_btn = st.columns([2, 1])
+        with c_pwd:
+            pwd = st.text_input("請輸入管理員密碼", type="password", key="vol_pwd")
+        with c_btn:
+            st.markdown("<br>", unsafe_allow_html=True) # spacer
+            if st.button("🔓 解鎖名冊"):
+                if pwd == st.secrets["admin_password"]:
+                    st.session_state.unlock_vol_members = True
+                    st.rerun()
+                else:
+                    st.error("密碼錯誤")
+    else:
+        # 解鎖後顯示
+        if st.button("🔒 鎖定名冊"):
+            st.session_state.unlock_vol_members = False
+            st.rerun()
+            
+        if not df.empty:
+            df['狀態'] = df.apply(lambda r: '已退隊' if check_is_fully_retired(r) else '服務中', axis=1)
+            df['年齡'] = df['生日'].apply(calculate_age)
+            # 🔥 自動依照姓名排序
+            df = df.sort_values(by='姓名')
+            
+            cols = ['姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
+            cols = [c for c in cols if c in df.columns]
+            tab_active, tab_retired = st.tabs(["🔥 服務中", "🍂 已退隊"])
+            with tab_active:
+                active_df = df[df['狀態'] == '服務中']
+                st.data_editor(active_df[cols], use_container_width=True, num_rows="dynamic", key="editor_active")
+            with tab_retired:
+                retired_df = df[df['狀態'] == '已退隊']
+                st.data_editor(retired_df[cols], use_container_width=True, num_rows="dynamic", key="editor_retired")
 
 elif st.session_state.page == 'report':
     render_nav()
-    st.markdown("## 📊 數據分析")
+    st.markdown("## 📊 數據分析與報表")
     logs = load_data_from_sheet("logs")
+    
+    # 搜尋與篩選區塊
     st.markdown('<div style="background:white; padding:20px; border-radius:15px; border:1px solid #ddd; margin-bottom:20px;">', unsafe_allow_html=True)
     c_date, c_mode = st.columns([1, 1])
     with c_date: d_range = st.date_input("📅 選擇日期區間", value=(date(date.today().year, 1, 1), date.today()))
     with c_mode: report_mode = st.radio("分析模式", ["依活動查詢", "依志工查詢"], horizontal=True)
     st.markdown('</div>', unsafe_allow_html=True)
+    
     if logs.empty: st.info("無打卡資料")
     else:
         logs['dt'] = pd.to_datetime(logs['日期'] + ' ' + logs['時間'], errors='coerce')
@@ -581,6 +534,7 @@ elif st.session_state.page == 'report':
             mask = (logs['dt'].dt.date >= start_d) & (logs['dt'].dt.date <= end_d)
             filtered_logs = logs[mask].copy()
         else: filtered_logs = logs.copy()
+        
         if filtered_logs.empty: st.warning("此區間無資料")
         else:
             def calc_stats_display(df_in):
@@ -603,38 +557,74 @@ elif st.session_state.page == 'report':
                 h = int(total_seconds // 3600)
                 m = int((total_seconds % 3600) // 60)
                 return total_sessions, f"{h}小時 {m}分", round(total_seconds/3600, 2)
+
             if report_mode == "依活動查詢":
                 all_acts = filtered_logs['活動內容'].unique().tolist()
                 target_act = st.selectbox("選擇活動", ["全部"] + all_acts)
                 view_df = filtered_logs if target_act == "全部" else filtered_logs[filtered_logs['活動內容'] == target_act]
                 tot_sess, tot_time_str, _ = calc_stats_display(view_df)
-                m1, m2, m3 = st.columns(3)
-                with m1: st.markdown(f"""<div class="metric-card"><div class="metric-label">總人次</div><div class="metric-value">{tot_sess}</div></div>""", unsafe_allow_html=True)
-                with m2: st.markdown(f"""<div class="metric-card"><div class="metric-label">總時數</div><div class="metric-value">{tot_time_str}</div></div>""", unsafe_allow_html=True)
-                with m3: st.markdown(f"""<div class="metric-card"><div class="metric-label">參與志工數</div><div class="metric-value">{view_df['姓名'].nunique()}</div></div>""", unsafe_allow_html=True)
                 
-                # 🔥 新增功能：匯出按鈕
+                # 🔥 1. 卡片式統計指標
+                m1, m2, m3 = st.columns(3)
+                with m1: st.markdown(f"""<div class="metric-box"><div class="metric-label">總人次</div><div class="metric-value">{tot_sess}</div></div>""", unsafe_allow_html=True)
+                with m2: st.markdown(f"""<div class="metric-box"><div class="metric-label">總時數</div><div class="metric-value">{tot_time_str}</div></div>""", unsafe_allow_html=True)
+                with m3: st.markdown(f"""<div class="metric-box"><div class="metric-label">參與志工數</div><div class="metric-value">{view_df['姓名'].nunique()}</div></div>""", unsafe_allow_html=True)
+                
                 csv = view_df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button("📥 下載此報表 (CSV)", data=csv, file_name=f"志工報表_{date.today()}.csv", mime="text/csv")
                 
+                # 🔥 2. 卡片式志工明細 (Grid Layout)
                 st.markdown("### 📋 人員明細表")
                 summary = []
                 for name, g in view_df.groupby('姓名'):
                     c, s_str, s_num = calc_stats_display(g)
                     summary.append({'姓名': name, '次數': c, '時數': s_str, '排序用時數': s_num})
-                st.dataframe(pd.DataFrame(summary).sort_values('排序用時數', ascending=False)[['姓名', '次數', '時數']], use_container_width=True)
-            else:
-                all_names = filtered_logs['姓名'].unique().tolist()
+                
+                summ_df = pd.DataFrame(summary).sort_values('排序用時數', ascending=False)
+                
+                # 每3個一列顯示卡片
+                for i in range(0, len(summ_df), 3):
+                    cols = st.columns(3)
+                    for j in range(3):
+                        if i + j < len(summ_df):
+                            row = summ_df.iloc[i+j]
+                            with cols[j]:
+                                st.markdown(f"""
+                                <div class="vol-card">
+                                    <div>
+                                        <div class="vol-card-name">{row['姓名']}</div>
+                                        <div style="color:#888; font-size:0.9rem;">共出勤 {row['次數']} 次</div>
+                                    </div>
+                                    <div class="vol-card-stats">
+                                        <div class="vol-card-tag">{row['時數']}</div>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+            else: # 依志工查詢
+                all_names = sorted(filtered_logs['姓名'].unique().tolist())
                 target_name = st.selectbox("選擇志工", all_names)
                 view_df = filtered_logs[filtered_logs['姓名'] == target_name]
                 tot_sess, tot_time_str, _ = calc_stats_display(view_df)
-                m1, m2 = st.columns(2)
-                with m1: st.markdown(f"""<div class="metric-card"><div class="metric-label">執勤次數</div><div class="metric-value">{tot_sess}</div></div>""", unsafe_allow_html=True)
-                with m2: st.markdown(f"""<div class="metric-card"><div class="metric-label">累積時數</div><div class="metric-value">{tot_time_str}</div></div>""", unsafe_allow_html=True)
                 
-                # 🔥 新增功能：匯出按鈕
+                # 🔥 統計指標卡片
+                m1, m2 = st.columns(2)
+                with m1: st.markdown(f"""<div class="metric-box"><div class="metric-label">執勤次數</div><div class="metric-value">{tot_sess}</div></div>""", unsafe_allow_html=True)
+                with m2: st.markdown(f"""<div class="metric-box"><div class="metric-label">累積時數</div><div class="metric-value">{tot_time_str}</div></div>""", unsafe_allow_html=True)
+                
                 csv = view_df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button("📥 下載個人紀錄 (CSV)", data=csv, file_name=f"個人報表_{target_name}_{date.today()}.csv", mime="text/csv")
                 
+                # 🔥 卡片式打卡紀錄
                 st.markdown("### 📋 執勤紀錄明細")
-                st.dataframe(view_df[['日期', '時間', '動作', '活動內容']].sort_values(['日期', '時間'], ascending=False), use_container_width=True)
+                view_df = view_df.sort_values(['日期', '時間'], ascending=False)
+                
+                for idx, row in view_df.iterrows():
+                    action_class = "action-in" if row['動作'] == "簽到" else "action-out"
+                    st.markdown(f"""
+                    <div class="vol-log-card">
+                        <div class="vol-log-date">{row['日期']} {row['時間']}</div>
+                        <div style="flex-grow:1; margin-left:15px; color:#555;">{row['活動內容']}</div>
+                        <div class="vol-log-action {action_class}">{row['動作']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
