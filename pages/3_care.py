@@ -307,7 +307,7 @@ elif st.session_state.page == 'members':
             child = cn1.number_input("18歲以下子女", min_value=0, value=0, step=1)
             adult = cn2.number_input("成人數量", min_value=0, value=0, step=1)
             senior = cn3.number_input("65歲以上長者", min_value=0, value=0, step=1)
-            id_t = st.multiselect("身分別", ["低收", "中低收", "中低老人", "身障", "獨居", "獨居有子女"])
+            id_t = st.multiselect("身分別", ["低收", "中低收", "中低老人", "身障", "獨居", "獨居有子女", "一般戶"])
             
             if st.form_submit_button("確認新增"):
                 # 🔥 修正邏輯：必須「姓名」與「身分證」同時吻合才算重複
