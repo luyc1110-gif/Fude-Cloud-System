@@ -264,6 +264,7 @@ if st.session_state.page == 'home':
     st.markdown(f"<h2 style='color: {GREEN};'>📊 關懷戶概況看板</h2>", unsafe_allow_html=True)
     mems, logs = load_data("care_members", COLS_MEM), load_data("care_logs", COLS_LOG)
     if not mems.empty:
+        mems_display = mems[~mems['身分別'].str.contains("一般戶長輩", na=False)]
         cur_y = datetime.now(TW_TZ).year
         prev_y = cur_y - 1
         mems['age'] = mems['生日'].apply(calculate_age)
