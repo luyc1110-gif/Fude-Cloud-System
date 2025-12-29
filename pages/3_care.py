@@ -262,16 +262,16 @@ def render_nav():
 if st.session_state.page == 'home':
     render_nav()
     st.markdown(f"<h2 style='color: {GREEN};'>📊 關懷戶概況看板</h2>", unsafe_allow_html=True)
-    
-    # 🔥 關鍵修復：這一行必須存在，變數 mems 才會被定義
     mems, logs = load_data("care_members", COLS_MEM), load_data("care_logs", COLS_LOG)
     
     if not mems.empty:
-        # 1. 先計算所有人的年齡
+        # 1. 計算所有人的年齡 (供後續使用)
         mems['age'] = mems['生日'].apply(calculate_age)
 
-        # 2. 建立篩選名單：排除 "一般戶長輩"
-        mems_display = mems[~mems['身分別'].str.contains("一般戶長輩", na=False)]
+        # --- 【修改】過濾邏輯：建立一個不包含「一般戶」的顯示用名單 ---
+        # 如果身分別欄位包含 "一般戶" 字眼，該筆資料就會被排除在 mems_display 之外
+        mems_display = mems[~mems['身分別'].str.contains("一般戶", na=False)]
+        # --------------------------------------------------------
 
         cur_y = datetime.now(TW_TZ).year
         prev_y = cur_y - 1
@@ -283,20 +283,22 @@ if st.session_state.page == 'home':
             prev_val = dist_df[dist_df['dt'].dt.year == prev_y]['發放數量'].replace("","0").astype(float).sum()
         else: cur_val = prev_val = 0
         
-        # 身障與低收統計 (若需排除一般戶，請將 mems 改為 mems_display)
+        # 身障與低收仍維持統計「全部名單」(含一般戶中的身障者)，若需同步排除請改用 mems_display
         dis_c = len(mems[mems['身分別'].str.contains("身障", na=False)])
         low_c = len(mems[mems['身分別'].str.contains("低收|中低收", na=False)])
         
         c1, c2, c3 = st.columns(3)
-        # 3. 顯示數據 (使用篩選後的 mems_display)
+        
+        # --- 【修改】使用 mems_display 來顯示總人數與平均年齡 ---
         with c1: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#8E9775 0%,#6D6875 100%);"><div>🏠 關懷戶總人數</div><div style="font-size:2.8rem;">{len(mems_display)} <span style="font-size:1.2rem;">人</span></div><div>平均 {round(mems_display["age"].mean(),1)} 歲</div></div>', unsafe_allow_html=True)
+        # ----------------------------------------------------
+        
         with c2: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#8E9775 100%);"><div>♿ 身障關懷人數</div><div style="font-size:2.8rem;">{dis_c} <span style="font-size:1.2rem;">人</span></div></div>', unsafe_allow_html=True)
         with c3: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#6D6875 0%,#4A4E69 100%);"><div>📉 低收/中低收</div><div style="font-size:2.8rem;">{low_c} <span style="font-size:1.2rem;">人</span></div></div>', unsafe_allow_html=True)
-        
         c4, c5 = st.columns(2)
         with c4: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#BC6C25 0%,#8E9775 100%);"><div>🎁 {cur_y} 當年度發放量</div><div style="font-size:3.5rem;">{int(cur_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
         with c5: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#6D6875 100%);"><div>⏳ {prev_y} 上年度發放量</div><div style="font-size:3.5rem;">{int(prev_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
-            
+
 # --- [分頁 1：名冊 (局部上鎖 + 雙重重複檢查)] ---
 elif st.session_state.page == 'members':
     render_nav()
@@ -320,7 +322,10 @@ elif st.session_state.page == 'members':
             child = cn1.number_input("18歲以下子女", min_value=0, value=0, step=1)
             adult = cn2.number_input("成人數量", min_value=0, value=0, step=1)
             senior = cn3.number_input("65歲以上長者", min_value=0, value=0, step=1)
+            
+            # --- 【修改】在選項清單中加入「一般戶」 ---
             id_t = st.multiselect("身分別", ["低收", "中低收", "中低老人", "身障", "獨居", "獨居有子女", "一般戶"])
+            # -------------------------------------
             
             if st.form_submit_button("確認新增"):
                 # 🔥 修正邏輯：必須「姓名」與「身分證」同時吻合才算重複
@@ -346,7 +351,7 @@ elif st.session_state.page == 'members':
                     }
                     if save_data(pd.concat([df, pd.DataFrame([new])], ignore_index=True), "care_members"):
                         st.success("✅ 已新增！"); time.sleep(1); st.rerun()
-
+    
     # 2. 表格瀏覽與編輯 (🔐 需密碼)
     st.markdown("### 📝 完整名冊 (需權限)")
     if st.session_state.unlock_members:
