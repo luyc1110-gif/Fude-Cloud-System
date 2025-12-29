@@ -259,36 +259,37 @@ def render_nav():
 # =========================================================
 
 # --- [分頁 0：首頁 (完全公開)] ---
-if not mems.empty:
-        # 1. 先計算所有人的年齡 (調整順序，確保篩選後的資料也有 age 欄位)
+if st.session_state.page == 'home':
+    render_nav()
+    st.markdown(f"<h2 style='color: {GREEN};'>📊 關懷戶概況看板</h2>", unsafe_allow_html=True)
+    
+    # 🔥 關鍵修復：這一行必須存在，變數 mems 才會被定義
+    mems, logs = load_data("care_members", COLS_MEM), load_data("care_logs", COLS_LOG)
+    
+    if not mems.empty:
+        # 1. 先計算所有人的年齡
         mems['age'] = mems['生日'].apply(calculate_age)
 
         # 2. 建立篩選名單：排除 "一般戶長輩"
-        # mems_display 是我們要用來顯示總數的資料
         mems_display = mems[~mems['身分別'].str.contains("一般戶長輩", na=False)]
 
         cur_y = datetime.now(TW_TZ).year
         prev_y = cur_y - 1
         
-        # (這裡不需要再算一次 age 了，因為步驟 1 已經算過)
-
         dist_df = logs.copy()
         if not logs.empty:
             dist_df['dt'] = pd.to_datetime(dist_df['發放日期'], errors='coerce')
             cur_val = dist_df[dist_df['dt'].dt.year == cur_y]['發放數量'].replace("","0").astype(float).sum()
             prev_val = dist_df[dist_df['dt'].dt.year == prev_y]['發放數量'].replace("","0").astype(float).sum()
         else: cur_val = prev_val = 0
-
-        # 身障與低收通常是看全體，維持使用 mems (若這兩項也要排除一般戶，請改成 mems_display)
+        
+        # 身障與低收統計 (若需排除一般戶，請將 mems 改為 mems_display)
         dis_c = len(mems[mems['身分別'].str.contains("身障", na=False)])
         low_c = len(mems[mems['身分別'].str.contains("低收|中低收", na=False)])
-
+        
         c1, c2, c3 = st.columns(3)
-        
-        # 3. 修改顯示：將 len(mems) 改為 len(mems_display)
-        # 同時平均年齡也改成用 mems_display 來算，數據才會一致
+        # 3. 顯示數據 (使用篩選後的 mems_display)
         with c1: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#8E9775 0%,#6D6875 100%);"><div>🏠 關懷戶總人數</div><div style="font-size:2.8rem;">{len(mems_display)} <span style="font-size:1.2rem;">人</span></div><div>平均 {round(mems_display["age"].mean(),1)} 歲</div></div>', unsafe_allow_html=True)
-        
         with c2: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#8E9775 100%);"><div>♿ 身障關懷人數</div><div style="font-size:2.8rem;">{dis_c} <span style="font-size:1.2rem;">人</span></div></div>', unsafe_allow_html=True)
         with c3: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#6D6875 0%,#4A4E69 100%);"><div>📉 低收/中低收</div><div style="font-size:2.8rem;">{low_c} <span style="font-size:1.2rem;">人</span></div></div>', unsafe_allow_html=True)
         
@@ -345,7 +346,7 @@ elif st.session_state.page == 'members':
                     }
                     if save_data(pd.concat([df, pd.DataFrame([new])], ignore_index=True), "care_members"):
                         st.success("✅ 已新增！"); time.sleep(1); st.rerun()
-    
+
     # 2. 表格瀏覽與編輯 (🔐 需密碼)
     st.markdown("### 📝 完整名冊 (需權限)")
     if st.session_state.unlock_members:
