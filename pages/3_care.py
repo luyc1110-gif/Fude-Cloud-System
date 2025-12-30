@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta, timezone
 import gspread
 import plotly.express as px
 import time
-import textwrap  # 👈 新增：用於修復縮排導致的顯示問題
+import textwrap
 
 # =========================================================
 # 0) 系統設定
@@ -35,7 +35,7 @@ BG_MAIN = "#F8F9FA"   # 淺灰底
 TEXT    = "#333333"
 
 # =========================================================
-# 1) CSS 樣式 (新增卡片專用樣式)
+# 1) CSS 樣式 (已修復括號衝突問題)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -146,52 +146,52 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 .inv-card-stock {{ font-size: 0.9rem; color: #666; background-color: #eee; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 10px; }}
 .inv-card-stock.low {{ color: #D32F2F !important; background-color: #FFEBEE !important; border: 1px solid #D32F2F; }}
 
-/* --- 🔥 新增：個案資料卡片與警示標籤樣式 --- */
-.care-card {
+/* --- 🔥 新增：個案資料卡片與警示標籤樣式 (修正括號為雙括號) --- */
+.care-card {{
     background-color: white; border-radius: 16px; border-left: 6px solid #8E9775;
     box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; padding: 25px;
-}
-.care-header {
+}}
+.care-header {{
     display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;
-}
-.care-name {
+}}
+.care-name {{
     font-size: 1.8rem; font-weight: 900; color: #333; line-height: 1.2;
-}
-.care-meta {
+}}
+.care-meta {{
     margin-top: 5px; font-size: 0.95rem; color: #666; background: #F5F5F5;
     padding: 4px 10px; border-radius: 8px; font-weight: 600; display: inline-block;
-}
-.care-tag {
-    font-weight: 800; color: #4A4E69; border: 2px solid #4A4E69;
+}}
+.care-tag {{
+    font-weight: 800; color: {PRIMARY}; border: 2px solid {PRIMARY};
     padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; white-space: nowrap;
-}
-.care-info-row {
+}}
+.care-info-row {{
     display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 15px; color: #444;
-}
-.care-info-item {
+}}
+.care-info-item {{
     font-size: 1rem; color: #444;
-}
-.care-alert-section {
+}}
+.care-alert-section {{
     border-top: 1px dashed #E0E0E0; padding-top: 12px; margin-top: 15px;
-}
-.alert-title {
+}}
+.alert-title {{
     font-size:0.85rem; color:#888; margin-bottom:8px; font-weight:bold;
-}
-.badge-red {
+}}
+.badge-red {{
     display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px;
     font-size:0.85rem; font-weight:bold; background:#FFEBEE; color:#C62828;
     border:1px solid #FFCDD2; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-right: 5px; margin-bottom: 5px;
-}
-.badge-orange {
+}}
+.badge-orange {{
     display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px;
     font-size:0.85rem; font-weight:bold; background:#FFF3E0; color:#EF6C00;
     border:1px solid #FFE0B2; margin-right: 5px; margin-bottom: 5px;
-}
-.badge-green {
+}}
+.badge-green {{
     display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px;
     font-size:0.85rem; font-weight:bold; background:#E8F5E9; color:#2E7D32;
     border:1px solid #C8E6C9;
-}
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -697,7 +697,7 @@ elif st.session_state.page == 'stats':
                     total_fam = c + a + s
                 except: total_fam = 0
 
-                # --- 🟢 1. 預先計算健康警示標籤 (使用 CSS Class 簡化 HTML) ---
+                # --- 🟢 1. 預先計算健康警示標籤 ---
                 tags_html = ""
                 has_alert = False 
 
@@ -748,7 +748,7 @@ elif st.session_state.page == 'stats':
                     </div>
                     """
 
-                # --- 🟢 2. 顯示卡片 (⚠️ 關鍵修改：使用 textwrap.dedent 消除縮排) ---
+                # --- 🟢 2. 顯示卡片 (⚠️ 使用 textwrap.dedent 消除縮排) ---
                 card_html = f"""
                 <div class="care-card">
                     <div class="care-header">
@@ -778,7 +778,7 @@ elif st.session_state.page == 'stats':
                 </div>
                 """
                 
-                # 🔥 這裡使用 dedent 來確保 HTML 不會被誤判為 Code Block
+                # 使用 dedent 來確保 HTML 不會被誤判為 Code Block
                 st.markdown(textwrap.dedent(card_html), unsafe_allow_html=True)
 
                 # 機敏資料區域
