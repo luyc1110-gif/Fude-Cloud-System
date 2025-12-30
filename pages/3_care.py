@@ -682,65 +682,100 @@ elif st.session_state.page == 'stats':
                     total_fam = c + a + s
                 except: total_fam = 0
 
-                # --- 🟢 預先計算健康警示標籤 (HTML生成) ---
+                # --- 🟢 1. 預先計算健康警示標籤 (HTML生成) ---
                 tags_html = ""
+                has_alert = False # 用來判斷是否需要顯示分隔線
+
                 if not h_df.empty:
-                    # 抓取該個案最近的一筆評估
                     p_health = h_df[h_df['姓名'] == target_name]
                     if not p_health.empty:
                         last_h = p_health.sort_values("評估日期").iloc[-1]
                         
-                        # 定義標籤樣式 (共用 CSS)
-                        base_style = "display:inline-block; padding:3px 12px; border-radius:15px; font-size:0.85rem; font-weight:bold; margin-right:6px; margin-top:6px;"
-                        red_style = f"{base_style} background:#FFEBEE; color:#C62828; border:1px solid #C62828;"
-                        orange_style = f"{base_style} background:#FFF3E0; color:#EF6C00; border:1px solid #EF6C00;"
+                        # 定義標籤樣式 (使用 Flexbox 友善的設計)
+                        # 嚴重(紅)
+                        badge_red = "display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                        # 警告(橘)
+                        badge_orange = "display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#FFF3E0; color:#EF6C00; border:1px solid #FFE0B2;"
                         
-                        # 1. 檢查自殺意念 (最優先)
+                        # 1. 檢查自殺意念 (最高優先級，最醒目)
                         if last_h['有自殺意念'] == "是":
-                            tags_html += f"<span style='{red_style}'>🚨 檢測到自殺意念</span>"
+                            tags_html += f"<span style='{badge_red}'>🚨 檢測到自殺意念</span>"
+                            has_alert = True
                         
                         # 2. 檢查情緒狀態
                         ms = last_h['情緒狀態']
                         ms_score = last_h['心情溫度計分數']
                         if "中度" in ms or "重度" in ms:
-                            tags_html += f"<span style='{red_style}'>🌡️ {ms} ({ms_score})</span>"
+                            tags_html += f"<span style='{badge_red}'>🌡️ {ms} ({ms_score})</span>"
+                            has_alert = True
                         elif "輕度" in ms:
-                            tags_html += f"<span style='{orange_style}'>🌡️ {ms} ({ms_score})</span>"
+                            tags_html += f"<span style='{badge_orange}'>🌡️ {ms} ({ms_score})</span>"
+                            has_alert = True
                             
                         # 3. 檢查營養狀態
                         ns = last_h['營養狀態']
                         ns_score = last_h['營養篩檢分數']
-                        if "營養不良" in ns: # 包含 '有營養不良風險' 或 '營養不良'
-                             # 判斷是風險(橘)還是嚴重(紅)
-                             style_use = orange_style if "風險" in ns else red_style
+                        if "營養不良" in ns: 
+                             style_use = badge_orange if "風險" in ns else badge_red
                              tags_html += f"<span style='{style_use}'>🍱 {ns} ({ns_score})</span>"
+                             has_alert = True
 
-                # 若沒有任何警示，顯示安全文字（可選）
-                if not tags_html:
-                    tags_html = "<span style='color:#999; font-size:0.9rem; font-weight:bold;'>✅ 目前健康與情緒狀況評估穩定</span>"
+                # 組合底部警示區塊 HTML (如果沒有警示，就不顯示分隔線與區塊，保持乾淨)
+                alert_section_html = ""
+                if has_alert:
+                    alert_section_html = f"""
+                    <div style="border-top: 1px dashed #E0E0E0; padding-top: 12px; margin-top: 15px;">
+                        <div style="font-size:0.85rem; color:#888; margin-bottom:8px; font-weight:bold;">🩺 健康風險提示：</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            {tags_html}
+                        </div>
+                    </div>
+                    """
+                else:
+                    # 可選：如果都很健康，顯示綠色標記
+                    alert_section_html = f"""
+                    <div style="border-top: 1px dashed #E0E0E0; padding-top: 12px; margin-top: 15px;">
+                        <span style="display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#E8F5E9; color:#2E7D32; border:1px solid #C8E6C9;">
+                            ✅ 目前狀況穩定
+                        </span>
+                    </div>
+                    """
 
-                # --- 🟢 顯示整合後的卡片 ---
+                # --- 🟢 2. 顯示優化後的卡片 (解決地址擠壓問題) ---
                 st.markdown(f"""
-<div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <div style="font-size: 1.8rem; font-weight: 900; color: #333;">
-            {p_data['姓名']} 
-            <span style="font-size: 1rem; color: #666; background: #eee; padding: 2px 8px; border-radius: 10px; vertical-align: middle;">{p_data['性別']} / {age} 歲</span>
+<div style="background-color: white; padding: 25px; border-radius: 16px; border-left: 6px solid {GREEN}; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+        <div>
+            <div style="font-size: 1.8rem; font-weight: 900; color: #333; line-height: 1.2;">
+                {p_data['姓名']}
+            </div>
+            <div style="margin-top: 5px;">
+                <span style="font-size: 0.95rem; color: #666; background: #F5F5F5; padding: 4px 10px; border-radius: 8px; font-weight: 600;">
+                    {p_data['性別']} / {age} 歲
+                </span>
+            </div>
         </div>
-        <div style="font-weight: bold; color: {PRIMARY}; border: 2px solid {PRIMARY}; padding: 5px 15px; border-radius: 20px;">{p_data['身分別']}</div>
+        <div style="font-weight: 800; color: {PRIMARY}; border: 2px solid {PRIMARY}; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; white-space: nowrap;">
+            {p_data['身分別']}
+        </div>
     </div>
     
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
-        <div><b>📞 電話：</b> {p_data['電話']}</div>
-        <div><b>📍 地址：</b> {p_data['地址']}</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 15px; color: #444;">
+        <div style="min-width: 150px;">
+            <b style="color:#333;">📞 電話：</b> {p_data['電話']}
+        </div>
+        <div style="flex: 1; min-width: 250px;">
+            <b style="color:#333;">📍 地址：</b> {p_data['地址']}
+        </div>
     </div>
     
-    <div style="color: #555; margin-bottom: 15px;"><b>🏠 家庭結構：</b> 總人數 <b>{total_fam}</b> 人</div>
-    
-    <div style="border-top: 1px dashed #ddd; padding-top: 10px; margin-top: 10px;">
-        <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">🩺 最新健康評估警示：</div>
-        <div>{tags_html}</div>
+    <div style="color: #555; margin-bottom: 5px;">
+        <b style="color:#333;">🏠 家庭結構：</b> 總人數 <b style="font-size:1.1rem;">{total_fam}</b> 人
     </div>
+    
+    {alert_section_html}
+
 </div>
 """, unsafe_allow_html=True)
                 
