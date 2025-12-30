@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime, date, timedelta, timezone
 import gspread
 import plotly.express as px
-import random
 import time
 
 # =========================================================
@@ -163,12 +162,6 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 .inv-card-stock {{ font-size: 0.9rem; color: #666; background-color: #eee; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 10px; }}
 .inv-card-stock.low {{ color: #D32F2F !important; background-color: #FFEBEE !important; border: 1px solid #D32F2F; }}
 
-/* 健康警示標籤 */
-.health-alert {{ padding: 10px; border-radius: 10px; margin-top: 5px; font-weight: bold; font-size: 0.9rem; display: flex; align-items: center; }}
-.alert-red {{ background-color: #FFEBEE; color: #C62828 !important; border: 1px solid #C62828; }}
-.alert-orange {{ background-color: #FFF3E0; color: #EF6C00 !important; border: 1px solid #EF6C00; }}
-.alert-green {{ background-color: #E8F5E9; color: #2E7D32 !important; border: 1px solid #2E7D32; }}
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -177,15 +170,12 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 COLS_MEM = ["姓名", "身分證字號", "性別", "生日", "地址", "電話", "緊急聯絡人", "緊急聯絡人電話", "身分別", "18歲以下子女", "成人數量", "65歲以上長者"]
-
-# 更新健康欄位以包含新評估項目
 COLS_HEALTH = [
     "姓名", "身分證字號", "評估日期",
     "是否有假牙", "今年洗牙", "握力", "身高", "體重", "BMI", "聽力測試",
     "營養篩檢分數", "營養狀態",
     "心情溫度計分數", "情緒狀態", "有自殺意念"
 ]
-
 COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期"]
 COLS_LOG = ["志工", "發放日期", "關懷戶姓名", "物資內容", "發放數量", "訪視紀錄"]
 
@@ -347,7 +337,7 @@ elif st.session_state.page == 'members':
                     st.session_state.unlock_members = True; st.rerun()
                 else: st.error("❌ 密碼錯誤")
 
-# --- [分頁 2：健康 (大幅更新)] ---
+# --- [分頁 2：健康] ---
 elif st.session_state.page == 'health':
     render_nav()
     st.markdown("## 🏥 關懷戶健康與風險評估")
@@ -371,7 +361,6 @@ elif st.session_state.page == 'health':
 
             st.markdown("---")
             st.markdown("### 2. 營養評估 (MNA篩檢)")
-            # MNA 題目
             q1 = st.radio("Q1. 過去三個月是否因食慾不振/消化/吞嚥問題而減少食量？",
                           ["0分：食量嚴重減少", "1分：食量中度減少", "2分：食量沒有改變"], horizontal=True)
             q2 = st.radio("Q2. 過去三個月體重下降情況",
@@ -383,7 +372,7 @@ elif st.session_state.page == 'health':
             q5 = st.radio("Q5. 精神心理問題",
                           ["0分：嚴重失智或憂鬱", "1分：輕度失智", "2分：沒有問題"], horizontal=True)
             
-            # BMI 自動計算與評分
+            # BMI 自動計算
             bmi_val = 0.0
             bmi_score = 0
             if h > 0 and w > 0:
@@ -395,7 +384,6 @@ elif st.session_state.page == 'health':
             
             st.info(f"📏 根據身高體重自動換算 BMI: {round(bmi_val, 1)} (得分: {bmi_score})")
             
-            # 營養分數計算
             s1 = int(q1.split("分")[0])
             s2 = int(q2.split("分")[0])
             s3 = int(q3.split("分")[0])
@@ -417,11 +405,9 @@ elif st.session_state.page == 'health':
             bq3 = b1.slider("3. 覺得容易動怒", 0, 5, 0)
             bq4 = b2.slider("4. 感覺憂鬱、心情低落", 0, 5, 0)
             bq5 = b1.slider("5. 覺得比不上別人", 0, 5, 0)
-            bq6 = b2.slider("6. 有自殺想法", 0, 5, 0) # 獨立指標
+            bq6 = b2.slider("6. 有自殺想法", 0, 5, 0)
 
-            # 情緒分數計算 (前5題加總)
             mood_score = bq1 + bq2 + bq3 + bq4 + bq5 
-            # 依據使用者定義的標準 (0-5, 6-9, 10-14, 15+)
             if mood_score >= 15: mood_status = "重度情緒困擾"
             elif mood_score >= 10: mood_status = "中度情緒困擾"
             elif mood_score >= 6: mood_status = "輕度情緒困擾"
@@ -429,7 +415,6 @@ elif st.session_state.page == 'health':
             
             suicide_risk = "是" if bq6 > 0 else "否"
 
-            # 預覽結果區塊
             if st.columns(1)[0].checkbox("顯示本次評估結果預覽"):
                 res_col1, res_col2 = st.columns(2)
                 with res_col1:
@@ -658,7 +643,7 @@ elif st.session_state.page == 'visit':
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
         if st.button("💾 儲存歷史紀錄修改"): save_data(ed_l, "care_logs")
 
-# --- [分頁 5：統計 (加入健康警示)] ---
+# --- [分頁 5：統計] ---
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
@@ -691,10 +676,8 @@ elif st.session_state.page == 'stats':
                     if not p_health.empty:
                         last_h = p_health.sort_values("評估日期").iloc[-1]
                         
-                        # 定義標籤樣式
-                        # 嚴重(紅)
+                        # 定義標籤樣式 (Inline-Flex, 避免佔用多行)
                         badge_red = "display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
-                        # 警告(橘)
                         badge_orange = "display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#FFF3E0; color:#EF6C00; border:1px solid #FFE0B2;"
                         
                         # 1. 檢查自殺意念
@@ -740,7 +723,7 @@ elif st.session_state.page == 'stats':
                     </div>
                     """
 
-                # --- 🟢 2. 顯示卡片 ---
+                # --- 🟢 2. 顯示卡片 (注意 unsafe_allow_html=True) ---
                 st.markdown(f"""
 <div style="background-color: white; padding: 25px; border-radius: 16px; border-left: 6px solid {GREEN}; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px;">
     
@@ -807,57 +790,7 @@ elif st.session_state.page == 'stats':
 </div>
 """, unsafe_allow_html=True)
                 
-                # 歷史訪視區域 (保持不變)
-                st.markdown("### 🤝 歷史訪視紀錄")
-                p_logs = logs[logs['關懷戶姓名'] == target_name]
-                if p_logs.empty: st.info("尚無訪視紀錄。")
-                else:
-                    p_logs = p_logs.sort_values("發放日期", ascending=False)
-                    for idx, row in p_logs.iterrows():
-                        tag_class = "only" if row['物資內容'] == "(僅訪視)" else ""
-                        item_display = row['物資內容'] if row['物資內容'] == "(僅訪視)" else f"{row['物資內容']} x {row['發放數量']}"
-                        st.markdown(f"""
-<div class="visit-card">
-<div class="visit-header">
-<span class="visit-date">📅 {row['發放日期']}</span>
-<span class="visit-volunteer">👮 志工：{row['志工']}</span>
-</div>
-<div style="margin-bottom:8px;">
-<span class="visit-tag {tag_class}">{item_display}</span>
-</div>
-<div class="visit-note">{row['訪視紀錄']}</div>
-</div>
-""", unsafe_allow_html=True)
-                
-                # 機敏資料
-                if not st.session_state.unlock_details:
-                    st.info("🔒 詳細個資已隱藏。")
-                    c_pwd, c_btn = st.columns([2, 1])
-                    with c_pwd: pwd_stat = st.text_input("請輸入密碼解鎖個資", type="password", key="unlock_stat_pwd")
-                    with c_btn:
-                        if st.button("🔓 解鎖查看"):
-                            if pwd_stat == st.secrets["admin_password"]:
-                                st.session_state.unlock_details = True; st.rerun()
-                            else: st.error("❌ 密碼錯誤")
-                else:
-                    if st.button("🔒 隱藏機敏資料"): st.session_state.unlock_details = False; st.rerun()
-                    st.markdown(f"""
-<div style="background-color: #FFF8E1; padding: 20px; border-radius: 15px; border: 1px dashed #FFB74D; margin-bottom: 20px;">
-<div style="font-weight:bold; color:#F57C00; margin-bottom:10px;">⚠️ 機敏個資區域 (已解鎖)</div>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-<div><b>🆔 身分證：</b> {p_data['身分證字號']}</div>
-<div><b>🎂 生日：</b> {p_data['生日']}</div>
-</div>
-<hr style="border-top: 1px dashed #ccc;">
-<div style="margin-top: 10px; color: #555;">
-<b>🏠 家庭結構明細：</b> 18歲以下 <b>{p_data['18歲以下子女']}</b> 人，成人 <b>{p_data['成人數量']}</b> 人，65歲以上 <b>{p_data['65歲以上長者']}</b> 人
-</div>
-<div style="margin-top: 10px; color: #D32F2F;">
-<b>🚨 緊急聯絡人：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})
-</div>
-</div>
-""", unsafe_allow_html=True)
-                
+                # 歷史訪視區域
                 st.markdown("### 🤝 歷史訪視紀錄")
                 p_logs = logs[logs['關懷戶姓名'] == target_name]
                 if p_logs.empty: st.info("尚無訪視紀錄。")
