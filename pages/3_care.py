@@ -684,20 +684,20 @@ elif st.session_state.page == 'stats':
 
                 # --- 🟢 1. 預先計算健康警示標籤 (HTML生成) ---
                 tags_html = ""
-                has_alert = False # 用來判斷是否需要顯示分隔線
+                has_alert = False 
 
                 if not h_df.empty:
                     p_health = h_df[h_df['姓名'] == target_name]
                     if not p_health.empty:
                         last_h = p_health.sort_values("評估日期").iloc[-1]
                         
-                        # 定義標籤樣式 (使用 Flexbox 友善的設計)
+                        # 定義標籤樣式
                         # 嚴重(紅)
                         badge_red = "display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
                         # 警告(橘)
                         badge_orange = "display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#FFF3E0; color:#EF6C00; border:1px solid #FFE0B2;"
                         
-                        # 1. 檢查自殺意念 (最高優先級，最醒目)
+                        # 1. 檢查自殺意念
                         if last_h['有自殺意念'] == "是":
                             tags_html += f"<span style='{badge_red}'>🚨 檢測到自殺意念</span>"
                             has_alert = True
@@ -720,7 +720,7 @@ elif st.session_state.page == 'stats':
                              tags_html += f"<span style='{style_use}'>🍱 {ns} ({ns_score})</span>"
                              has_alert = True
 
-                # 組合底部警示區塊 HTML (如果沒有警示，就不顯示分隔線與區塊，保持乾淨)
+                # 組合底部警示區塊
                 alert_section_html = ""
                 if has_alert:
                     alert_section_html = f"""
@@ -732,7 +732,6 @@ elif st.session_state.page == 'stats':
                     </div>
                     """
                 else:
-                    # 可選：如果都很健康，顯示綠色標記
                     alert_section_html = f"""
                     <div style="border-top: 1px dashed #E0E0E0; padding-top: 12px; margin-top: 15px;">
                         <span style="display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#E8F5E9; color:#2E7D32; border:1px solid #C8E6C9;">
@@ -741,7 +740,7 @@ elif st.session_state.page == 'stats':
                     </div>
                     """
 
-                # --- 🟢 2. 顯示優化後的卡片 (解決地址擠壓問題) ---
+                # --- 🟢 2. 顯示卡片 ---
                 st.markdown(f"""
 <div style="background-color: white; padding: 25px; border-radius: 16px; border-left: 6px solid {GREEN}; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px;">
     
@@ -776,6 +775,57 @@ elif st.session_state.page == 'stats':
     
     {alert_section_html}
 
+</div>
+""", unsafe_allow_html=True)
+
+                # 機敏資料區域
+                if not st.session_state.unlock_details:
+                    st.info("🔒 詳細個資已隱藏。")
+                    c_pwd, c_btn = st.columns([2, 1])
+                    with c_pwd: pwd_stat = st.text_input("請輸入密碼解鎖個資", type="password", key="unlock_stat_pwd")
+                    with c_btn:
+                        if st.button("🔓 解鎖查看"):
+                            if pwd_stat == st.secrets["admin_password"]:
+                                st.session_state.unlock_details = True; st.rerun()
+                            else: st.error("❌ 密碼錯誤")
+                else:
+                    if st.button("🔒 隱藏機敏資料"): st.session_state.unlock_details = False; st.rerun()
+                    st.markdown(f"""
+<div style="background-color: #FFF8E1; padding: 20px; border-radius: 15px; border: 1px dashed #FFB74D; margin-bottom: 20px;">
+<div style="font-weight:bold; color:#F57C00; margin-bottom:10px;">⚠️ 機敏個資區域 (已解鎖)</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+<div><b>🆔 身分證：</b> {p_data['身分證字號']}</div>
+<div><b>🎂 生日：</b> {p_data['生日']}</div>
+</div>
+<hr style="border-top: 1px dashed #ccc;">
+<div style="margin-top: 10px; color: #555;">
+<b>🏠 家庭結構明細：</b> 18歲以下 <b>{p_data['18歲以下子女']}</b> 人，成人 <b>{p_data['成人數量']}</b> 人，65歲以上 <b>{p_data['65歲以上長者']}</b> 人
+</div>
+<div style="margin-top: 10px; color: #D32F2F;">
+<b>🚨 緊急聯絡人：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})
+</div>
+</div>
+""", unsafe_allow_html=True)
+                
+                # 歷史訪視區域 (保持不變)
+                st.markdown("### 🤝 歷史訪視紀錄")
+                p_logs = logs[logs['關懷戶姓名'] == target_name]
+                if p_logs.empty: st.info("尚無訪視紀錄。")
+                else:
+                    p_logs = p_logs.sort_values("發放日期", ascending=False)
+                    for idx, row in p_logs.iterrows():
+                        tag_class = "only" if row['物資內容'] == "(僅訪視)" else ""
+                        item_display = row['物資內容'] if row['物資內容'] == "(僅訪視)" else f"{row['物資內容']} x {row['發放數量']}"
+                        st.markdown(f"""
+<div class="visit-card">
+<div class="visit-header">
+<span class="visit-date">📅 {row['發放日期']}</span>
+<span class="visit-volunteer">👮 志工：{row['志工']}</span>
+</div>
+<div style="margin-bottom:8px;">
+<span class="visit-tag {tag_class}">{item_display}</span>
+</div>
+<div class="visit-note">{row['訪視紀錄']}</div>
 </div>
 """, unsafe_allow_html=True)
                 
