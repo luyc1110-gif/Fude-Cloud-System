@@ -4,6 +4,7 @@ from datetime import datetime, date, timedelta, timezone
 import gspread
 import plotly.express as px
 import time
+import textwrap  # 👈 新增：用於修復縮排導致的顯示問題
 
 # =========================================================
 # 0) 系統設定
@@ -34,7 +35,7 @@ BG_MAIN = "#F8F9FA"   # 淺灰底
 TEXT    = "#333333"
 
 # =========================================================
-# 1) CSS 樣式
+# 1) CSS 樣式 (新增卡片專用樣式)
 # =========================================================
 st.markdown(f"""
 <style>
@@ -47,16 +48,6 @@ html, body, [class*="css"], div, p, span, li, ul {{
 
 .stApp {{ background-color: {BG_MAIN} !important; }}
 section[data-testid="stSidebar"] {{ background-color: {BG_MAIN}; border-right: none; }}
-
-/* 懸浮大卡片 */
-.block-container {{
-    background-color: #FFFFFF; border-radius: 25px;
-    padding: 3rem 3rem !important; box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-top: 2rem; margin-bottom: 2rem; max-width: 95% !important;
-}}
-
-header[data-testid="stHeader"] {{ display: block !important; background-color: transparent !important; }}
-header[data-testid="stHeader"] .decoration {{ display: none; }}
 
 /* 側邊欄按鈕 */
 section[data-testid="stSidebar"] button {{
@@ -84,12 +75,6 @@ div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
 div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
     background-color: #F8F9FA !important; color: #000000 !important;
     border: 2px solid #E0E0E0 !important; border-radius: 12px !important; font-weight: 700 !important;
-}}
-div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{
-    background-color: #FFFFFF !important; color: #000000 !important;
-}}
-li[role="option"]:hover {{
-    background-color: #E8F5E9 !important; color: {GREEN} !important;
 }}
 
 /* 按鈕樣式 */
@@ -129,7 +114,7 @@ div[data-testid="stDownloadButton"] > button:hover {{
 .visit-tag.only {{ background-color: #9E9E9E; }} 
 .visit-note {{ font-size: 1rem; color: #444; line-height: 1.5; background: #FAFAFA; padding: 10px; border-radius: 8px; }}
 
-/* 庫存管理卡片 */
+/* 庫存卡片 */
 .stock-card {{
     background-color: white; border: 1px solid #eee; border-radius: 15px;
     padding: 20px; margin-bottom: 20px; position: relative;
@@ -143,13 +128,12 @@ div[data-testid="stDownloadButton"] > button:hover {{
 .stock-info {{ text-align: right; width: 100%; padding-left: 10px; }}
 .stock-name {{ font-size: 1.3rem; font-weight: 900; color: #333; margin-bottom: 3px; line-height: 1.2; }}
 .stock-donor {{ font-size: 0.9rem; color: {PRIMARY}; background: #EFEBE9; padding: 2px 8px; border-radius: 8px; font-weight: bold; display: inline-block; margin-bottom: 5px; }}
-.stock-type {{ font-size: 0.8rem; color: #888; background: #f0f0f0; padding: 2px 8px; border-radius: 8px; display: inline-block; }}
 .stock-bar-bg {{ width: 100%; height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin-top: 10px; }}
 .stock-bar-fill {{ height: 100%; border-radius: 5px; transition: width 0.5s ease; }}
 .stock-stats {{ display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.9rem; color: #666; font-weight: bold; }}
 .stock-warning {{ color: #D32F2F; font-weight: bold; display: flex; align-items: center; gap: 5px; margin-top: 10px; font-size: 0.9rem; }}
 
-/* 卡片上浮效果 */
+/* 上浮效果 */
 div[data-testid="stVerticalBlockBorderWrapper"] {{
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     border: 2px solid #E0E0E0 !important; background-color: #FFFFFF;
@@ -162,6 +146,52 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 .inv-card-stock {{ font-size: 0.9rem; color: #666; background-color: #eee; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 10px; }}
 .inv-card-stock.low {{ color: #D32F2F !important; background-color: #FFEBEE !important; border: 1px solid #D32F2F; }}
 
+/* --- 🔥 新增：個案資料卡片與警示標籤樣式 --- */
+.care-card {
+    background-color: white; border-radius: 16px; border-left: 6px solid #8E9775;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; padding: 25px;
+}
+.care-header {
+    display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;
+}
+.care-name {
+    font-size: 1.8rem; font-weight: 900; color: #333; line-height: 1.2;
+}
+.care-meta {
+    margin-top: 5px; font-size: 0.95rem; color: #666; background: #F5F5F5;
+    padding: 4px 10px; border-radius: 8px; font-weight: 600; display: inline-block;
+}
+.care-tag {
+    font-weight: 800; color: #4A4E69; border: 2px solid #4A4E69;
+    padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; white-space: nowrap;
+}
+.care-info-row {
+    display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 15px; color: #444;
+}
+.care-info-item {
+    font-size: 1rem; color: #444;
+}
+.care-alert-section {
+    border-top: 1px dashed #E0E0E0; padding-top: 12px; margin-top: 15px;
+}
+.alert-title {
+    font-size:0.85rem; color:#888; margin-bottom:8px; font-weight:bold;
+}
+.badge-red {
+    display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px;
+    font-size:0.85rem; font-weight:bold; background:#FFEBEE; color:#C62828;
+    border:1px solid #FFCDD2; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-right: 5px; margin-bottom: 5px;
+}
+.badge-orange {
+    display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px;
+    font-size:0.85rem; font-weight:bold; background:#FFF3E0; color:#EF6C00;
+    border:1px solid #FFE0B2; margin-right: 5px; margin-bottom: 5px;
+}
+.badge-green {
+    display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px;
+    font-size:0.85rem; font-weight:bold; background:#E8F5E9; color:#2E7D32;
+    border:1px solid #C8E6C9;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -667,7 +697,7 @@ elif st.session_state.page == 'stats':
                     total_fam = c + a + s
                 except: total_fam = 0
 
-                # --- 🟢 1. 預先計算健康警示標籤 (HTML生成) ---
+                # --- 🟢 1. 預先計算健康警示標籤 (使用 CSS Class 簡化 HTML) ---
                 tags_html = ""
                 has_alert = False 
 
@@ -676,90 +706,80 @@ elif st.session_state.page == 'stats':
                     if not p_health.empty:
                         last_h = p_health.sort_values("評估日期").iloc[-1]
                         
-                        # 定義標籤樣式 (Inline-Flex, 避免佔用多行)
-                        badge_red = "display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
-                        badge_orange = "display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#FFF3E0; color:#EF6C00; border:1px solid #FFE0B2;"
-                        
                         # 1. 檢查自殺意念
                         if last_h['有自殺意念'] == "是":
-                            tags_html += f"<span style='{badge_red}'>🚨 檢測到自殺意念</span>"
+                            tags_html += f"<span class='badge-red'>🚨 檢測到自殺意念</span>"
                             has_alert = True
                         
                         # 2. 檢查情緒狀態
                         ms = last_h['情緒狀態']
                         ms_score = last_h['心情溫度計分數']
                         if "中度" in ms or "重度" in ms:
-                            tags_html += f"<span style='{badge_red}'>🌡️ {ms} ({ms_score})</span>"
+                            tags_html += f"<span class='badge-red'>🌡️ {ms} ({ms_score})</span>"
                             has_alert = True
                         elif "輕度" in ms:
-                            tags_html += f"<span style='{badge_orange}'>🌡️ {ms} ({ms_score})</span>"
+                            tags_html += f"<span class='badge-orange'>🌡️ {ms} ({ms_score})</span>"
                             has_alert = True
                             
                         # 3. 檢查營養狀態
                         ns = last_h['營養狀態']
                         ns_score = last_h['營養篩檢分數']
                         if "營養不良" in ns: 
-                             style_use = badge_orange if "風險" in ns else badge_red
-                             tags_html += f"<span style='{style_use}'>🍱 {ns} ({ns_score})</span>"
+                             style_use = "badge-orange" if "風險" in ns else "badge-red"
+                             tags_html += f"<span class='{style_use}'>🍱 {ns} ({ns_score})</span>"
                              has_alert = True
 
                 # 組合底部警示區塊
-                alert_section_html = ""
                 if has_alert:
                     alert_section_html = f"""
-                    <div style="border-top: 1px dashed #E0E0E0; padding-top: 12px; margin-top: 15px;">
-                        <div style="font-size:0.85rem; color:#888; margin-bottom:8px; font-weight:bold;">🩺 健康風險提示：</div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <div class="care-alert-section">
+                        <div class="alert-title">🩺 健康風險提示：</div>
+                        <div style="display: flex; flex-wrap: wrap;">
                             {tags_html}
                         </div>
                     </div>
                     """
                 else:
                     alert_section_html = f"""
-                    <div style="border-top: 1px dashed #E0E0E0; padding-top: 12px; margin-top: 15px;">
-                        <span style="display:inline-flex; align-items:center; padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:bold; background:#E8F5E9; color:#2E7D32; border:1px solid #C8E6C9;">
+                    <div class="care-alert-section">
+                        <span class="badge-green">
                             ✅ 目前狀況穩定
                         </span>
                     </div>
                     """
 
-                # --- 🟢 2. 顯示卡片 (注意 unsafe_allow_html=True) ---
-                st.markdown(f"""
-<div style="background-color: white; padding: 25px; border-radius: 16px; border-left: 6px solid {GREEN}; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px;">
-    
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-        <div>
-            <div style="font-size: 1.8rem; font-weight: 900; color: #333; line-height: 1.2;">
-                {p_data['姓名']}
-            </div>
-            <div style="margin-top: 5px;">
-                <span style="font-size: 0.95rem; color: #666; background: #F5F5F5; padding: 4px 10px; border-radius: 8px; font-weight: 600;">
-                    {p_data['性別']} / {age} 歲
-                </span>
-            </div>
-        </div>
-        <div style="font-weight: 800; color: {PRIMARY}; border: 2px solid {PRIMARY}; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; white-space: nowrap;">
-            {p_data['身分別']}
-        </div>
-    </div>
-    
-    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 15px; color: #444;">
-        <div style="min-width: 150px;">
-            <b style="color:#333;">📞 電話：</b> {p_data['電話']}
-        </div>
-        <div style="flex: 1; min-width: 250px;">
-            <b style="color:#333;">📍 地址：</b> {p_data['地址']}
-        </div>
-    </div>
-    
-    <div style="color: #555; margin-bottom: 5px;">
-        <b style="color:#333;">🏠 家庭結構：</b> 總人數 <b style="font-size:1.1rem;">{total_fam}</b> 人
-    </div>
-    
-    {alert_section_html}
-
-</div>
-""", unsafe_allow_html=True)
+                # --- 🟢 2. 顯示卡片 (⚠️ 關鍵修改：使用 textwrap.dedent 消除縮排) ---
+                card_html = f"""
+                <div class="care-card">
+                    <div class="care-header">
+                        <div>
+                            <div class="care-name">{p_data['姓名']}</div>
+                            <div style="margin-top: 5px;">
+                                <span class="care-meta">{p_data['性別']} / {age} 歲</span>
+                            </div>
+                        </div>
+                        <div class="care-tag">{p_data['身分別']}</div>
+                    </div>
+                    
+                    <div class="care-info-row">
+                        <div class="care-info-item">
+                            <b>📞 電話：</b> {p_data['電話']}
+                        </div>
+                        <div class="care-info-item" style="flex: 1;">
+                            <b>📍 地址：</b> {p_data['地址']}
+                        </div>
+                    </div>
+                    
+                    <div class="care-info-item" style="margin-bottom: 5px;">
+                        <b>🏠 家庭結構：</b> 總人數 <b style="font-size:1.1rem;">{total_fam}</b> 人
+                    </div>
+                    
+                    {alert_section_html}
+                </div>
+                """
+                
+                # 🔥 這裡使用 dedent 來確保 HTML 不會被誤判為 Code Block
+                st.markdown(textwrap.dedent(card_html), unsafe_allow_html=True)
 
                 # 機敏資料區域
                 if not st.session_state.unlock_details:
