@@ -682,59 +682,68 @@ elif st.session_state.page == 'stats':
                     total_fam = c + a + s
                 except: total_fam = 0
 
-                # 基本資料卡片
-                st.markdown(f"""
-<div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 10px;">
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-<div style="font-size: 1.8rem; font-weight: 900; color: #333;">{p_data['姓名']} <span style="font-size: 1rem; color: #666; background: #eee; padding: 2px 8px; border-radius: 10px;">{p_data['性別']} / {age} 歲</span></div>
-<div style="font-weight: bold; color: {PRIMARY}; border: 2px solid {PRIMARY}; padding: 5px 15px; border-radius: 20px;">{p_data['身分別']}</div>
-</div>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
-<div><b>📞 電話：</b> {p_data['電話']}</div>
-<div><b>📍 地址：</b> {p_data['地址']}</div>
-</div>
-<div style="color: #555;"><b>🏠 家庭結構：</b> 總人數 <b>{total_fam}</b> 人</div>
-</div>
-""", unsafe_allow_html=True)
-                
-                # --- 新增：健康狀態與風險警示 ---
+                # --- 🟢 預先計算健康警示標籤 (HTML生成) ---
+                tags_html = ""
                 if not h_df.empty:
                     # 抓取該個案最近的一筆評估
                     p_health = h_df[h_df['姓名'] == target_name]
                     if not p_health.empty:
                         last_h = p_health.sort_values("評估日期").iloc[-1]
                         
-                        st.markdown("### 🩺 健康與風險評估摘要")
-                        st.caption(f"最近評估日期：{last_h['評估日期']}")
+                        # 定義標籤樣式 (共用 CSS)
+                        base_style = "display:inline-block; padding:3px 12px; border-radius:15px; font-size:0.85rem; font-weight:bold; margin-right:6px; margin-top:6px;"
+                        red_style = f"{base_style} background:#FFEBEE; color:#C62828; border:1px solid #C62828;"
+                        orange_style = f"{base_style} background:#FFF3E0; color:#EF6C00; border:1px solid #EF6C00;"
                         
-                        warn_html = ""
+                        # 1. 檢查自殺意念 (最優先)
+                        if last_h['有自殺意念'] == "是":
+                            tags_html += f"<span style='{red_style}'>🚨 檢測到自殺意念</span>"
                         
-                        # 檢查營養
-                        ns = last_h['營養狀態']
-                        if "營養不良" in ns: # 包含 '有營養不良風險' 或 '營養不良'
-                            color = "alert-orange" if "風險" in ns else "alert-red"
-                            warn_html += f"<div class='health-alert {color}'>🍱 營養狀態：{ns} (分數: {last_h['營養篩檢分數']})</div>"
-                        else:
-                            warn_html += f"<div class='health-alert alert-green'>🍱 營養狀態：{ns}</div>"
-                        
-                        # 檢查情緒與自殺意念
+                        # 2. 檢查情緒狀態
                         ms = last_h['情緒狀態']
-                        sr = last_h['有自殺意念']
-                        
-                        if sr == "是":
-                            warn_html += f"<div class='health-alert alert-red'>🚨 嚴重警示：檢測到自殺意念！</div>"
-                        
+                        ms_score = last_h['心情溫度計分數']
                         if "中度" in ms or "重度" in ms:
-                             warn_html += f"<div class='health-alert alert-red'>🌡️ 情緒狀態：{ms} (分數: {last_h['心情溫度計分數']})</div>"
+                            tags_html += f"<span style='{red_style}'>🌡️ {ms} ({ms_score})</span>"
                         elif "輕度" in ms:
-                             warn_html += f"<div class='health-alert alert-orange'>🌡️ 情緒狀態：{ms} (分數: {last_h['心情溫度計分數']})</div>"
-                        else:
-                             warn_html += f"<div class='health-alert alert-green'>🌡️ 情緒狀態：{ms}</div>"
-                             
-                        st.markdown(warn_html, unsafe_allow_html=True)
-                    else:
-                        st.info("尚無健康評估資料")
+                            tags_html += f"<span style='{orange_style}'>🌡️ {ms} ({ms_score})</span>"
+                            
+                        # 3. 檢查營養狀態
+                        ns = last_h['營養狀態']
+                        ns_score = last_h['營養篩檢分數']
+                        if "營養不良" in ns: # 包含 '有營養不良風險' 或 '營養不良'
+                             # 判斷是風險(橘)還是嚴重(紅)
+                             style_use = orange_style if "風險" in ns else red_style
+                             tags_html += f"<span style='{style_use}'>🍱 {ns} ({ns_score})</span>"
 
+                # 若沒有任何警示，顯示安全文字（可選）
+                if not tags_html:
+                    tags_html = "<span style='color:#999; font-size:0.9rem; font-weight:bold;'>✅ 目前健康與情緒狀況評估穩定</span>"
+
+                # --- 🟢 顯示整合後的卡片 ---
+                st.markdown(f"""
+<div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="font-size: 1.8rem; font-weight: 900; color: #333;">
+            {p_data['姓名']} 
+            <span style="font-size: 1rem; color: #666; background: #eee; padding: 2px 8px; border-radius: 10px; vertical-align: middle;">{p_data['性別']} / {age} 歲</span>
+        </div>
+        <div style="font-weight: bold; color: {PRIMARY}; border: 2px solid {PRIMARY}; padding: 5px 15px; border-radius: 20px;">{p_data['身分別']}</div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+        <div><b>📞 電話：</b> {p_data['電話']}</div>
+        <div><b>📍 地址：</b> {p_data['地址']}</div>
+    </div>
+    
+    <div style="color: #555; margin-bottom: 15px;"><b>🏠 家庭結構：</b> 總人數 <b>{total_fam}</b> 人</div>
+    
+    <div style="border-top: 1px dashed #ddd; padding-top: 10px; margin-top: 10px;">
+        <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">🩺 最新健康評估警示：</div>
+        <div>{tags_html}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+                
                 # 機敏資料
                 if not st.session_state.unlock_details:
                     st.info("🔒 詳細個資已隱藏。")
