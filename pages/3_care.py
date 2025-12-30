@@ -176,7 +176,6 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 COLS_MEM = ["姓名", "身分證字號", "性別", "生日", "地址", "電話", "緊急聯絡人", "緊急聯絡人電話", "身分別", "18歲以下子女", "成人數量", "65歲以上長者"]
-# 新增評估相關欄位
 COLS_HEALTH = ["姓名", "身分證字號", "是否有假牙", "今年洗牙", "握力", "身高", "體重", "聽力測試", "營養評估總分", "心情溫度計總分", "自殺意念註記"]
 COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期"]
 COLS_LOG = ["志工", "發放日期", "關懷戶姓名", "物資內容", "發放數量", "訪視紀錄"]
@@ -355,7 +354,6 @@ elif st.session_state.page == 'health':
 
             st.markdown("---")
             st.markdown("#### 2. 營養評估 (MNA簡易版)")
-            st.caption("註：為符合 14 分標準量表，已補上第六題 (BMI/小腿圍)，請依實際狀況填寫。")
             
             # MNA 題目邏輯
             score_n = 0
@@ -385,12 +383,9 @@ elif st.session_state.page == 'health':
             q5 = st.radio("精神狀況", ["嚴重失智或憂鬱 (0分)", "輕度失智 (1分)", "沒有問題 (2分)"], horizontal=True, key="mna_5")
             score_n += int(q5.split("(")[1][0])
 
-            # Q6 (補充題以符合滿分14)
-            st.markdown("**6. BMI 或 小腿圍狀況 (補充題)**")
-            q6 = st.radio("身體數值", ["BMI<19 或 小腿圍<31 (0分)", "BMI 19-21 (1分)", "BMI 21-23 (2分)", "BMI>23 或 小腿圍>31 (3分)"], horizontal=True, key="mna_6")
-            score_n += int(q6.split("(")[1][0])
-
-            st.write(f"📊 **目前營養總分：{score_n} 分**")
+            # Q6 (自動判定 BMI)
+            st.markdown("**6. BMI 判定 (系統自動計算)**")
+            st.caption("依據上方填寫之身高體重自動換算得分：BMI<19 (0分), 19-21 (1分), 21-23 (2分), >23 (3分)")
 
             st.markdown("---")
             st.markdown("#### 3. 心情溫度計 (BSRS-5)")
@@ -412,19 +407,38 @@ elif st.session_state.page == 'health':
             score_m += suicide_score
             has_suicide_idea = "是" if suicide_score > 0 else "否"
 
-            st.write(f"🌡️ **目前心情總分：{score_m} 分** {( '⚠️ 有自殺風險' if has_suicide_idea=='是' else '')}")
-
             if st.form_submit_button("儲存健康與評估紀錄"):
+                # --- 自動計算 BMI 分數 ---
+                bmi_score = 0
+                try:
+                    # 確保轉為 float 並檢查是否 > 0
+                    h_val = float(h)
+                    w_val = float(w)
+                    if h_val > 0 and w_val > 0:
+                        bmi = w_val / ((h_val / 100.0) ** 2)
+                        
+                        if bmi < 19: bmi_score = 0
+                        elif bmi < 21: bmi_score = 1
+                        elif bmi < 23: bmi_score = 2
+                        else: bmi_score = 3
+                    else:
+                        bmi_score = 0 # 數值異常則 0 分
+                except:
+                    bmi_score = 0 # 轉換錯誤則 0 分
+                
+                # 加總 MNA 分數
+                final_mna_score = score_n + bmi_score
+
                 pid = m_df[m_df['姓名']==sel_n]['身分證字號'].iloc[0]
                 new = {
                     "姓名": sel_n, "身分證字號": pid, 
                     "是否有假牙": dent, "今年洗牙": wash, "握力": grip, "身高": h, "體重": w, "聽力測試": hear,
-                    "營養評估總分": str(score_n), 
+                    "營養評估總分": str(final_mna_score), 
                     "心情溫度計總分": str(score_m), 
                     "自殺意念註記": has_suicide_idea
                 }
                 if save_data(pd.concat([h_df, pd.DataFrame([new])], ignore_index=True), "care_health"): 
-                    st.success("✅ 已存檔！"); time.sleep(1); st.rerun()
+                    st.success(f"✅ 已存檔！營養評估得分：{final_mna_score} (含BMI {bmi_score}分)"); time.sleep(1); st.rerun()
 
     if not h_df.empty:
         st.markdown("### 📋 歷史健康紀錄")
