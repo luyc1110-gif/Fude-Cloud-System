@@ -396,37 +396,85 @@ elif st.session_state.page == 'inventory':
     inv, logs = load_data("care_inventory", COLS_INV), load_data("care_logs", COLS_LOG)
     
     with st.expander("➕ 新增捐贈物資 / 款項", expanded=False):
+        # 準備資料
         existing_donors = sorted(list(set(inv['捐贈者'].dropna().unique()))) if not inv.empty else []
         
-        st.write("###### 1. 捐贈來源")
+        # --- 區塊 A：設定輸入模式 (移出 Form 以便即時刷新) ---
+        st.markdown(f"<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>⚙️ 步驟 1：設定來源與類型</b></div>", unsafe_allow_html=True)
+        c_mode1, c_mode2 = st.columns(2)
         
-        # 🔥 將 radio 移出 form，確保點擊後能立即刷新畫面
-        donor_mode = st.radio("來源模式", ["從歷史名單選擇", "輸入新單位"], horizontal=True, label_visibility="collapsed")
-        
-        # 🔥 接下來使用 form 讓使用者填寫
-        with st.form("add_inv_form"):
-            final_donor = ""
-            if donor_mode == "從歷史名單選擇":
-                if existing_donors:
-                    final_donor = st.selectbox("👉 請選擇捐贈單位", existing_donors)
-                else:
-                    st.warning("⚠️ 尚無歷史名單，請切換至「輸入新單位」")
-            else:
-                final_donor = st.text_input("✍️ 請輸入新單位/人名", placeholder="例如：善心人士張先生")
-
-            st.write("###### 2. 物資細節")
-            c1, c2, c3 = st.columns(3)
-            ty = c1.selectbox("類型",["食物","日用品","輔具","現金","服務"])
-            co = c2.text_input("名稱 (如: 白米)")
-            qt = c3.number_input("數量/金額", min_value=1)
+        with c_mode1:
+            # 1. 決定捐贈者怎麼填
+            donor_mode = st.radio("👤 捐贈者來源", ["從歷史名單選擇", "輸入新單位"], horizontal=True)
             
-            if st.form_submit_button("✅ 錄入庫存"):
-                if not final_donor or not co:
-                    st.error("請完整填寫捐贈者與物資名稱")
+        with c_mode2:
+            # 2. 決定物資類型 (這會影響下方的名稱選單)
+            sel_type = st.selectbox("📦 物資類型", ["食物","日用品","輔具","現金","服務"])
+            
+            # 3. 根據類型抓出歷史名稱
+            type_history = []
+            if not inv.empty:
+                # 篩選出該類型曾出現過的名稱，並排序
+                type_history = sorted(inv[inv['物資類型'] == sel_type]['物資內容'].unique().tolist())
+            
+            # 4. 決定名稱怎麼填 (若有歷史資料顯示選項，否則強制手動輸入)
+            if type_history:
+                item_mode = st.radio(f"📝 {sel_type}名稱來源", ["從歷史紀錄選擇", "輸入新名稱"], horizontal=True)
+            else:
+                st.caption(f"💡 目前「{sel_type}」類尚無紀錄，請直接輸入新名稱。")
+                item_mode = "輸入新名稱"
+
+        # --- 區塊 B：填寫詳細資料 (正式表單) ---
+        with st.form("add_inv_form"):
+            st.markdown(f"<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>✍️ 步驟 2：填寫細節</b></div>", unsafe_allow_html=True)
+            
+            c1, c2, c3 = st.columns([1.5, 1.5, 1])
+            
+            # 欄位 1：捐贈者
+            with c1:
+                if donor_mode == "從歷史名單選擇":
+                    if existing_donors:
+                        final_donor = st.selectbox("捐贈單位/人", existing_donors)
+                    else:
+                        st.warning("尚無歷史名單")
+                        final_donor = ""
                 else:
-                    new = {"捐贈者":final_donor, "物資類型":ty, "物資內容":co, "總數量":qt, "捐贈日期":str(date.today())}
+                    final_donor = st.text_input("輸入新單位/人", placeholder="例如：善心人士張先生")
+
+            # 欄位 2：物資名稱 (根據上面的設定變動)
+            with c2:
+                if item_mode == "從歷史紀錄選擇" and type_history:
+                    final_item_name = st.selectbox(f"選擇{sel_type}品項", type_history)
+                else:
+                    final_item_name = st.text_input(f"輸入{sel_type}名稱", placeholder="例如：白米")
+
+            # 欄位 3：數量
+            with c3:
+                qt = st.number_input("數量/金額", min_value=1)
+            
+            # 送出按鈕
+            submit = st.form_submit_button("✅ 錄入庫存")
+
+            if submit:
+                # 驗證邏輯
+                if not final_donor:
+                    st.error("❌ 請填寫捐贈者！")
+                elif not final_item_name:
+                    st.error("❌ 請填寫物資名稱！")
+                else:
+                    # 成功寫入
+                    # 注意：這裡的 sel_type 是來自表單外的變數，可以直接讀取
+                    new = {
+                        "捐贈者": final_donor, 
+                        "物資類型": sel_type, 
+                        "物資內容": final_item_name, 
+                        "總數量": qt, 
+                        "捐贈日期": str(date.today())
+                    }
                     if save_data(pd.concat([inv, pd.DataFrame([new])], ignore_index=True), "care_inventory"): 
-                        st.success("已錄入！"); st.rerun()
+                        st.success(f"已成功錄入：{final_donor} 捐贈 {final_item_name} x {qt}")
+                        time.sleep(1)
+                        st.rerun()
 
     if not inv.empty:
         st.markdown("### 📊 庫存概況 (智慧卡片)")
