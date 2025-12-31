@@ -591,23 +591,113 @@ elif st.session_state.page == 'inventory':
             ed_i = st.data_editor(inv, use_container_width=True, num_rows="dynamic", key="inv_ed")
             if st.button("💾 儲存修改內容"): save_data(ed_i, "care_inventory")
 
-# --- [分頁 4：訪視] ---
+# --- [插入位置：分頁 4：訪視] ---
 elif st.session_state.page == 'visit':
     render_nav()
     st.markdown("## 🤝 訪視與物資發放紀錄")
+    
+    # 載入資料
     mems = load_data("care_members", COLS_MEM)
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
     
+    # --- 計算庫存邏輯 (保留原程式碼) ---
     stock_map = {}
     if not inv.empty:
         for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
             total_in = group['總數量'].replace("","0").astype(float).sum()
             composite_name = f"{item_name} ({donor_name})"
+            # ... (這裡保留原本計算 total_out 的邏輯)
             total_out = logs[logs['物資內容'] == composite_name]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
             remain = int(total_in - total_out)
             if remain > 0: stock_map[composite_name] = remain
+
+    # =========================================================
+    # ✨ 新增功能：智慧發放建議 (Smart Suggestion)
+    # =========================================================
+    with st.expander("🤖 智慧發放建議 (點擊展開)", expanded=False):
+        st.caption("💡 系統將根據「弱勢身分多寡」以及「是否領取過」來推薦優先名單。")
+        
+        if not stock_map:
+            st.warning("目前無庫存物資可供分析。")
+        else:
+            # 1. 選擇要分析的物資
+            suggest_item = st.selectbox("選擇要評估發放的物資：", list(stock_map.keys()))
+            
+            # 2. 建立推薦名單
+            suggestion_list = []
+            
+            for index, row in mems.iterrows():
+                p_name = row['姓名']
+                p_tags = row['身分別']
+                
+                # A. 計算弱勢積分 (權重可自行調整)
+                score = 0
+                if "獨居" in p_tags: score += 3
+                if "低收" in p_tags: score += 3
+                if "中低收" in p_tags: score += 2
+                if "身障" in p_tags: score += 2
+                if "老人" in p_tags or "65歲以上" in str(row): score += 1
+                # 依據家庭結構加分
+                try:
+                    if int(row['18歲以下子女']) > 2: score += 2 # 多子女家庭加分
+                except: pass
+
+                # B. 檢查是否領取過
+                has_received = False
+                if not logs.empty:
+                    # 檢查該人是否領過該物品 (完全比對物資名稱包含捐贈者)
+                    check_log = logs[
+                        (logs['關懷戶姓名'] == p_name) & 
+                        (logs['物資內容'] == suggest_item)
+                    ]
+                    # 只要發放數量大於 0 就算領過
+                    if not check_log.empty:
+                        total_received = pd.to_numeric(check_log['發放數量'], errors='coerce').sum()
+                        if total_received > 0:
+                            has_received = True
+                
+                # C. 加入清單 (僅加入尚未領取者，或可選擇標記)
+                if not has_received: 
+                    suggestion_list.append({
+                        "姓名": p_name,
+                        "身分別": p_tags,
+                        "弱勢積分": score,
+                        "狀態": "尚未領取 ✅"
+                    })
+            
+            # 3. 排序並顯示結果
+            if suggestion_list:
+                df_suggest = pd.DataFrame(suggestion_list)
+                # 依照積分由高到低排序
+                df_suggest = df_suggest.sort_values("弱勢積分", ascending=False).reset_index(drop=True)
+                
+                st.markdown(f"**📊 針對「{suggest_item}」的建議優先發放名單 (前 5 名)：**")
+                
+                # 顯示前 5 名，使用自訂樣式讓積分高的特別明顯
+                top_5 = df_suggest.head(5)
+                for i, row in top_5.iterrows():
+                    st.markdown(f"""
+                    <div style="background:white; padding:10px; border-radius:10px; border-left:5px solid #FF7043; margin-bottom:5px; box-shadow:0 2px 5px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span style="font-weight:900; font-size:1.1rem;">{row['姓名']}</span> 
+                            <span style="color:#666; font-size:0.9rem;">({row['身分別']})</span>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="color:#D84315; font-weight:bold;">優先度積分：{row['弱勢積分']}</div>
+                            <div style="color:#2E7D32; font-size:0.85rem;">{row['狀態']}</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # 讓使用者可以查看完整清單
+                with st.popover("查看完整候選名單"):
+                    st.dataframe(df_suggest, use_container_width=True)
+            else:
+                st.success(f"太棒了！所有關懷戶都已領取過「{suggest_item}」。")
     
+    st.markdown("---")
+    # =========================================================
     st.markdown("#### 1. 選擇訪視對象")
     all_tags = set()
     if not mems.empty:
