@@ -786,15 +786,6 @@ elif st.session_state.page == 'visit':
                             f'</div>'
                         )
                         st.markdown(card_html, unsafe_allow_html=True)
-
-                        card_html = f"""
-                        <div style="background-color: {bg}; border: 2px solid {border}; border-radius: 10px; padding: 15px; height: 100%;">
-                            {warn_txt}
-                            <div style="font-weight:900; font-size:1.1rem; margin-bottom:5px; color:#333;">{c_name}</div>
-                            <div style="color:#666; font-size:0.9rem; margin-bottom:10px;">庫存: {c_stock}</div>
-                        </div>
-                        """
-                        st.markdown(card_html, unsafe_allow_html=True)
                         
                         # 輸入框
                         qty = st.number_input(f"數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
