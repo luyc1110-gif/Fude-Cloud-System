@@ -777,6 +777,16 @@ elif st.session_state.page == 'visit':
                             warn_txt = ""
 
                         # --- 🔥 修正重點：使用變數來構建 HTML，解決縮排顯示錯誤的問題 ---
+                        warn_txt = warn_txt or ""
+card_html = (
+    f'<div style="background-color:{bg}; border:2px solid {border}; border-radius:10px; padding:15px;">'
+    f'{warn_txt}'
+    f'<div style="font-weight:900; font-size:1.1rem; margin-bottom:5px; color:#333;">{c_name}</div>'
+    f'<div style="color:#666; font-size:0.9rem; margin-bottom:10px;">庫存: {c_stock}</div>'
+    f'</div>'
+)
+st.markdown(card_html, unsafe_allow_html=True)
+
                         card_html = f"""
                         <div style="background-color: {bg}; border: 2px solid {border}; border-radius: 10px; padding: 15px; height: 100%;">
                             {warn_txt}
