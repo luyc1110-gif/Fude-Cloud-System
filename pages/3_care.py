@@ -188,6 +188,42 @@ COLS_HEALTH = [
 
 COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期"]
 COLS_LOG = ["志工", "發放日期", "關懷戶姓名", "物資內容", "發放數量", "訪視紀錄"]
+# ==========================================
+# 🧠 智慧判讀字典：定義「類別」包含哪些「關鍵字」
+# ==========================================
+SMART_RULES = {
+    "海鮮": ["魚", "蝦", "蟹", "貝", "蛤", "魷", "透抽", "鯖", "鮪", "海苔", "XO醬"],
+    "甲殼": ["蝦", "蟹", "龍蝦"],
+    "牛肉": ["牛"],
+    "豬肉": ["豬", "培根", "火腿", "香腸"],
+    "堅果": ["花生", "杏仁", "核桃", "腰果", "芝麻"],
+}
+
+def check_conflict(refuse_str, item_name):
+    """
+    智慧比對函數：
+    1. refuse_str: 關懷戶拒絕的項目 (如 "海鮮, 辣")
+    2. item_name: 物資名稱 (如 "紅燒鯖魚罐頭")
+    回傳: (是否衝突, 衝突的原因關鍵字)
+    """
+    if not refuse_str: return False, None
+    
+    # 1. 整理拒絕清單
+    refuse_list = [k.strip() for k in refuse_str.split(',') if k.strip()]
+    
+    for r_key in refuse_list:
+        # A. 直接比對 (例如拒絕 "鯖魚"，物資是 "鯖魚罐頭" -> 中)
+        if r_key in item_name:
+            return True, r_key
+            
+        # B. 查字典比對 (例如拒絕 "海鮮"，系統去查海鮮包含什麼)
+        if r_key in SMART_RULES:
+            related_words = SMART_RULES[r_key]
+            for word in related_words:
+                if word in item_name:
+                    return True, f"{r_key}(含{word})"
+    
+    return False, None
 
 @st.cache_resource
 def get_client(): return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
@@ -595,113 +631,24 @@ elif st.session_state.page == 'inventory':
 elif st.session_state.page == 'visit':
     render_nav()
     st.markdown("## 🤝 訪視與物資發放紀錄")
-    
-    # 載入資料
     mems = load_data("care_members", COLS_MEM)
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
     
-    # --- 計算庫存邏輯 (保留原程式碼) ---
+    # 庫存計算邏輯
     stock_map = {}
     if not inv.empty:
         for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
             total_in = group['總數量'].replace("","0").astype(float).sum()
             composite_name = f"{item_name} ({donor_name})"
-            # ... (這裡保留原本計算 total_out 的邏輯)
             total_out = logs[logs['物資內容'] == composite_name]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
             remain = int(total_in - total_out)
             if remain > 0: stock_map[composite_name] = remain
 
-    # =========================================================
-    # ✨ 新增功能：智慧發放建議 (Smart Suggestion)
-    # =========================================================
-    with st.expander("🤖 智慧發放建議 (點擊展開)", expanded=False):
-        st.caption("💡 系統將根據「弱勢身分多寡」以及「是否領取過」來推薦優先名單。")
-        
-        if not stock_map:
-            st.warning("目前無庫存物資可供分析。")
-        else:
-            # 1. 選擇要分析的物資
-            suggest_item = st.selectbox("選擇要評估發放的物資：", list(stock_map.keys()))
-            
-            # 2. 建立推薦名單
-            suggestion_list = []
-            
-            for index, row in mems.iterrows():
-                p_name = row['姓名']
-                p_tags = row['身分別']
-                
-                # A. 計算弱勢積分 (權重可自行調整)
-                score = 0
-                if "獨居" in p_tags: score += 2
-                if "低收" in p_tags: score += 3
-                if "中低收" in p_tags: score += 2
-                if "身障" in p_tags: score += 2
-                if "老人" in p_tags or "65歲以上" in str(row): score += 1
-                # 依據家庭結構加分
-                try:
-                    if int(row['18歲以下子女']) > 2: score += 2 # 多子女家庭加分
-                except: pass
-
-                # B. 檢查是否領取過
-                has_received = False
-                if not logs.empty:
-                    # 檢查該人是否領過該物品 (完全比對物資名稱包含捐贈者)
-                    check_log = logs[
-                        (logs['關懷戶姓名'] == p_name) & 
-                        (logs['物資內容'] == suggest_item)
-                    ]
-                    # 只要發放數量大於 0 就算領過
-                    if not check_log.empty:
-                        total_received = pd.to_numeric(check_log['發放數量'], errors='coerce').sum()
-                        if total_received > 0:
-                            has_received = True
-                
-                # C. 加入清單 (僅加入尚未領取者，或可選擇標記)
-                if not has_received: 
-                    suggestion_list.append({
-                        "姓名": p_name,
-                        "身分別": p_tags,
-                        "弱勢積分": score,
-                        "狀態": "尚未領取 ✅"
-                    })
-            
-            # 3. 排序並顯示結果
-            if suggestion_list:
-                df_suggest = pd.DataFrame(suggestion_list)
-                # 依照積分由高到低排序
-                df_suggest = df_suggest.sort_values("弱勢積分", ascending=False).reset_index(drop=True)
-                
-                st.markdown(f"**📊 針對「{suggest_item}」的建議優先發放名單 (前 5 名)：**")
-                
-                # 顯示前 5 名，使用自訂樣式讓積分高的特別明顯
-                top_5 = df_suggest.head(5)
-                for i, row in top_5.iterrows():
-                    st.markdown(f"""
-                    <div style="background:white; padding:10px; border-radius:10px; border-left:5px solid #FF7043; margin-bottom:5px; box-shadow:0 2px 5px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <span style="font-weight:900; font-size:1.1rem;">{row['姓名']}</span> 
-                            <span style="color:#666; font-size:0.9rem;">({row['身分別']})</span>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="color:#D84315; font-weight:bold;">優先度積分：{row['弱勢積分']}</div>
-                            <div style="color:#2E7D32; font-size:0.85rem;">{row['狀態']}</div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # 讓使用者可以查看完整清單
-                with st.popover("查看完整候選名單"):
-                    st.dataframe(df_suggest, use_container_width=True)
-            else:
-                st.success(f"太棒了！所有關懷戶都已領取過「{suggest_item}」。")
-    
-    st.markdown("---")
-    # =========================================================
-    # ... (前段載入資料與庫存邏輯保持不變) ...
-
-    st.markdown("#### 1. 選擇訪視對象與更新備註")
-    # 篩選邏輯保持不變
+    # ---------------------------------------------------------
+    # 1. 選擇訪視對象與更新備註
+    # ---------------------------------------------------------
+    st.markdown("#### 1. 選擇訪視對象")
     all_tags = set()
     if not mems.empty:
         for s in mems['身分別'].astype(str):
@@ -715,101 +662,126 @@ elif st.session_state.page == 'visit':
         filtered_mems = mems if sel_tag == "(全部顯示)" else mems[mems['身分別'].str.contains(sel_tag, na=False)]
         target_p = st.selectbox("👤 選擇關懷戶", filtered_mems['姓名'].tolist() if not filtered_mems.empty else [])
 
-    # =========================================================
-    # ✨ 新功能：顯示並允許「當下」修改拒絕物資
-    # =========================================================
+    # === ✨ 即時編輯拒絕清單 (無須表單) ===
     current_refuse = ""
     if target_p and not mems.empty:
-        # 抓取這個人的資料
         p_row_idx = mems[mems['姓名'] == target_p].index[0]
-        p_data = mems.loc[p_row_idx]
-        current_refuse = str(p_data.get('拒絕物資', ''))
+        current_refuse = str(mems.loc[p_row_idx].get('拒絕物資', ''))
 
-        with st.expander(f"🚫 編輯「{target_p}」的拒絕/排斥物資清單", expanded=False):
+        # 這裡直接顯示目前的拒絕狀態
+        if current_refuse:
+            st.write("📦 **庫存物資清單 (紅色代表個案不宜)**")
+
+        with st.expander(f"📝 編輯「{target_p}」的拒絕清單", expanded=False):
             c_edit, c_btn = st.columns([3, 1])
             new_refuse_input = c_edit.text_input("拒絕項目 (用逗號隔開)", value=current_refuse, placeholder="例如：牛肉, 奶粉, 寬麵")
             if c_btn.button("💾 更新備註"):
                 mems.at[p_row_idx, '拒絕物資'] = new_refuse_input
                 save_data(mems, "care_members")
-                st.success("已更新備註！")
-                time.sleep(0.5)
+                st.toast("✅ 備註已更新！")
+                time.sleep(1)
                 st.rerun()
-            st.caption("💡 若訪視時發現個案不吃某樣東西，請直接在此更新，下次系統會自動提醒。")
-    # =========================================================
 
+    # ---------------------------------------------------------
+    # 2. 填寫訪視內容與物資 (移除 st.form 以實現即時互動)
+    # ---------------------------------------------------------
     st.markdown("#### 2. 填寫訪視內容與物資")
-    with st.form("visit_multi_form"):
-        c1, c2 = st.columns(2)
-        # 志工選單邏輯
-        try:
-            v_df = load_data("members", ["姓名"]) # 假設你有一個志工名冊，沒有的話會跳到 except
-            v_list = v_df['姓名'].tolist() if not v_df.empty else ["預設志工"]
-        except: v_list = ["預設志工"]
-        
-        visit_who = c1.selectbox("執行志工", v_list)
-        visit_date = c2.date_input("日期", value=date.today())
-        
-        st.write("📦 **點擊下方卡片輸入數量 (0 代表不發)**")
-        quantities = {}
-        
-        # 為了即時警示，我們需要收集被選中的「地雷物資」
-        warning_msgs = []
+    st.info("💡 只要輸入數量，系統會即時檢查是否包含拒絕物資。")
+    
+    c1, c2 = st.columns(2)
+    try:
+        v_df = load_data("members", ["姓名"]) 
+        v_list = v_df['姓名'].tolist() if not v_df.empty else ["預設志工"]
+    except: v_list = ["預設志工"]
+    
+    visit_who = c1.selectbox("執行志工", v_list)
+    visit_date = c2.date_input("日期", value=date.today())
+    
+    st.write("📦 **輸入發放數量：**")
+    quantities = {}
+    warning_msgs = []
 
-        if not stock_map:
-            st.info("💡 目前無任何庫存物資，僅能進行純訪視記錄。")
+    if not stock_map:
+        st.info("💡 目前無任何庫存物資。")
+    else:
+        valid_items = sorted(stock_map.items())
+        
+        for i in range(0, len(valid_items), 3):
+            cols = st.columns(3)
+            for j in range(3):
+                if i + j < len(valid_items):
+                    c_name, c_stock = valid_items[i+j]
+                    
+                    # 🤖 在顯示卡片前，先跑一次智慧判讀
+                    is_bad, bad_reason = check_conflict(current_refuse, c_name)
+                    
+                    with cols[j]:
+                        # 依據判讀結果改變卡片樣式
+                        card_style = ""
+                        warn_html = ""
+                        
+                        if is_bad:
+                            # 🔴 如果衝突：卡片變紅，顯示警告
+                            card_style = "border: 2px solid #D32F2F; background-color: #FFEBEE;"
+                            warn_html = f"<div style='color:#D32F2F; font-weight:bold; font-size:0.85rem; margin-bottom:5px;'>🚫 不宜：{bad_reason}</div>"
+                        else:
+                            # 🟢 如果正常：維持原樣
+                            card_style = "border: 1px solid #ddd;"
+
+                        # 使用 HTML 自訂卡片外觀
+                        with st.container():
+                            st.markdown(f"""
+                            <div style="{card_style} padding:15px; border-radius:10px; height:100%;">
+                                {warn_html}
+                                <div style="font-weight:900; font-size:1.1rem; margin-bottom:5px;">{c_name}</div>
+                                <div style="color:#666; font-size:0.9rem; margin-bottom:10px;">庫存: {c_stock}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # 輸入框 (如果衝突，可以預設停用，或是給予提示)
+                            qty = st.number_input(f"數量 ({c_name})", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
+                            quantities[c_name] = qty
+                            
+                            # 再次防呆：如果使用者還是硬要選數量
+                            if qty > 0 and is_bad:
+                                st.error(f"⚠️ 已選取不宜物資")
+
+    # 訪視紀錄輸入
+    note = st.text_area("訪視紀錄 / 備註", height=100)
+
+    # 顯示總結警告區塊
+    if warning_msgs:
+        st.error("🚨 偵測到潛在衝突：")
+        for msg in warning_msgs:
+            st.write(msg)
+        st.markdown("**👉 若確認無誤，仍可點擊下方按鈕提交。**")
+
+    st.markdown("---")
+    # 使用普通的 button 取代 form_submit_button
+    if st.button("✅ 確認提交紀錄", type="primary", use_container_width=True):
+        if not target_p: 
+            st.error("❌ 請先選擇關懷戶！")
         else:
-            valid_items = sorted(stock_map.items())
-            for i in range(0, len(valid_items), 3):
-                cols = st.columns(3)
-                for j in range(3):
-                    if i + j < len(valid_items):
-                        c_name, c_stock = valid_items[i+j]
-                        with cols[j]:
-                            with st.container(border=True):
-                                st.markdown(f'<div class="inv-card-header">{c_name}</div>', unsafe_allow_html=True)
-                                stock_class = "low" if c_stock < 5 else "normal"
-                                stock_label = f"⚠️ 庫存告急: {c_stock}" if c_stock < 5 else f"庫存: {c_stock}"
-                                st.markdown(f'<div class="inv-card-stock {stock_class}">{stock_label}</div>', unsafe_allow_html=True)
-                                
-                                qty = st.number_input("數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
-                                quantities[c_name] = qty
-
-                                # === ✨ 即時檢測邏輯 ===
-                                if qty > 0 and current_refuse:
-                                    # 將拒絕清單切開比對
-                                    refuse_keywords = [k.strip() for k in current_refuse.split(',') if k.strip()]
-                                    for kw in refuse_keywords:
-                                        if kw in c_name: # 如果物資名稱包含拒絕關鍵字
-                                            warning_msgs.append(f"⚠️ 警告：{target_p} 曾表示不需要「{kw}」，但您選擇了「{c_name}」")
-                                # ====================
-
-        # 顯示警示訊息 (在送出按鈕上方)
-        if warning_msgs:
-            for msg in warning_msgs:
-                st.error(msg)
-            st.markdown("**👉 系統僅提示，您仍可決定是否發放。**")
-
-        note = st.text_area("訪視紀錄 / 備註")
-        submitted = st.form_submit_button("✅ 確認提交紀錄")
-        
-        if submitted:
-            if not target_p: st.error("❌ 請先選擇關懷戶！")
-            else:
-                items_to_give = [(k, v) for k, v in quantities.items() if v > 0]
-                new_logs = []
-                if items_to_give:
-                    for item_name, amount in items_to_give:
-                        new_logs.append({
-                            "志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p,
-                            "物資內容": item_name, "發放數量": amount, "訪視紀錄": note
-                        })
-                else:
+            items_to_give = [(k, v) for k, v in quantities.items() if v > 0]
+            new_logs = []
+            
+            # 準備寫入資料
+            if items_to_give:
+                for item_name, amount in items_to_give:
                     new_logs.append({
                         "志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p,
-                        "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note
+                        "物資內容": item_name, "發放數量": amount, "訪視紀錄": note
                     })
-                if save_data(pd.concat([logs, pd.DataFrame(new_logs)], ignore_index=True), "care_logs"):
-                    st.success(f"✅ 已成功紀錄！"); time.sleep(1); st.rerun()
+            else:
+                new_logs.append({
+                    "志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p,
+                    "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note
+                })
+            
+            if save_data(pd.concat([logs, pd.DataFrame(new_logs)], ignore_index=True), "care_logs"):
+                st.success(f"✅ 已成功紀錄！")
+                time.sleep(1)
+                st.rerun()
 
     if not logs.empty:
         st.markdown("#### 📝 最近 20 筆訪視紀錄")
