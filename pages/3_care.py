@@ -176,7 +176,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 # 2) 資料邏輯
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
-COLS_MEM = ["姓名", "身分證字號", "性別", "生日", "地址", "電話", "緊急聯絡人", "緊急聯絡人電話", "身分別", "18歲以下子女", "成人數量", "65歲以上長者"]
+COLS_MEM = ["姓名", "身分證字號", "性別", "生日", "地址", "電話", "緊急聯絡人", "緊急聯絡人電話", "身分別", "18歲以下子女", "成人數量", "65歲以上長者", "拒絕物資"] 
 
 # 更新健康欄位以包含新評估項目
 COLS_HEALTH = [
@@ -698,12 +698,16 @@ elif st.session_state.page == 'visit':
     
     st.markdown("---")
     # =========================================================
-    st.markdown("#### 1. 選擇訪視對象")
+    # ... (前段載入資料與庫存邏輯保持不變) ...
+
+    st.markdown("#### 1. 選擇訪視對象與更新備註")
+    # 篩選邏輯保持不變
     all_tags = set()
     if not mems.empty:
         for s in mems['身分別'].astype(str):
             for t in s.split(','):
                 if t.strip(): all_tags.add(t.strip())
+    
     c_filter, c_person = st.columns([1, 2])
     with c_filter:
         sel_tag = st.selectbox("🌪️ 依身分別篩選", ["(全部顯示)"] + sorted(list(all_tags)))
@@ -711,18 +715,46 @@ elif st.session_state.page == 'visit':
         filtered_mems = mems if sel_tag == "(全部顯示)" else mems[mems['身分別'].str.contains(sel_tag, na=False)]
         target_p = st.selectbox("👤 選擇關懷戶", filtered_mems['姓名'].tolist() if not filtered_mems.empty else [])
 
+    # =========================================================
+    # ✨ 新功能：顯示並允許「當下」修改拒絕物資
+    # =========================================================
+    current_refuse = ""
+    if target_p and not mems.empty:
+        # 抓取這個人的資料
+        p_row_idx = mems[mems['姓名'] == target_p].index[0]
+        p_data = mems.loc[p_row_idx]
+        current_refuse = str(p_data.get('拒絕物資', ''))
+
+        with st.expander(f"🚫 編輯「{target_p}」的拒絕/排斥物資清單", expanded=False):
+            c_edit, c_btn = st.columns([3, 1])
+            new_refuse_input = c_edit.text_input("拒絕項目 (用逗號隔開)", value=current_refuse, placeholder="例如：牛肉, 奶粉, 寬麵")
+            if c_btn.button("💾 更新備註"):
+                mems.at[p_row_idx, '拒絕物資'] = new_refuse_input
+                save_data(mems, "care_members")
+                st.success("已更新備註！")
+                time.sleep(0.5)
+                st.rerun()
+            st.caption("💡 若訪視時發現個案不吃某樣東西，請直接在此更新，下次系統會自動提醒。")
+    # =========================================================
+
     st.markdown("#### 2. 填寫訪視內容與物資")
     with st.form("visit_multi_form"):
         c1, c2 = st.columns(2)
+        # 志工選單邏輯
         try:
-            v_df = load_data("members", ["姓名"]) 
+            v_df = load_data("members", ["姓名"]) # 假設你有一個志工名冊，沒有的話會跳到 except
             v_list = v_df['姓名'].tolist() if not v_df.empty else ["預設志工"]
         except: v_list = ["預設志工"]
+        
         visit_who = c1.selectbox("執行志工", v_list)
         visit_date = c2.date_input("日期", value=date.today())
         
         st.write("📦 **點擊下方卡片輸入數量 (0 代表不發)**")
         quantities = {}
+        
+        # 為了即時警示，我們需要收集被選中的「地雷物資」
+        warning_msgs = []
+
         if not stock_map:
             st.info("💡 目前無任何庫存物資，僅能進行純訪視記錄。")
         else:
@@ -738,8 +770,24 @@ elif st.session_state.page == 'visit':
                                 stock_class = "low" if c_stock < 5 else "normal"
                                 stock_label = f"⚠️ 庫存告急: {c_stock}" if c_stock < 5 else f"庫存: {c_stock}"
                                 st.markdown(f'<div class="inv-card-stock {stock_class}">{stock_label}</div>', unsafe_allow_html=True)
-                                qty = st.number_input("發放數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
+                                
+                                qty = st.number_input("數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
                                 quantities[c_name] = qty
+
+                                # === ✨ 即時檢測邏輯 ===
+                                if qty > 0 and current_refuse:
+                                    # 將拒絕清單切開比對
+                                    refuse_keywords = [k.strip() for k in current_refuse.split(',') if k.strip()]
+                                    for kw in refuse_keywords:
+                                        if kw in c_name: # 如果物資名稱包含拒絕關鍵字
+                                            warning_msgs.append(f"⚠️ 警告：{target_p} 曾表示不需要「{kw}」，但您選擇了「{c_name}」")
+                                # ====================
+
+        # 顯示警示訊息 (在送出按鈕上方)
+        if warning_msgs:
+            for msg in warning_msgs:
+                st.error(msg)
+            st.markdown("**👉 系統僅提示，您仍可決定是否發放。**")
 
         note = st.text_area("訪視紀錄 / 備註")
         submitted = st.form_submit_button("✅ 確認提交紀錄")
