@@ -169,6 +169,42 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 .alert-orange {{ background-color: #FFF3E0; color: #EF6C00 !important; border: 1px solid #EF6C00; }}
 .alert-green {{ background-color: #E8F5E9; color: #2E7D32 !important; border: 1px solid #2E7D32; }}
 
+/* --- 新增：健康儀表板卡片樣式 --- */
+.health-dashboard-card {
+    padding: 15px;
+    border-radius: 15px;
+    color: white !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: transform 0.2s;
+}
+.health-dashboard-card:hover { transform: translateY(-3px); }
+
+/* 危險 (紅) */
+.h-card-danger {
+    background: linear-gradient(135deg, #FF5252 0%, #C62828 100%);
+    border: 1px solid #B71C1C;
+}
+/* 警告 (橘) */
+.h-card-warning {
+    background: linear-gradient(135deg, #FFB74D 0%, #EF6C00 100%);
+    border: 1px solid #E65100;
+}
+/* 安全 (綠) */
+.h-card-safe {
+    background: linear-gradient(135deg, #81C784 0%, #2E7D32 100%);
+    border: 1px solid #1B5E20;
+}
+
+.h-card-icon { font-size: 2.5rem; margin-right: 15px; opacity: 0.9; }
+.h-card-content { flex-grow: 1; }
+.h-card-title { font-size: 0.9rem; opacity: 0.9; font-weight: bold; }
+.h-card-value { font-size: 1.4rem; font-weight: 900; }
+.h-card-score { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
+
 </style>
 """, unsafe_allow_html=True)
 
