@@ -903,7 +903,7 @@ elif st.session_state.page == 'stats':
 </div>
 """, unsafe_allow_html=True)
                 
-                # --- 新增：健康狀態與風險警示 ---
+                # --- 新增：健康狀態與風險警示 (美化版) ---
                 if not h_df.empty:
                     # 抓取該個案最近的一筆評估
                     p_health = h_df[h_df['姓名'] == target_name]
@@ -913,31 +913,74 @@ elif st.session_state.page == 'stats':
                         st.markdown("### 🩺 健康與風險評估摘要")
                         st.caption(f"最近評估日期：{last_h['評估日期']}")
                         
-                        warn_html = ""
-                        
-                        # 檢查營養
-                        ns = last_h['營養狀態']
-                        if "營養不良" in ns: # 包含 '有營養不良風險' 或 '營養不良'
-                            color = "alert-orange" if "風險" in ns else "alert-red"
-                            warn_html += f"<div class='health-alert {color}'>🍱 營養狀態：{ns} (分數: {last_h['營養篩檢分數']})</div>"
-                        else:
-                            warn_html += f"<div class='health-alert alert-green'>🍱 營養狀態：{ns}</div>"
-                        
-                        # 檢查情緒與自殺意念
-                        ms = last_h['情緒狀態']
+                        # 1. 自殺意念檢測 (最優先顯示)
                         sr = last_h['有自殺意念']
-                        
                         if sr == "是":
-                            warn_html += f"<div class='health-alert alert-red'>🚨 嚴重警示：檢測到自殺意念！</div>"
+                            st.markdown(f"""
+                            <div class="health-dashboard-card h-card-danger" style="margin-bottom: 15px;">
+                                <div class="h-card-icon">🚨</div>
+                                <div class="h-card-content">
+                                    <div class="h-card-title">嚴重警示</div>
+                                    <div class="h-card-value">檢測到自殺意念</div>
+                                </div>
+                                <div style="font-size:3rem; opacity:0.3;">🆘</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                        # 2. 營養與情緒 (並排顯示)
+                        hc1, hc2 = st.columns(2)
                         
-                        if "中度" in ms or "重度" in ms:
-                             warn_html += f"<div class='health-alert alert-red'>🌡️ 情緒狀態：{ms} (分數: {last_h['心情溫度計分數']})</div>"
-                        elif "輕度" in ms:
-                             warn_html += f"<div class='health-alert alert-orange'>🌡️ 情緒狀態：{ms} (分數: {last_h['心情溫度計分數']})</div>"
-                        else:
-                             warn_html += f"<div class='health-alert alert-green'>🌡️ 情緒狀態：{ms}</div>"
-                             
-                        st.markdown(warn_html, unsafe_allow_html=True)
+                        # --- 營養卡片 ---
+                        with hc1:
+                            ns = last_h['營養狀態']
+                            n_score = last_h['營養篩檢分數']
+                            
+                            # 判斷顏色與圖示
+                            if "營養不良" in ns: # 包含 '有營養不良風險' 或 '營養不良'
+                                n_class = "h-card-warning" if "風險" in ns else "h-card-danger"
+                                n_icon = "⚠️" if "風險" in ns else "📉"
+                            else:
+                                n_class = "h-card-safe"
+                                n_icon = "🍱"
+                            
+                            st.markdown(f"""
+                            <div class="health-dashboard-card {n_class}">
+                                <div class="h-card-icon">{n_icon}</div>
+                                <div class="h-card-content">
+                                    <div class="h-card-title">營養狀態</div>
+                                    <div class="h-card-value">{ns}</div>
+                                </div>
+                                <div class="h-card-score">分數: {n_score}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                        # --- 情緒卡片 ---
+                        with hc2:
+                            ms = last_h['情緒狀態']
+                            m_score = last_h['心情溫度計分數']
+                            
+                            # 判斷顏色與圖示
+                            if "中度" in ms or "重度" in ms:
+                                m_class = "h-card-danger"
+                                m_icon = "⛈️"
+                            elif "輕度" in ms:
+                                m_class = "h-card-warning"
+                                m_icon = "☁️"
+                            else:
+                                m_class = "h-card-safe"
+                                m_icon = "☀️"
+
+                            st.markdown(f"""
+                            <div class="health-dashboard-card {m_class}">
+                                <div class="h-card-icon">{m_icon}</div>
+                                <div class="h-card-content">
+                                    <div class="h-card-title">情緒狀態</div>
+                                    <div class="h-card-value">{ms}</div>
+                                </div>
+                                <div class="h-card-score">分數: {m_score}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
                     else:
                         st.info("尚無健康評估資料")
 
