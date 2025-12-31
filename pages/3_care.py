@@ -16,22 +16,15 @@ st.set_page_config(
     initial_sidebar_state="expanded" 
 )
 
-# 1. 初始化登入狀態
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-
-# 2. 頁面狀態初始化
-if 'page' not in st.session_state:
-    st.session_state.page = 'home'
-
-# 3. 初始化局部解鎖狀態
+if 'authenticated' not in st.session_state: st.session_state.authenticated = False
+if 'page' not in st.session_state: st.session_state.page = 'home'
 if 'unlock_members' not in st.session_state: st.session_state.unlock_members = False
 if 'unlock_details' not in st.session_state: st.session_state.unlock_details = False
 
 TW_TZ = timezone(timedelta(hours=8))
-PRIMARY = "#4A4E69"   # 深藍灰
-GREEN   = "#8E9775"   # 苔蘚綠
-BG_MAIN = "#F8F9FA"   # 淺灰底
+PRIMARY = "#4A4E69"
+GREEN   = "#8E9775"
+BG_MAIN = "#F8F9FA"
 TEXT    = "#333333"
 
 # =========================================================
@@ -40,105 +33,32 @@ TEXT    = "#333333"
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
-
-html, body, [class*="css"], div, p, span, li, ul {{
-    font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-    color: {TEXT} !important;
-}}
-
+html, body, [class*="css"], div, p, span, li, ul {{ font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; color: {TEXT} !important; }}
 .stApp {{ background-color: {BG_MAIN} !important; }}
 section[data-testid="stSidebar"] {{ background-color: {BG_MAIN}; border-right: none; }}
-
-/* 懸浮大卡片 */
-.block-container {{
-    background-color: #FFFFFF; border-radius: 25px;
-    padding: 3rem 3rem !important; box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-top: 2rem; margin-bottom: 2rem; max-width: 95% !important;
-}}
-
+.block-container {{ background-color: #FFFFFF; border-radius: 25px; padding: 3rem 3rem !important; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-top: 2rem; margin-bottom: 2rem; max-width: 95% !important; }}
 header[data-testid="stHeader"] {{ display: block !important; background-color: transparent !important; }}
 header[data-testid="stHeader"] .decoration {{ display: none; }}
-
-/* 側邊欄按鈕 */
-section[data-testid="stSidebar"] button {{
-    background-color: #FFFFFF !important; color: #666 !important;
-    border: 1px solid transparent !important; box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important; padding: 10px 0 !important;
-    font-weight: 700 !important; width: 100%; margin-bottom: 8px !important;
-    transition: all 0.2s;
-}}
-section[data-testid="stSidebar"] button:hover {{
-    transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
-    color: {GREEN} !important;
-}}
-.nav-active {{
-    background: linear-gradient(135deg, {GREEN}, #6D6875);
-    color: white !important; padding: 12px 0; text-align: center; border-radius: 25px;
-    font-weight: 900; box-shadow: 0 4px 10px rgba(142, 151, 117, 0.4);
-    margin-bottom: 12px; cursor: default;
-}}
-
-/* 輸入框優化 */
-div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
-    background-color: #FFFFFF !important; border-radius: 10px; padding: 5px;
-}}
-div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
-    background-color: #F8F9FA !important; color: #000000 !important;
-    border: 2px solid #E0E0E0 !important; border-radius: 12px !important; font-weight: 700 !important;
-}}
-div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{
-    background-color: #FFFFFF !important; color: #000000 !important;
-}}
-li[role="option"]:hover {{
-    background-color: #E8F5E9 !important; color: {GREEN} !important;
-}}
-
-/* 按鈕樣式 */
-div[data-testid="stFormSubmitButton"] > button,
-div[data-testid="stDownloadButton"] > button {{
-    background-color: {PRIMARY} !important; color: #FFFFFF !important;
-    border: none !important; border-radius: 12px !important; font-weight: 900 !important;
-    padding: 10px 25px !important;
-}}
-div[data-testid="stFormSubmitButton"] > button:hover,
-div[data-testid="stDownloadButton"] > button:hover {{
-    background-color: {GREEN} !important;
-    transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-}}
-
-/* 看板卡片 */
-.care-metric-box {{
-    padding: 20px; border-radius: 20px; color: #FFFFFF !important; text-align: center; margin-bottom: 15px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1); min-height: 140px;
-    display: flex; flex-direction: column; justify-content: center;
-}}
+section[data-testid="stSidebar"] button {{ background-color: #FFFFFF !important; color: #666 !important; border: 1px solid transparent !important; box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important; border-radius: 25px !important; padding: 10px 0 !important; font-weight: 700 !important; width: 100%; margin-bottom: 8px !important; transition: all 0.2s; }}
+section[data-testid="stSidebar"] button:hover {{ transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important; color: {GREEN} !important; }}
+.nav-active {{ background: linear-gradient(135deg, {GREEN}, #6D6875); color: white !important; padding: 12px 0; text-align: center; border-radius: 25px; font-weight: 900; box-shadow: 0 4px 10px rgba(142, 151, 117, 0.4); margin-bottom: 12px; cursor: default; }}
+div[data-testid="stDataFrame"], div[data-testid="stTable"] {{ background-color: #FFFFFF !important; border-radius: 10px; padding: 5px; }}
+div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{ background-color: #F8F9FA !important; color: #000000 !important; border: 2px solid #E0E0E0 !important; border-radius: 12px !important; font-weight: 700 !important; }}
+div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{ background-color: #FFFFFF !important; color: #000000 !important; }}
+li[role="option"]:hover {{ background-color: #E8F5E9 !important; color: {GREEN} !important; }}
+div[data-testid="stFormSubmitButton"] > button, div[data-testid="stDownloadButton"] > button {{ background-color: {PRIMARY} !important; color: #FFFFFF !important; border: none !important; border-radius: 12px !important; font-weight: 900 !important; padding: 10px 25px !important; }}
+div[data-testid="stFormSubmitButton"] > button:hover, div[data-testid="stDownloadButton"] > button:hover {{ background-color: {GREEN} !important; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }}
+.care-metric-box {{ padding: 20px; border-radius: 20px; color: #FFFFFF !important; text-align: center; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); min-height: 140px; display: flex; flex-direction: column; justify-content: center; }}
 .care-metric-box div, .care-metric-box span {{ color: #FFFFFF !important; font-weight: 900 !important; }}
-
-/* 訪視卡片 */
-.visit-card {{
-    background-color: #FFFFFF; border-left: 5px solid {GREEN};
-    border-radius: 10px; padding: 15px 20px; margin-bottom: 15px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;
-}}
+.visit-card {{ background-color: #FFFFFF; border-left: 5px solid {GREEN}; border-radius: 10px; padding: 15px 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }}
 .visit-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }}
 .visit-date {{ font-weight: 900; font-size: 1.1rem; color: #333; }}
 .visit-volunteer {{ font-size: 0.9rem; color: #666; background: #f0f0f0; padding: 4px 12px; border-radius: 15px; }}
-.visit-tag {{
-    display: inline-block; background-color: {GREEN}; color: white !important;
-    padding: 4px 10px; border-radius: 5px; font-size: 0.9rem; font-weight: bold; margin-bottom: 8px;
-}}
+.visit-tag {{ display: inline-block; background-color: {GREEN}; color: white !important; padding: 4px 10px; border-radius: 5px; font-size: 0.9rem; font-weight: bold; margin-bottom: 8px; }}
 .visit-tag.only {{ background-color: #9E9E9E; }} 
 .visit-note {{ font-size: 1rem; color: #444; line-height: 1.5; background: #FAFAFA; padding: 10px; border-radius: 8px; }}
-
-/* 庫存與警示標籤 */
-.stock-card {{
-    background-color: white; border: 1px solid #eee; border-radius: 15px;
-    padding: 20px; margin-bottom: 20px; position: relative;
-    transition: all 0.3s ease; height: 100%;
-}}
-.stock-card:hover {{
-    transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); border-color: {GREEN};
-}}
+.stock-card {{ background-color: white; border: 1px solid #eee; border-radius: 15px; padding: 20px; margin-bottom: 20px; position: relative; transition: all 0.3s ease; height: 100%; }}
+.stock-card:hover {{ transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); border-color: {GREEN}; }}
 .stock-top {{ display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }}
 .stock-icon {{ font-size: 2.5rem; background: #F5F5F5; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }}
 .stock-info {{ text-align: right; width: 100%; padding-left: 10px; }}
@@ -149,25 +69,22 @@ div[data-testid="stDownloadButton"] > button:hover {{
 .stock-bar-fill {{ height: 100%; border-radius: 5px; transition: width 0.5s ease; }}
 .stock-stats {{ display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.9rem; color: #666; font-weight: bold; }}
 .stock-warning {{ color: #D32F2F; font-weight: bold; display: flex; align-items: center; gap: 5px; margin-top: 10px; font-size: 0.9rem; }}
-
-/* 評估結果標籤 */
-.alert-box {{ padding: 10px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; }}
-.alert-normal {{ background-color: #E8F5E9; color: #2E7D32; border: 1px solid #A5D6A7; }}
-.alert-risk {{ background-color: #FFF3E0; color: #EF6C00; border: 1px solid #FFCC80; }}
-.alert-danger {{ background-color: #FFEBEE; color: #C62828; border: 1px solid #EF9A9A; }}
-
-/* 卡片上浮效果 */
-div[data-testid="stVerticalBlockBorderWrapper"] {{
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    border: 2px solid #E0E0E0 !important; background-color: #FFFFFF;
-}}
-div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
-    transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15);
-    border-color: {GREEN} !important; z-index: 10;
-}}
+div[data-testid="stVerticalBlockBorderWrapper"] {{ transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); border: 2px solid #E0E0E0 !important; background-color: #FFFFFF; }}
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {{ transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); border-color: {GREEN} !important; z-index: 10; }}
 .inv-card-header {{ font-weight: 900; font-size: 1.1rem; color: #333; margin-bottom: 5px; }}
 .inv-card-stock {{ font-size: 0.9rem; color: #666; background-color: #eee; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 10px; }}
 .inv-card-stock.low {{ color: #D32F2F !important; background-color: #FFEBEE !important; border: 1px solid #D32F2F; }}
+
+/* 🔥 健康儀表板樣式 🔥 */
+.health-dashboard {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }}
+.health-card {{ padding: 20px; border-radius: 15px; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }}
+.health-title {{ font-size: 1.1rem; font-weight: bold; opacity: 0.9; margin-bottom: 5px; }}
+.health-score {{ font-size: 3rem; font-weight: 900; margin: 0; line-height: 1.2; }}
+.health-status {{ font-size: 1.2rem; font-weight: bold; background: rgba(255,255,255,0.25); padding: 5px 15px; border-radius: 20px; margin-top: 10px; }}
+/* 狀態顏色 */
+.status-green {{ background: linear-gradient(135deg, #43A047, #66BB6A); }}
+.status-orange {{ background: linear-gradient(135deg, #FB8C00, #FFA726); }}
+.status-red {{ background: linear-gradient(135deg, #E53935, #EF5350); }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -176,7 +93,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 COLS_MEM = ["姓名", "身分證字號", "性別", "生日", "地址", "電話", "緊急聯絡人", "緊急聯絡人電話", "身分別", "18歲以下子女", "成人數量", "65歲以上長者"]
-COLS_HEALTH = ["姓名", "身分證字號", "是否有假牙", "今年洗牙", "握力", "身高", "體重", "聽力測試", "營養評估總分", "心情溫度計總分", "自殺意念註記"]
+COLS_HEALTH = ["姓名", "身分證字號", "評估日期", "是否有假牙", "今年洗牙", "握力", "身高", "體重", "聽力測試", "營養評估總分", "心情溫度計總分", "自殺意念註記"]
 COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期"]
 COLS_LOG = ["志工", "發放日期", "關懷戶姓名", "物資內容", "發放數量", "訪視紀錄"]
 
@@ -215,34 +132,26 @@ def render_nav():
     with st.sidebar:
         st.markdown(f"<h2 style='color:{GREEN}; margin-bottom:5px; padding-left:10px;'>🏠 關懷戶中心</h2>", unsafe_allow_html=True)
         st.write("") 
-        if st.session_state.page == 'home':
-            st.markdown('<div class="nav-active">📊 關懷概況看板</div>', unsafe_allow_html=True)
+        if st.session_state.page == 'home': st.markdown('<div class="nav-active">📊 關懷概況看板</div>', unsafe_allow_html=True)
         else:
             if st.button("📊 關懷概況看板", key="nav_home", use_container_width=True): st.session_state.page = 'home'; st.rerun()
-        if st.session_state.page == 'members':
-            st.markdown('<div class="nav-active">📋 名冊管理</div>', unsafe_allow_html=True)
+        if st.session_state.page == 'members': st.markdown('<div class="nav-active">📋 名冊管理</div>', unsafe_allow_html=True)
         else:
             if st.button("📋 名冊管理", key="nav_members", use_container_width=True): st.session_state.page = 'members'; st.rerun()
-        if st.session_state.page == 'health':
-            st.markdown('<div class="nav-active">🏥 健康追蹤</div>', unsafe_allow_html=True)
+        if st.session_state.page == 'health': st.markdown('<div class="nav-active">🏥 健康追蹤</div>', unsafe_allow_html=True)
         else:
             if st.button("🏥 健康追蹤", key="nav_health", use_container_width=True): st.session_state.page = 'health'; st.rerun()
-        if st.session_state.page == 'inventory':
-            st.markdown('<div class="nav-active">📦 物資庫存</div>', unsafe_allow_html=True)
+        if st.session_state.page == 'inventory': st.markdown('<div class="nav-active">📦 物資庫存</div>', unsafe_allow_html=True)
         else:
             if st.button("📦 物資庫存", key="nav_inv", use_container_width=True): st.session_state.page = 'inventory'; st.rerun()
-        if st.session_state.page == 'visit':
-            st.markdown('<div class="nav-active">🤝 訪視發放</div>', unsafe_allow_html=True)
+        if st.session_state.page == 'visit': st.markdown('<div class="nav-active">🤝 訪視發放</div>', unsafe_allow_html=True)
         else:
             if st.button("🤝 訪視發放", key="nav_visit", use_container_width=True): st.session_state.page = 'visit'; st.rerun()
-        if st.session_state.page == 'stats':
-            st.markdown('<div class="nav-active">📈 數據統計</div>', unsafe_allow_html=True)
+        if st.session_state.page == 'stats': st.markdown('<div class="nav-active">📈 數據統計</div>', unsafe_allow_html=True)
         else:
             if st.button("📈 數據統計", key="nav_stats", use_container_width=True): st.session_state.page = 'stats'; st.rerun()
         st.markdown("---")
         if st.button("🚪 回系統大廳", key="nav_back", use_container_width=True): st.switch_page("Home.py")
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align:center; color:#999; font-size:0.8rem;'>Designed for Fude Community</div>", unsafe_allow_html=True)
 
 # =========================================================
 # 4) Pages
@@ -334,15 +243,16 @@ elif st.session_state.page == 'members':
                 if pwd_m == st.secrets["admin_password"]: st.session_state.unlock_members = True; st.rerun()
                 else: st.error("❌ 密碼錯誤")
 
-# --- [分頁 2：健康 (含 MNA 與 BSRS-5)] ---
+# --- [分頁 2：健康 (獨立 Sheet, 紀錄歷史)] ---
 elif st.session_state.page == 'health':
     render_nav()
     st.markdown("## 🏥 關懷戶健康指標管理")
     h_df, m_df = load_data("care_health", COLS_HEALTH), load_data("care_members", COLS_MEM)
     
-    with st.expander("➕ 登記健康 / 營養 / 心情評估 (展開)", expanded=True):
+    with st.expander("➕ 登記健康 / 營養 / 心情評估 (新增一筆紀錄)", expanded=True):
         with st.form("h_form"):
             st.markdown("#### 1. 選擇對象與基礎測量")
+            eval_date = st.date_input("評估日期", value=date.today())
             sel_n = st.selectbox("選擇關懷戶", m_df['姓名'].tolist() if not m_df.empty else ["無名冊"])
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             dent = c1.selectbox("假牙",["無","有"])
@@ -354,95 +264,66 @@ elif st.session_state.page == 'health':
 
             st.markdown("---")
             st.markdown("#### 2. 營養評估 (MNA簡易版)")
-            
-            # MNA 題目邏輯
             score_n = 0
-            
-            # Q1
             st.markdown("**1. 過去三個月食量是否減少？**")
             q1 = st.radio("食量變化", ["食量嚴重減少 (0分)", "食量中度減少 (1分)", "食量沒有改變 (2分)"], horizontal=True, key="mna_1")
             score_n += int(q1.split("(")[1][0])
-
-            # Q2
             st.markdown("**2. 過去三個月體重下降情況？**")
             q2 = st.radio("體重變化", ["下降 > 3kg (0分)", "不知道 (1分)", "下降 1-3kg (2分)", "沒有下降 (3分)"], horizontal=True, key="mna_2")
             score_n += int(q2.split("(")[1][0])
-            
-            # Q3
             st.markdown("**3. 活動能力？**")
             q3 = st.radio("活動能力", ["臥床/輪椅 (0分)", "可下床但不能外出 (1分)", "可以外出 (2分)"], horizontal=True, key="mna_3")
             score_n += int(q3.split("(")[1][0])
-            
-            # Q4
             st.markdown("**4. 過去三個月有無心理創傷或急性疾病？**")
             q4 = st.radio("創傷疾病", ["有 (0分)", "沒有 (2分)"], horizontal=True, key="mna_4")
             score_n += int(q4.split("(")[1][0])
-            
-            # Q5
             st.markdown("**5. 精神心理問題？**")
             q5 = st.radio("精神狀況", ["嚴重失智或憂鬱 (0分)", "輕度失智 (1分)", "沒有問題 (2分)"], horizontal=True, key="mna_5")
             score_n += int(q5.split("(")[1][0])
-
-            # Q6 (自動判定 BMI)
             st.markdown("**6. BMI 判定 (系統自動計算)**")
             st.caption("依據上方填寫之身高體重自動換算得分：BMI<19 (0分), 19-21 (1分), 21-23 (2分), >23 (3分)")
 
             st.markdown("---")
             st.markdown("#### 3. 心情溫度計 (BSRS-5)")
-            st.caption("分數說明：0=完全沒有，1=輕微，2=中等，3=厲害，4=非常厲害，5=非常嚴重")
-            
             score_m = 0
-            # 題目清單
             bsrs_q = ["1. 睡眠困難（難以入睡、易醒早醒）", "2. 感覺緊張不安", "3. 覺得容易動怒", "4. 感覺憂鬱、心情低落", "5. 覺得比不上別人"]
-            
             cols_m = st.columns(5)
             for idx, q_text in enumerate(bsrs_q):
                 with cols_m[idx]:
                     val = st.selectbox(q_text.split(" ")[1], [0,1,2,3,4,5], key=f"bsrs_{idx}")
                     score_m += val
             
-            # 第六題自殺意念 (獨立判斷)
             st.markdown("**6. 有自殺想法**")
             suicide_score = st.slider("自殺想法強度 (0-5)", 0, 5, 0, key="bsrs_suicide")
             score_m += suicide_score
             has_suicide_idea = "是" if suicide_score > 0 else "否"
 
             if st.form_submit_button("儲存健康與評估紀錄"):
-                # --- 自動計算 BMI 分數 ---
                 bmi_score = 0
                 try:
-                    # 確保轉為 float 並檢查是否 > 0
-                    h_val = float(h)
-                    w_val = float(w)
+                    h_val = float(h); w_val = float(w)
                     if h_val > 0 and w_val > 0:
                         bmi = w_val / ((h_val / 100.0) ** 2)
-                        
                         if bmi < 19: bmi_score = 0
                         elif bmi < 21: bmi_score = 1
                         elif bmi < 23: bmi_score = 2
                         else: bmi_score = 3
-                    else:
-                        bmi_score = 0 # 數值異常則 0 分
-                except:
-                    bmi_score = 0 # 轉換錯誤則 0 分
+                    else: bmi_score = 0
+                except: bmi_score = 0
                 
-                # 加總 MNA 分數
                 final_mna_score = score_n + bmi_score
-
                 pid = m_df[m_df['姓名']==sel_n]['身分證字號'].iloc[0]
                 new = {
-                    "姓名": sel_n, "身分證字號": pid, 
+                    "姓名": sel_n, "身分證字號": pid, "評估日期": str(eval_date),
                     "是否有假牙": dent, "今年洗牙": wash, "握力": grip, "身高": h, "體重": w, "聽力測試": hear,
-                    "營養評估總分": str(final_mna_score), 
-                    "心情溫度計總分": str(score_m), 
-                    "自殺意念註記": has_suicide_idea
+                    "營養評估總分": str(final_mna_score), "心情溫度計總分": str(score_m), "自殺意念註記": has_suicide_idea
                 }
                 if save_data(pd.concat([h_df, pd.DataFrame([new])], ignore_index=True), "care_health"): 
-                    st.success(f"✅ 已存檔！營養評估得分：{final_mna_score} (含BMI {bmi_score}分)"); time.sleep(1); st.rerun()
+                    st.success(f"✅ 已存檔！營養得分：{final_mna_score} (含BMI {bmi_score}分)"); time.sleep(1); st.rerun()
 
     if not h_df.empty:
         st.markdown("### 📋 歷史健康紀錄")
-        ed_h = st.data_editor(h_df, use_container_width=True, num_rows="dynamic", key="h_ed")
+        ed_h = st.data_editor(h_df.sort_values("評估日期", ascending=False), use_container_width=True, num_rows="dynamic", key="h_ed")
         if st.button("💾 儲存修改內容"): save_data(ed_h, "care_health")
 
 # --- [分頁 3：物資庫存] ---
@@ -453,37 +334,19 @@ elif st.session_state.page == 'inventory':
     
     with st.expander("➕ 新增捐贈物資 / 款項", expanded=False):
         existing_donors = sorted(list(set(inv['捐贈者'].dropna().unique()))) if not inv.empty else []
-        
-        st.markdown(f"<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>⚙️ 步驟 1：設定來源與類型</b></div>", unsafe_allow_html=True)
         c_mode1, c_mode2 = st.columns(2)
-        with c_mode1:
-            donor_mode = st.radio("👤 捐贈者來源", ["從歷史名單選擇", "輸入新單位"], horizontal=True)
+        with c_mode1: donor_mode = st.radio("👤 捐贈者來源", ["從歷史名單選擇", "輸入新單位"], horizontal=True)
         with c_mode2:
             sel_type = st.selectbox("📦 物資類型", ["食物","日用品","輔具","現金","服務"])
             type_history = []
-            if not inv.empty:
-                type_history = sorted(inv[inv['物資類型'] == sel_type]['物資內容'].unique().tolist())
-            if type_history:
-                item_mode = st.radio(f"📝 {sel_type}名稱來源", ["從歷史紀錄選擇", "輸入新名稱"], horizontal=True)
-            else:
-                st.caption(f"💡 目前「{sel_type}」類尚無紀錄，請直接輸入新名稱。")
-                item_mode = "輸入新名稱"
+            if not inv.empty: type_history = sorted(inv[inv['物資類型'] == sel_type]['物資內容'].unique().tolist())
+            item_mode = st.radio(f"📝 {sel_type}名稱來源", ["從歷史紀錄選擇", "輸入新名稱"], horizontal=True) if type_history else "輸入新名稱"
 
         with st.form("add_inv_form"):
-            st.markdown(f"<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>✍️ 步驟 2：填寫細節</b></div>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns([1.5, 1.5, 1])
-            with c1:
-                if donor_mode == "從歷史名單選擇":
-                    final_donor = st.selectbox("捐贈單位/人", existing_donors) if existing_donors else ""
-                else:
-                    final_donor = st.text_input("輸入新單位/人", placeholder="例如：善心人士張先生")
-            with c2:
-                if item_mode == "從歷史紀錄選擇" and type_history:
-                    final_item_name = st.selectbox(f"選擇{sel_type}品項", type_history)
-                else:
-                    final_item_name = st.text_input(f"輸入{sel_type}名稱", placeholder="例如：白米")
-            with c3:
-                qt = st.number_input("數量/金額", min_value=1)
+            with c1: final_donor = st.selectbox("捐贈單位/人", existing_donors) if (donor_mode == "從歷史名單選擇" and existing_donors) else st.text_input("輸入新單位/人")
+            with c2: final_item_name = st.selectbox(f"選擇{sel_type}品項", type_history) if (item_mode == "從歷史紀錄選擇" and type_history) else st.text_input(f"輸入{sel_type}名稱")
+            with c3: qt = st.number_input("數量/金額", min_value=1)
             
             if st.form_submit_button("✅ 錄入庫存"):
                 if not final_donor or not final_item_name: st.error("❌ 欄位未填寫完整")
@@ -523,15 +386,7 @@ elif st.session_state.page == 'inventory':
                         item = inv_summary[i + j]
                         with cols[j]:
                             warning_html = f'<div class="stock-warning">⚠️ 庫存告急！僅剩 {item["remain"]}</div>' if item["remain"] <= 5 else ""
-                            st.markdown(f"""
-<div class="stock-card">
-<div class="stock-top"><div class="stock-icon">{item['icon']}</div><div class="stock-info"><div class="stock-name">{item['name']}</div><div class="stock-donor">{item['donor']}</div></div></div>
-<div class="stock-stats"><span>總入庫: {item['in']}</span><span>已發放: {item['out']}</span></div>
-<div class="stock-bar-bg"><div class="stock-bar-fill" style="width: {item['pct']}%; background-color: {item['bar_color']};"></div></div>
-<div style="text-align:right; margin-top:5px; font-size:0.85rem; color:#888;">剩餘: <span style="font-size:1.2rem; color:{item['bar_color']}; font-weight:900;">{item['remain']}</span></div>
-{warning_html}
-</div>
-""", unsafe_allow_html=True)
+                            st.markdown(f"""<div class="stock-card"><div class="stock-top"><div class="stock-icon">{item['icon']}</div><div class="stock-info"><div class="stock-name">{item['name']}</div><div class="stock-donor">{item['donor']}</div></div></div><div class="stock-stats"><span>總入庫: {item['in']}</span><span>已發放: {item['out']}</span></div><div class="stock-bar-bg"><div class="stock-bar-fill" style="width: {item['pct']}%; background-color: {item['bar_color']};"></div></div><div style="text-align:right; margin-top:5px; font-size:0.85rem; color:#888;">剩餘: <span style="font-size:1.2rem; color:{item['bar_color']}; font-weight:900;">{item['remain']}</span></div>{warning_html}</div>""", unsafe_allow_html=True)
 
         with st.expander("🛠️ 進階管理：編輯原始庫存資料"):
             ed_i = st.data_editor(inv, use_container_width=True, num_rows="dynamic", key="inv_ed")
@@ -603,7 +458,7 @@ elif st.session_state.page == 'visit':
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
         if st.button("💾 儲存紀錄修改"): save_data(ed_l, "care_logs")
 
-# --- [分頁 5：統計與個案卡片 (新增評估判讀)] ---
+# --- [分頁 5：統計與個案卡片 (修復版：含家庭結構與儀表板)] ---
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
@@ -620,13 +475,14 @@ elif st.session_state.page == 'stats':
             if target_name:
                 p_data = mems[mems['姓名'] == target_name].iloc[0]
                 
-                # 撈取最新的健康資料
+                # 撈取健康資料
                 p_health = pd.DataFrame()
+                latest_h = pd.Series()
                 if not h_df.empty:
-                    p_health_recs = h_df[h_df['姓名'] == target_name]
-                    if not p_health_recs.empty:
-                        # 取最後一筆
-                        p_health = p_health_recs.iloc[-1]
+                    p_health = h_df[h_df['姓名'] == target_name]
+                    if not p_health.empty:
+                        p_health = p_health.sort_values("評估日期")
+                        latest_h = p_health.iloc[-1]
                 
                 age = calculate_age(p_data['生日'])
                 
@@ -644,52 +500,95 @@ elif st.session_state.page == 'stats':
 </div>
 """, unsafe_allow_html=True)
 
-                # 2. 顯示健康與評估警示 (如果有資料)
-                if not p_health.empty:
-                    # 判讀 MNA
-                    try:
-                        n_score = int(float(p_health.get('營養評估總分', 0)))
+                # 2. 顯示健康與評估警示 (使用新版儀表板卡片)
+                if not latest_h.empty:
+                    # MNA 邏輯
+                    try: n_score = int(float(latest_h.get('營養評估總分', 0)))
                     except: n_score = 0
                     
-                    n_html = ""
-                    if n_score >= 12: n_html = f"<div class='alert-box alert-normal'>🥗 營養狀況正常 ({n_score}分)</div>"
-                    elif n_score >= 8: n_html = f"<div class='alert-box alert-risk'>⚠️ 有營養不良風險 ({n_score}分)</div>"
-                    else: n_html = f"<div class='alert-box alert-danger'>🚨 營養不良 ({n_score}分)</div>"
+                    n_text = "營養正常"
+                    n_class = "status-green"
+                    if n_score < 8: 
+                        n_text = "營養不良"; n_class = "status-red"
+                    elif n_score < 12: 
+                        n_text = "有風險"; n_class = "status-orange"
 
-                    # 判讀 Mood
-                    try:
-                        m_score = int(float(p_health.get('心情溫度計總分', 0)))
+                    # Mood 邏輯
+                    try: m_score = int(float(latest_h.get('心情溫度計總分', 0)))
                     except: m_score = 0
-                    suicide = p_health.get('自殺意念註記', '否')
+                    suicide = latest_h.get('自殺意念註記', '否')
 
-                    m_html = ""
+                    m_text = "情緒穩定"
+                    m_class = "status-green"
                     if suicide == '是':
-                        m_html = f"<div class='alert-box alert-danger'>🚨 高自殺風險：個案有自殺意念！ (總分 {m_score})</div>"
+                        m_text = "高自殺風險"; m_class = "status-red"
                     elif m_score >= 15:
-                        m_html = f"<div class='alert-box alert-danger'>🛑 重度情緒困擾 ({m_score}分)</div>"
+                        m_text = "重度困擾"; m_class = "status-red"
                     elif m_score >= 10:
-                        m_html = f"<div class='alert-box alert-risk'>⚠️ 中度情緒困擾 ({m_score}分)</div>"
+                        m_text = "中度困擾"; m_class = "status-orange"
                     elif m_score >= 6:
-                        m_html = f"<div class='alert-box alert-risk'>⚠️ 輕度情緒困擾 ({m_score}分)</div>"
-                    else:
-                        m_html = f"<div class='alert-box alert-normal'>😊 情緒狀況正常 ({m_score}分)</div>"
+                        m_text = "輕度困擾"; m_class = "status-orange"
 
-                    st.markdown("### 🩺 最新評估結果")
-                    c_h1, c_h2 = st.columns(2)
-                    with c_h1: st.markdown(n_html, unsafe_allow_html=True)
-                    with c_h2: st.markdown(m_html, unsafe_allow_html=True)
+                    # 渲染儀表板
+                    st.markdown(f"""
+<div class="health-dashboard">
+    <div class="health-card {n_class}">
+        <div class="health-title">🥗 營養評估 (MNA)</div>
+        <div class="health-score">{n_score}</div>
+        <div class="health-status">{n_text}</div>
+    </div>
+    <div class="health-card {m_class}">
+        <div class="health-title">🌡️ 心情溫度計 (BSRS-5)</div>
+        <div class="health-score">{m_score}</div>
+        <div class="health-status">{m_text}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+                    
+                    if len(p_health) > 1:
+                        st.markdown("#### 📈 健康變化趨勢")
+                        chart_data = p_health[['評估日期', '營養評估總分', '心情溫度計總分', '體重']].copy()
+                        for c in ['營養評估總分', '心情溫度計總分', '體重']:
+                            chart_data[c] = pd.to_numeric(chart_data[c], errors='coerce')
+                        st.line_chart(chart_data.set_index('評估日期'))
                 
-                # 3. 隱私資料
+                # 3. 隱私資料 (修復：加入密碼驗證與家庭欄位)
+                st.markdown("### 🔒 機敏個資與家庭結構")
                 if not st.session_state.unlock_details:
-                    st.info("🔒 詳細個資(身分證、緊急聯絡) 已隱藏。")
-                    if st.button("🔓 解鎖查看"): 
-                        # 這裡簡化流程，實際可用密碼框
-                        st.session_state.unlock_details = True; st.rerun()
+                    st.info("🔒 詳細個資(身分證、緊急聯絡、家庭結構) 已隱藏。")
+                    c_pwd, c_btn = st.columns([2, 1])
+                    with c_pwd: pwd_stat = st.text_input("請輸入密碼解鎖個資", type="password", key="unlock_stat_pwd")
+                    with c_btn:
+                        if st.button("🔓 解鎖查看"):
+                            if pwd_stat == st.secrets["admin_password"]:
+                                st.session_state.unlock_details = True; st.rerun()
+                            else: st.error("❌ 密碼錯誤")
                 else:
+                    # 撈取家庭數據
+                    try:
+                        c_num = int(float(p_data.get('18歲以下子女', 0)))
+                        a_num = int(float(p_data.get('成人數量', 0)))
+                        s_num = int(float(p_data.get('65歲以上長者', 0)))
+                        total_fam = c_num + a_num + s_num
+                    except: c_num=a_num=s_num=total_fam=0
+                    
                     st.markdown(f"""
 <div style="background-color: #FFF8E1; padding: 20px; border-radius: 15px; border: 1px dashed #FFB74D; margin-bottom: 20px;">
-    <div><b>🆔 身分證：</b> {p_data['身分證字號']}</div>
-    <div><b>🚨 緊急聯絡：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})</div>
+    <div style="font-weight:bold; color:#F57C00; margin-bottom:10px;">⚠️ 機敏資料 (已解鎖)</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+        <div><b>🆔 身分證：</b> {p_data['身分證字號']}</div>
+        <div><b>🎂 生日：</b> {p_data['生日']}</div>
+    </div>
+    <hr style="border-top: 1px dashed #ccc;">
+    <div style="margin-top: 10px; color: #555;">
+        <b>🏠 家庭結構 (共 {total_fam} 人)：</b><br>
+        👶 18歲以下：<b>{c_num}</b> 人<br>
+        🧑 成人：<b>{a_num}</b> 人<br>
+        🧓 65歲以上：<b>{s_num}</b> 人
+    </div>
+    <div style="margin-top: 10px; color: #D32F2F;">
+        <b>🚨 緊急聯絡人：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})
+    </div>
 </div>
 """, unsafe_allow_html=True)
                     if st.button("🔒 隱藏"): st.session_state.unlock_details = False; st.rerun()
