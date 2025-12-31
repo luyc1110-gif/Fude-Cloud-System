@@ -277,16 +277,36 @@ if st.session_state.page == 'home':
             prev_val = dist_df[dist_df['dt'].dt.year == prev_y]['發放數量'].replace("","0").astype(float).sum()
         else: cur_val = prev_val = 0
         
+        # ---原本的統計邏輯 (保留並微調)---
         dis_c = len(mems[mems['身分別'].str.contains("身障", na=False)])
         low_c = len(mems[mems['身分別'].str.contains("低收|中低收", na=False)])
         
-        c1, c2, c3 = st.columns(3)
+        # 【新增程式碼】計算獨居老人數據
+        # 邏輯：篩選身分別包含「獨居」的資料
+        sol_df = mems[mems['身分別'].str.contains("獨居", na=False)]
+        sol_c = len(sol_df)
+        # 計算平均年齡 (如果沒有人則為 0)
+        sol_age = round(sol_df['age'].mean(), 1) if not sol_df.empty else 0
+        
+        # 【修改版面】將原本 st.columns(3) 改為 4 欄，以便放入新卡片
+        c1, c2, c3, c4 = st.columns(4)
+        
+        # 卡片1：總人數 (維持原樣)
         with c1: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#8E9775 0%,#6D6875 100%);"><div>🏠 關懷戶總人數</div><div style="font-size:2.8rem;">{len(mems_display)} <span style="font-size:1.2rem;">人</span></div><div>平均 {round(mems_display["age"].mean(),1)} 歲</div></div>', unsafe_allow_html=True)
-        with c2: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#8E9775 100%);"><div>♿ 身障關懷人數</div><div style="font-size:2.8rem;">{dis_c} <span style="font-size:1.2rem;">人</span></div></div>', unsafe_allow_html=True)
-        with c3: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#6D6875 0%,#4A4E69 100%);"><div>📉 低收/中低收</div><div style="font-size:2.8rem;">{low_c} <span style="font-size:1.2rem;">人</span></div></div>', unsafe_allow_html=True)
-        c4, c5 = st.columns(2)
-        with c4: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#BC6C25 0%,#8E9775 100%);"><div>🎁 {cur_y} 當年度發放量</div><div style="font-size:3.5rem;">{int(cur_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
-        with c5: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#6D6875 100%);"><div>⏳ {prev_y} 上年度發放量</div><div style="font-size:3.5rem;">{int(prev_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
+        
+        # 卡片2：【新增】獨居長者 (使用暖色系漸層區隔)
+        with c2: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#CB997E 0%,#6D6875 100%);"><div>👴 獨居長者</div><div style="font-size:2.8rem;">{sol_c} <span style="font-size:1.2rem;">人</span></div><div>平均 {sol_age} 歲</div></div>', unsafe_allow_html=True)
+        
+        # 卡片3：身障 (原本的 c2 移到這裡)
+        with c3: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#8E9775 100%);"><div>♿ 身障關懷人數</div><div style="font-size:2.8rem;">{dis_c} <span style="font-size:1.2rem;">人</span></div></div>', unsafe_allow_html=True)
+        
+        # 卡片4：低收 (原本的 c3 移到這裡)
+        with c4: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#6D6875 0%,#4A4E69 100%);"><div>📉 低收/中低收</div><div style="font-size:2.8rem;">{low_c} <span style="font-size:1.2rem;">人</span></div></div>', unsafe_allow_html=True)
+        
+        # ---第二排維持顯示發放量 (變數名稱順延修改為 c5, c6)---
+        c5, c6 = st.columns(2)
+        with c5: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#BC6C25 0%,#8E9775 100%);"><div>🎁 {cur_y} 當年度發放量</div><div style="font-size:3.5rem;">{int(cur_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
+        with c6: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#6D6875 100%);"><div>⏳ {prev_y} 上年度發放量</div><div style="font-size:3.5rem;">{int(prev_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
 
 # --- [分頁 1：名冊] ---
 elif st.session_state.page == 'members':
