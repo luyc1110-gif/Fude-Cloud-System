@@ -493,7 +493,7 @@ elif st.session_state.page == 'inventory':
         with c_mode1:
             donor_mode = st.radio("👤 捐贈者來源", ["從歷史名單選擇", "輸入新單位"], horizontal=True)
         with c_mode2:
-            sel_type = st.selectbox("📦 物資類型", ["食物","日用品","輔具","現金","服務"])
+            sel_type = st.selectbox("📦 物資類型", ["食物","日用品","輔具","急難救助金","服務"])
             type_history = []
             if not inv.empty:
                 type_history = sorted(inv[inv['物資類型'] == sel_type]['物資內容'].unique().tolist())
@@ -541,7 +541,7 @@ elif st.session_state.page == 'inventory':
             remain = total_in - total_out
             if remain > 0:
                 m_type = group.iloc[0]['物資類型']
-                icon_map = {"食物": "🍱", "日用品": "🧻", "輔具": "🦯", "現金": "💰", "服務": "🧹"}
+                icon_map = {"食物": "🍱", "日用品": "🧻", "輔具": "🦯", "急難救助金": "💰", "服務": "🧹"}
                 icon = icon_map.get(m_type, "📦")
                 pct = int((remain / total_in * 100)) if total_in > 0 else 0
                 if pct < 0: pct = 0
