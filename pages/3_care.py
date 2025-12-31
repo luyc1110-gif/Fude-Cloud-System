@@ -633,7 +633,7 @@ elif st.session_state.page == 'visit':
                 
                 # A. 計算弱勢積分 (權重可自行調整)
                 score = 0
-                if "獨居" in p_tags: score += 3
+                if "獨居" in p_tags: score += 2
                 if "低收" in p_tags: score += 3
                 if "中低收" in p_tags: score += 2
                 if "身障" in p_tags: score += 2
