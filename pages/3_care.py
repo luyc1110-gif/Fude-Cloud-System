@@ -75,16 +75,12 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{ transform: translateY(-
 .inv-card-stock {{ font-size: 0.9rem; color: #666; background-color: #eee; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 10px; }}
 .inv-card-stock.low {{ color: #D32F2F !important; background-color: #FFEBEE !important; border: 1px solid #D32F2F; }}
 
-/* 🔥 健康儀表板樣式 🔥 */
-.health-dashboard {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }}
-.health-card {{ padding: 20px; border-radius: 15px; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }}
-.health-title {{ font-size: 1.1rem; font-weight: bold; opacity: 0.9; margin-bottom: 5px; }}
-.health-score {{ font-size: 3rem; font-weight: 900; margin: 0; line-height: 1.2; }}
-.health-status {{ font-size: 1.2rem; font-weight: bold; background: rgba(255,255,255,0.25); padding: 5px 15px; border-radius: 20px; margin-top: 10px; }}
+/* 🔥 新增：微型健康標籤樣式 🔥 */
+.mini-badge { padding: 5px 12px; border-radius: 15px; font-weight: bold; color: white; font-size: 0.9rem; display: inline-flex; align-items: center; margin-right: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 /* 狀態顏色 */
-.status-green {{ background: linear-gradient(135deg, #43A047, #66BB6A); }}
-.status-orange {{ background: linear-gradient(135deg, #FB8C00, #FFA726); }}
-.status-red {{ background: linear-gradient(135deg, #E53935, #EF5350); }}
+.status-green { background: linear-gradient(135deg, #43A047, #66BB6A); }
+.status-orange { background: linear-gradient(135deg, #FB8C00, #FFA726); }
+.status-red { background: linear-gradient(135deg, #E53935, #EF5350); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -96,6 +92,8 @@ COLS_MEM = ["姓名", "身分證字號", "性別", "生日", "地址", "電話",
 COLS_HEALTH = ["姓名", "身分證字號", "評估日期", "是否有假牙", "今年洗牙", "握力", "身高", "體重", "聽力測試", "營養評估總分", "心情溫度計總分", "自殺意念註記"]
 COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期"]
 COLS_LOG = ["志工", "發放日期", "關懷戶姓名", "物資內容", "發放數量", "訪視紀錄"]
+# 新增志工系統對應欄位 (假設志工Sheet叫做 'volunteers'，欄位有 '姓名')
+COLS_VOL = ["姓名", "狀態"] 
 
 @st.cache_resource
 def get_client(): return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
@@ -400,6 +398,16 @@ elif st.session_state.page == 'visit':
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
     
+    # 🔥 更新：連動志工系統資料庫
+    vol_df = load_data("volunteers", COLS_VOL)
+    if not vol_df.empty:
+        # 如果有志工資料，直接取「姓名」欄位
+        vol_list = vol_df['姓名'].unique().tolist()
+    else:
+        # 若尚未建立資料表，提供預設選項並提示
+        vol_list = ["預設志工", "志工A", "志工B"]
+        st.caption("💡 提示：系統尚未偵測到 'volunteers' 工作表，目前使用預設名單。")
+    
     stock_map = {}
     if not inv.empty:
         for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
@@ -419,7 +427,7 @@ elif st.session_state.page == 'visit':
 
     with st.form("visit_multi_form"):
         c1, c2 = st.columns(2)
-        visit_who = c1.selectbox("執行志工", ["預設志工","志工A","志工B"]) 
+        visit_who = c1.selectbox("執行志工", vol_list) 
         visit_date = c2.date_input("日期", value=date.today())
         
         st.write("📦 **點擊下方卡片輸入數量 (0 代表不發)**")
@@ -458,7 +466,7 @@ elif st.session_state.page == 'visit':
         ed_l = st.data_editor(logs.sort_values('發放日期', ascending=False).head(20), use_container_width=True, num_rows="dynamic", key="v_ed")
         if st.button("💾 儲存紀錄修改"): save_data(ed_l, "care_logs")
 
-# --- [分頁 5：統計與個案卡片 (修復版：含家庭結構與儀表板)] ---
+# --- [分頁 5：統計與個案卡片 (修復版：含家庭結構與微型標籤)] ---
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
@@ -500,48 +508,33 @@ elif st.session_state.page == 'stats':
 </div>
 """, unsafe_allow_html=True)
 
-                # 2. 顯示健康與評估警示 (使用新版儀表板卡片)
+                # 2. 顯示健康與評估警示 (🔥 新版：微型標籤)
                 if not latest_h.empty:
                     # MNA 邏輯
                     try: n_score = int(float(latest_h.get('營養評估總分', 0)))
                     except: n_score = 0
                     
-                    n_text = "營養正常"
-                    n_class = "status-green"
-                    if n_score < 8: 
-                        n_text = "營養不良"; n_class = "status-red"
-                    elif n_score < 12: 
-                        n_text = "有風險"; n_class = "status-orange"
+                    n_text = "正常"; n_class = "status-green"
+                    if n_score < 8: n_text = "不良"; n_class = "status-red"
+                    elif n_score < 12: n_text = "風險"; n_class = "status-orange"
 
                     # Mood 邏輯
                     try: m_score = int(float(latest_h.get('心情溫度計總分', 0)))
                     except: m_score = 0
                     suicide = latest_h.get('自殺意念註記', '否')
 
-                    m_text = "情緒穩定"
-                    m_class = "status-green"
-                    if suicide == '是':
-                        m_text = "高自殺風險"; m_class = "status-red"
-                    elif m_score >= 15:
-                        m_text = "重度困擾"; m_class = "status-red"
-                    elif m_score >= 10:
-                        m_text = "中度困擾"; m_class = "status-orange"
-                    elif m_score >= 6:
-                        m_text = "輕度困擾"; m_class = "status-orange"
+                    m_text = "穩定"; m_class = "status-green"
+                    if suicide == '是': m_text = "高風險"; m_class = "status-red"
+                    elif m_score >= 15: m_text = "重度"; m_class = "status-red"
+                    elif m_score >= 10: m_text = "中度"; m_class = "status-orange"
+                    elif m_score >= 6: m_text = "輕度"; m_class = "status-orange"
 
-                    # 渲染儀表板
+                    # 渲染微型標籤
                     st.markdown(f"""
-<div class="health-dashboard">
-    <div class="health-card {n_class}">
-        <div class="health-title">🥗 營養評估 (MNA)</div>
-        <div class="health-score">{n_score}</div>
-        <div class="health-status">{n_text}</div>
-    </div>
-    <div class="health-card {m_class}">
-        <div class="health-title">🌡️ 心情溫度計 (BSRS-5)</div>
-        <div class="health-score">{m_score}</div>
-        <div class="health-status">{m_text}</div>
-    </div>
+<div style="display:flex; align-items:center; margin-top:5px; margin-bottom:15px;">
+    <div class="mini-badge {n_class}">🥗 MNA: {n_score}分 ({n_text})</div>
+    <div class="mini-badge {m_class}">🌡️ BSRS-5: {m_score}分 ({m_text})</div>
+    <div style="margin-left:auto; color:#999; font-size:0.8rem;">(評估日期: {latest_h.get('評估日期','')})</div>
 </div>
 """, unsafe_allow_html=True)
                     
@@ -552,7 +545,7 @@ elif st.session_state.page == 'stats':
                             chart_data[c] = pd.to_numeric(chart_data[c], errors='coerce')
                         st.line_chart(chart_data.set_index('評估日期'))
                 
-                # 3. 隱私資料 (修復：加入密碼驗證與家庭欄位)
+                # 3. 隱私資料 (含密碼驗證與家庭欄位)
                 st.markdown("### 🔒 機敏個資與家庭結構")
                 if not st.session_state.unlock_details:
                     st.info("🔒 詳細個資(身分證、緊急聯絡、家庭結構) 已隱藏。")
