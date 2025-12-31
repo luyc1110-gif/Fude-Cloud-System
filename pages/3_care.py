@@ -716,35 +716,37 @@ elif st.session_state.page == 'visit':
                     is_bad, bad_reason = check_conflict(current_refuse, c_name)
                     
                     with cols[j]:
-                        # 依據判讀結果改變卡片樣式
-                        card_style = ""
-                        warn_html = ""
-                        
+                        # 🎨 根據判讀結果，決定卡片顏色與警告文字
                         if is_bad:
-                            # 🔴 如果衝突：卡片變紅，顯示警告
-                            card_style = "border: 2px solid #D32F2F; background-color: #FFEBEE;"
-                            warn_html = f"<div style='color:#D32F2F; font-weight:bold; font-size:0.85rem; margin-bottom:5px;'>🚫 不宜：{bad_reason}</div>"
+                            # 🔴 衝突狀態
+                            bg_color = "#FFEBEE"      # 淺紅色背景
+                            border_color = "#D32F2F"  # 深紅色邊框
+                            # 注意：這裡的 HTML 字串也要盡量靠左，避免被當成程式碼顯示
+                            warning_html = f"<div style='color:#D32F2F; font-weight:bold; font-size:0.9rem; margin-bottom:5px;'>🚫 不宜：{bad_reason}</div>"
                         else:
-                            # 🟢 如果正常：維持原樣
-                            card_style = "border: 1px solid #ddd;"
+                            # ⚪ 一般狀態
+                            bg_color = "#FFFFFF"
+                            border_color = "#ddd"
+                            warning_html = "" 
 
-                        # 使用 HTML 自訂卡片外觀
+                        # 📦 渲染卡片
                         with st.container():
+                            # 🔽 修正點：這裡的 HTML 標籤全部靠左，不要有空格
                             st.markdown(f"""
-                            <div style="{card_style} padding:15px; border-radius:10px; height:100%;">
-                                {warn_html}
-                                <div style="font-weight:900; font-size:1.1rem; margin-bottom:5px;">{c_name}</div>
-                                <div style="color:#666; font-size:0.9rem; margin-bottom:10px;">庫存: {c_stock}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
+<div style="background-color: {bg_color}; border: 2px solid {border_color}; border-radius: 10px; padding: 15px; height: 100%;">
+{warning_html}
+<div style="font-weight:900; font-size:1.1rem; margin-bottom:5px; color:#333;">{c_name}</div>
+<div style="color:#666; font-size:0.9rem; margin-bottom:10px;">庫存: {c_stock}</div>
+</div>
+""", unsafe_allow_html=True)
                             
-                            # 輸入框 (如果衝突，可以預設停用，或是給予提示)
-                            qty = st.number_input(f"數量 ({c_name})", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
+                            # 輸入框
+                            qty = st.number_input(f"數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
                             quantities[c_name] = qty
                             
-                            # 再次防呆：如果使用者還是硬要選數量
+                            # 再次防呆提醒
                             if qty > 0 and is_bad:
-                                st.error(f"⚠️ 已選取不宜物資")
+                                st.error("⚠️ 已選取不宜物資")
 
     # 訪視紀錄輸入
     note = st.text_area("訪視紀錄 / 備註", height=100)
