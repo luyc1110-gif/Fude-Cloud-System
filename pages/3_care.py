@@ -772,8 +772,24 @@ elif st.session_state.page == 'visit':
 
     st.markdown("#### 2. 填寫訪視內容與物資")
     
+    # --- [新增程式碼] 鉤稽志工系統名單 ---
+    # 1. 讀取志工名冊 (共用同一個 Spreadsheet，分頁名稱為 'members')
+    vol_df = load_data("members", ["姓名", "志工分類"])
+    
+    # 2. 預設名單
+    vol_list = ["呂宜政", "預設志工"]
+    
+    # 3. 篩選邏輯：志工分類包含 "關懷據點" (涵蓋週二、週三志工)
+    if not vol_df.empty:
+        # 確保志工分類轉為字串並進行篩選
+        mask = vol_df['志工分類'].astype(str).str.contains("關懷據點", na=False)
+        target_vols = vol_df[mask]['姓名'].unique().tolist()
+        if target_vols:
+            vol_list = sorted(target_vols) # 排序方便查找
+    # ------------------------------------
+
     c1, c2 = st.columns(2)
-    visit_who = c1.selectbox("執行志工", ["預設志工", "呂宜政"]) # 這裡可視情況改回讀取名冊
+    visit_who = c1.selectbox("執行志工", vol_list) 
     visit_date = c2.date_input("日期", value=date.today())
     
     st.write("📦 **庫存物資清單 (紅色 = 系統判定不宜)**")
