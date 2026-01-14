@@ -255,27 +255,58 @@ def check_conflict(refuse_str, item_name):
     
     return False, None
 
+# =========================================================
+# 2) 資料邏輯 (優化版)
+# =========================================================
+# ... (保留原本的 SHEET_ID 與 COLS 定義) ...
+
 @st.cache_resource
 def get_client(): return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
 
-@st.cache_data(ttl=10)
+# 優化 A：快取時間延長至 60 秒，減少切換頁面時的卡頓
+@st.cache_data(ttl=60)
 def load_data(sn, target_cols):
     try:
         client = get_client(); sheet = client.open_by_key(SHEET_ID).worksheet(sn)
-        df = pd.DataFrame(sheet.get_all_records()).astype(str)
+        # 這裡建議用 get_all_values 比較快，再轉 DataFrame
+        data = sheet.get_all_values()
+        if not data: return pd.DataFrame(columns=target_cols)
+        headers = data.pop(0)
+        df = pd.DataFrame(data, columns=headers)
+        # 補齊缺少的欄位
         for c in target_cols:
             if c not in df.columns: df[c] = ""
         return df
     except: return pd.DataFrame(columns=target_cols)
 
+# 維持原本的 save_data 用於「修改舊資料/編輯整張表」
 def save_data(df, sn):
     try:
         df_fix = df.fillna("").replace(['nan', 'NaN', 'nan.0', 'None', '<NA>'], "").astype(str)
         client = get_client(); sheet = client.open_by_key(SHEET_ID).worksheet(sn)
         sheet.clear(); sheet.update([df_fix.columns.values.tolist()] + df_fix.values.tolist())
-        st.cache_data.clear(); return True
+        st.cache_data.clear()
+        return True
     except Exception as e:
         st.error(f"寫入失敗：{e}"); return False
+
+# 優化 B：新增「追加模式」函式 (新增資料專用)
+def append_data(sn, row_dict, col_order):
+    """
+    sn: 工作表名稱 (如 'care_logs')
+    row_dict: 要新增的資料字典
+    col_order: 欄位順序列表 (如 COLS_LOG)
+    """
+    try:
+        # 依照固定欄位順序產生 list
+        row_values = [str(row_dict.get(c, "")).strip() for c in col_order]
+        client = get_client()
+        sheet = client.open_by_key(SHEET_ID).worksheet(sn)
+        sheet.append_row(row_values) # 關鍵：只加一行
+        st.cache_data.clear() # 清除快取，讓下次讀取能讀到新的
+        return True
+    except Exception as e:
+        st.error(f"新增失敗：{e}"); return False
 
 def calculate_age(dob_str):
     try:
