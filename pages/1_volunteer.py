@@ -128,6 +128,33 @@ div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px s
 </style>
 """, unsafe_allow_html=True)
 
+/* --- 📅 DatePicker 日期選單配色修正 --- */
+
+/* 強制背景改為白色 */
+div[data-baseweb="calendar"] {
+    background-color: #FFFFFF !important;
+}
+
+/* 強制日期與月份文字為深色 */
+div[data-baseweb="calendar"] div, 
+div[data-baseweb="calendar"] button {
+    color: #333333 !important;
+}
+
+/* 讓「選中的日期」文字維持白色 (不然會變黑字紅底看不清楚) */
+div[data-baseweb="calendar"] button[aria-selected="true"] {
+    color: #FFFFFF !important;
+}
+div[data-baseweb="calendar"] button[aria-selected="true"]:hover {
+    color: #FFFFFF !important;
+}
+
+/* 讓左右切換月份的箭頭變成深色 */
+div[data-baseweb="calendar"] svg {
+    fill: #333333 !important;
+    color: #333333 !important;
+}
+
 # =========================================================
 # 2) Logic & Helpers (高效能優化版)
 # =========================================================
