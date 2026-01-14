@@ -466,13 +466,20 @@ elif st.session_state.page == 'checkin':
                     names = [n]
                 else: names = st.multiselect("選擇多位志工", name_list)
                 if st.form_submit_button("確認補登"):
-                    logs = load_data_from_sheet("logs")
+                    # 準備資料 List
                     new_rows = []
                     for n in names:
                         row = df_m[df_m['姓名'] == n].iloc[0]
-                        new_rows.append({'姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], '志工分類': row['志工分類'], '動作': d_action, '時間': d_time.strftime("%H:%M:%S"), '日期': d_date.strftime("%Y-%m-%d"), '活動內容': d_act})
-                    save_data_to_sheet(pd.concat([logs, pd.DataFrame(new_rows)], ignore_index=True), "logs")
-                    st.success(f"已補登 {len(names)} 筆資料")
+                        new_rows.append({
+                            '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
+                            '志工分類': row['志工分類'], '動作': d_action, 
+                            '時間': d_time.strftime("%H:%M:%S"), '日期': d_date.strftime("%Y-%m-%d"), 
+                            '活動內容': d_act
+                        })
+                    
+                    # --- 🔥 修改重點：一次寫入多筆 ---
+                    if batch_append_data("logs", new_rows, LOG_COLS):
+                        st.success(f"已補登 {len(names)} 筆資料")
     with tab3:
         logs = load_data_from_sheet("logs")
         if not logs.empty:
@@ -517,12 +524,18 @@ elif st.session_state.page == 'members':
                     if is_t: cats.append("關懷據點週二志工")
                     if is_w: cats.append("關懷據點週三志工")
                     if is_e: cats.append("環保志工")
-                    new_data = {'姓名':n, '身分證字號':p, '生日':b, '電話':ph, '地址':addr, '志工分類':",".join(cats), '祥和_加入日期': str(d_x) if is_x else "", '據點週二_加入日期': str(d_t) if is_t else "", '據點週三_加入日期': str(d_w) if is_w else "", '環保_加入日期': str(d_e) if is_e else ""}
-                    new = pd.DataFrame([new_data])
-                    for c in DISPLAY_ORDER: 
-                        if c not in new.columns: new[c] = ""
-                    save_data_to_sheet(pd.concat([df, new], ignore_index=True), "members")
-                    st.success("新增成功"); time.sleep(1); st.rerun()
+                    new_data = {
+                        '姓名':n, '身分證字號':p, '生日':b, '電話':ph, '地址':addr, 
+                        '志工分類':",".join(cats), 
+                        '祥和_加入日期': str(d_x) if is_x else "", 
+                        '據點週二_加入日期': str(d_t) if is_t else "", 
+                        '據點週三_加入日期': str(d_w) if is_w else "", 
+                        '環保_加入日期': str(d_e) if is_e else ""
+                    }
+                    
+                    # --- 🔥 修改重點：改用 append_data ---
+                    if append_data("members", new_data, MEM_COLS):
+                        st.success("新增成功"); time.sleep(1); st.rerun()
     
     # 🔒 密碼保護區域：完整名冊
     st.markdown("### 📝 完整志工名冊 (需密碼)")
