@@ -444,7 +444,7 @@ elif st.session_state.page == 'members':
                         "身分別": ",".join(id_t),
                         "18歲以下子女": str(child), "成人數量": str(adult), "65歲以上長者": str(senior)
                     }
-                    if save_data(pd.concat([df, pd.DataFrame([new])], ignore_index=True), "care_members"):
+                    if append_data("care_members", new, COLS_MEM):
                         st.success("✅ 已新增！"); time.sleep(1); st.rerun()
     
     st.markdown("### 📝 完整名冊 (需權限)")
@@ -624,7 +624,7 @@ elif st.session_state.page == 'inventory':
                         "捐贈者": final_donor, "物資類型": sel_type, 
                         "物資內容": final_item_name, "總數量": qt, "捐贈日期": str(date.today())
                     }
-                    if save_data(pd.concat([inv, pd.DataFrame([new])], ignore_index=True), "care_inventory"): 
+                    if append_data("care_inventory", new, COLS_INV): 
                         st.success(f"已成功錄入：{final_donor} 捐贈 {final_item_name} x {qt}")
                         time.sleep(1); st.rerun()
 
@@ -897,8 +897,21 @@ elif st.session_state.page == 'visit':
                     "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note
                 })
             
-            if save_data(pd.concat([logs, pd.DataFrame(new_logs)], ignore_index=True), "care_logs"):
+            try:
+                client = get_client()
+                sheet = client.open_by_key(SHEET_ID).worksheet("care_logs")
+                
+                rows_values = []
+                for row in logs_to_add:
+                    # 轉成 list
+                    rows_values.append([str(row.get(c, "")).strip() for c in COLS_LOG])
+                
+                # 一次寫入多行 (最快)
+                sheet.append_rows(rows_values)
+                st.cache_data.clear()
                 st.success("✅ 紀錄已儲存！"); time.sleep(1); st.rerun()
+            except Exception as e:
+                st.error(f"儲存失敗: {e}")
 
     # 歷史紀錄顯示 (保留原功能)
     if not logs.empty:
