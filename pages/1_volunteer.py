@@ -129,42 +129,81 @@ div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px s
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic & Helpers
+# 2) Logic & Helpers (高效能優化版)
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 ALL_CATEGORIES = ["祥和志工", "關懷據點週二志工", "關懷據點週三志工", "環保志工", "臨時志工"]
 DEFAULT_ACTIVITIES = ["關懷據點週二活動", "關懷據點週三活動", "環保清潔", "專案活動", "教育訓練"]
-DISPLAY_ORDER = ["姓名", "身分證字號", "性別", "電話", "志工分類", "生日", "地址", "備註", "祥和_加入日期", "祥和_退出日期", "據點週二_加入日期", "據點週二_退出日期", "據點週三_加入日期", "據點週三_退出日期", "環保_加入日期", "環保_退出日期"]
+
+# 🔥 定義固定欄位順序，確保 Append 時不會錯位
+MEM_COLS = ["姓名", "身分證字號", "性別", "電話", "志工分類", "生日", "地址", "備註", 
+            "祥和_加入日期", "祥和_退出日期", "據點週二_加入日期", "據點週二_退出日期", 
+            "據點週三_加入日期", "據點週三_退出日期", "環保_加入日期", "環保_退出日期"]
+
+LOG_COLS = ['姓名', '身分證字號', '電話', '志工分類', '動作', '時間', '日期', '活動內容']
 
 @st.cache_resource
 def get_google_sheet_client():
     return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
 
+# 🔥 優化 A：讀取加速 (get_all_values)
 @st.cache_data(ttl=60)
 def load_data_from_sheet(sheet_name):
     try:
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        data = sheet.get_all_records()
-        df = pd.DataFrame(data).astype(str)
-        if sheet_name == 'members':
-            for c in DISPLAY_ORDER: 
-                if c not in df.columns: df[c] = ""
-        elif sheet_name == 'logs':
-            required = ['姓名', '身分證字號', '電話', '志工分類', '動作', '時間', '日期', '活動內容']
-            for c in required: 
-                if c not in df.columns: df[c] = ""
+        data = sheet.get_all_values()
+        
+        target_cols = MEM_COLS if sheet_name == 'members' else LOG_COLS
+        if not data: return pd.DataFrame(columns=target_cols)
+        
+        headers = data.pop(0)
+        df = pd.DataFrame(data, columns=headers)
+        
+        # 補齊可能缺少的欄位
+        for c in target_cols: 
+            if c not in df.columns: df[c] = ""
         return df
     except: return pd.DataFrame()
 
+# 維持原版 save (僅用於修改資料/DataEditor)
 def save_data_to_sheet(df, sheet_name):
     try:
+        # 轉成字串避免 JSON 錯誤
+        df_fix = df.fillna("").astype(str)
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
-        sheet.update([df.columns.values.tolist()] + df.values.tolist())
+        sheet.update([df_fix.columns.values.tolist()] + df_fix.values.tolist())
         load_data_from_sheet.clear()
     except Exception as e: st.error(f"寫入失敗：{e}")
+
+# 🔥 優化 B：單筆秒速寫入 (用於打卡、新增志工)
+def append_data(sheet_name, row_dict, col_order):
+    try:
+        values = [str(row_dict.get(c, "")).strip() for c in col_order]
+        client = get_google_sheet_client()
+        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
+        sheet.append_row(values)
+        load_data_from_sheet.clear() # 清除快取，讓介面更新
+        return True
+    except Exception as e:
+        st.error(f"新增失敗：{e}"); return False
+
+# 🔥 優化 C：批次極速寫入 (用於補登)
+def batch_append_data(sheet_name, rows_list, col_order):
+    try:
+        values_list = []
+        for r in rows_list:
+            values_list.append([str(r.get(c, "")).strip() for c in col_order])
+        
+        client = get_google_sheet_client()
+        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
+        sheet.append_rows(values_list)
+        load_data_from_sheet.clear()
+        return True
+    except Exception as e:
+        st.error(f"批次失敗：{e}"); return False
 
 def get_tw_time(): return datetime.now(TW_TZ)
 
