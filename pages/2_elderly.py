@@ -403,7 +403,8 @@ elif st.session_state.page == 'members':
                 if not pid or not name: st.error("姓名與身分證字號為必填")
                 else:
                     new_row = {"姓名": name, "身分證字號": pid.upper(), "性別": gender, "出生年月日": str(dob), "電話": phone, "地址": addr, "備註": note, "加入日期": str(date.today())}
-                    if save_data(pd.concat([df, pd.DataFrame([new_row])], ignore_index=True), "elderly_members"):
+                    # --- 修改為 append_data ---
+                    if append_data("elderly_members", new_row, M_COLS):
                         st.success(f"已新增：{name}"); time.sleep(1); st.rerun()
     
     # 🔒 2. 完整名冊 (需密碼才能看)
@@ -466,7 +467,8 @@ elif st.session_state.page == 'checkin':
             "課程分類": final_course_cat, "課程名稱": final_course_name,
             "收縮壓": sbp, "舒張壓": dbp, "脈搏": pulse
         }
-        save_data(pd.concat([df_l, pd.DataFrame([new_log])], ignore_index=True), "elderly_logs")
+        # --- 修改為 append_data (原本是 save_data) ---
+        append_data("elderly_logs", new_log, L_COLS)
         
         if alerts:
             st.warning(f"✅ {name} 報到成功，但數值異常：{' / '.join(alerts)}")
@@ -553,16 +555,25 @@ elif st.session_state.page == 'checkin':
                 if st.form_submit_button("🚀 執行補登"):
                     if not selected_members: st.error("請先選擇長輩！")
                     else:
-                        df_l = load_data("elderly_logs")
+                        # 準備資料 List
                         new_entries = []
                         s_date = back_date.strftime("%Y-%m-%d")
                         s_time = back_time.strftime("%H:%M:%S")
+                        
                         for label in selected_members:
                             target_pid = label.split("(")[-1].replace(")", "")
                             target_name = label.split(". ")[1].split(" (")[0]
-                            new_entries.append({"姓名": target_name, "身分證字號": target_pid, "日期": s_date, "時間": s_time, "課程分類": final_course_cat, "課程名稱": final_course_name, "收縮壓": b_sbp, "舒張壓": b_dbp, "脈搏": b_pulse})
-                        updated_logs = pd.concat([df_l, pd.DataFrame(new_entries)], ignore_index=True)
-                        if save_data(updated_logs, "elderly_logs"):
+                            # 建立字典
+                            new_entries.append({
+                                "姓名": target_name, "身分證字號": target_pid, 
+                                "日期": s_date, "時間": s_time, 
+                                "課程分類": final_course_cat, "課程名稱": final_course_name, 
+                                "收縮壓": b_sbp, "舒張壓": b_dbp, "脈搏": b_pulse
+                            })
+                        
+                        # --- 修改這裡：使用 batch_append_data 一次寫入 ---
+                        # 直接把 list 丟進去，不用讀取舊資料，也不用 concat
+                        if batch_append_data("elderly_logs", new_entries, L_COLS):
                             st.success(f"✅ 已成功補登 {len(new_entries)} 筆紀錄"); time.sleep(1); st.rerun()
 
 # --- [分頁 4：統計 (完全公開)] ---
