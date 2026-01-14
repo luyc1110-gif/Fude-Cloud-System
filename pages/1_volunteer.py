@@ -152,6 +152,7 @@ div[data-baseweb="calendar"] svg {
     fill: #333333 !important;
     color: #333333 !important;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
