@@ -172,13 +172,13 @@ div[data-baseweb="toast"] * {{ color: #000000 !important; font-weight: 900 !impo
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic & Data
+# 2) Logic & Data (優化版)
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 COURSE_HIERARCHY = {
     "手作": ["藝術手作", "生活用品"], "講座": ["消防", "反詐", "道路安全", "環境", "心靈成長", "家庭關係", "健康"],
     "外出": ["觀摩", "出遊"], "延緩失能": ["手作", "料理", "運動", "健康講座"],
-    "運動": ["有氧", "毛巾操", "其他運動"], "園藝療癒": ["手作"], "烹飪": ["甜品", "鹹食", "醃漬品", "飲品"], "歌唱": ["歡唱"]
+    "運動": ["有氧", "毛巾操", "其他運動"], "園藝療癒": ["手作"], "烹飪": ["甜品", "鹹食", "醃漬品"], "歌唱": ["歡唱"]
 }
 M_COLS = ["姓名", "身分證字號", "性別", "出生年月日", "電話", "地址", "備註", "加入日期"]
 L_COLS = ["姓名", "身分證字號", "日期", "時間", "課程分類", "課程名稱", "收縮壓", "舒張壓", "脈搏"]
@@ -187,19 +187,30 @@ L_COLS = ["姓名", "身分證字號", "日期", "時間", "課程分類", "課�
 def get_google_sheet_client():
     return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
 
+# 🔥 優化 A: 讀取速度提升
 @st.cache_data(ttl=60)
 def load_data(sheet_name):
     try:
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        data = sheet.get_all_records()
-        df = pd.DataFrame(data).astype(str)
+        # 改用 get_all_values (List of Lists) 讀取速度較快
+        data = sheet.get_all_values()
+        if not data: 
+            target_cols = M_COLS if sheet_name == 'elderly_members' else L_COLS
+            return pd.DataFrame(columns=target_cols)
+            
+        headers = data.pop(0)
+        df = pd.DataFrame(data, columns=headers)
+        
+        # 確保欄位存在
         target_cols = M_COLS if sheet_name == 'elderly_members' else L_COLS
         for c in target_cols: 
             if c not in df.columns: df[c] = ""
         return df
-    except: return pd.DataFrame(columns=M_COLS if sheet_name == 'elderly_members' else L_COLS)
+    except: 
+        return pd.DataFrame(columns=M_COLS if sheet_name == 'elderly_members' else L_COLS)
 
+# 維持舊版 save_data (僅用於編輯修改資料)
 def save_data(df, sheet_name):
     try:
         df_to_save = df.copy()
@@ -209,11 +220,38 @@ def save_data(df, sheet_name):
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
         sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist())
-        load_data.clear()
+        st.cache_data.clear()
         return True
     except Exception as e:
-        st.error(f"寫入失敗：{e}")
-        return False
+        st.error(f"寫入失敗：{e}"); return False
+
+# 🔥 優化 B: 單筆追加 (用於新增長輩、單人報到)
+def append_data(sheet_name, row_dict, col_order):
+    try:
+        values = [str(row_dict.get(c, "")).strip() for c in col_order]
+        client = get_google_sheet_client()
+        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
+        sheet.append_row(values)
+        st.cache_data.clear()
+        return True
+    except Exception as e:
+        st.error(f"新增失敗：{e}"); return False
+
+# 🔥 優化 C: 批次追加 (專用於批次補登，速度極快)
+def batch_append_data(sheet_name, rows_list, col_order):
+    try:
+        # rows_list 是一個包含多個字典的 list
+        values_to_write = []
+        for row in rows_list:
+            values_to_write.append([str(row.get(c, "")).strip() for c in col_order])
+            
+        client = get_google_sheet_client()
+        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
+        sheet.append_rows(values_to_write)
+        st.cache_data.clear()
+        return True
+    except Exception as e:
+        st.error(f"批次失敗：{e}"); return False
 
 def get_tw_time(): return datetime.now(TW_TZ)
 
