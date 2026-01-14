@@ -125,8 +125,6 @@ div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadBut
 
 /* Toast */
 div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px solid {PRIMARY} !important; border-radius: 15px !important; padding: 15px !important; }}
-</style>
-""", unsafe_allow_html=True)
 
 /* --- 📅 DatePicker 日期選單配色修正 --- */
 
@@ -154,6 +152,8 @@ div[data-baseweb="calendar"] svg {
     fill: #333333 !important;
     color: #333333 !important;
 }
+</style>
+""", unsafe_allow_html=True)
 
 # =========================================================
 # 2) Logic & Helpers (高效能優化版)
