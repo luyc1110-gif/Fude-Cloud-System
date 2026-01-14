@@ -402,16 +402,24 @@ elif st.session_state.page == 'checkin':
                         st.error(f"❌ {name} 已退出，無法打卡。")
                     else:
                         today = now.strftime("%Y-%m-%d")
+                        # 這裡原本會讀 logs 判斷簽到/簽退，這部分必須保留讀取，但寫入要改
                         t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
                         action = "簽到"
                         if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": action = "簽退"
                         
-                        new_log = pd.DataFrame([{'姓名': name, '身分證字號': pid, '電話': row['電話'], '志工分類': row['志工分類'], '動作': action, '時間': now.strftime("%H:%M:%S"), '日期': today, '活動內容': final_act}])
-                        save_data_to_sheet(pd.concat([df_l, new_log], ignore_index=True), "logs")
-                        st.session_state['scan_cooldowns'][pid] = now
+                        # --- 🔥 修改重點：改用 append_data ---
+                        new_log_dict = {
+                            '姓名': name, '身分證字號': pid, '電話': row['電話'], 
+                            '志工分類': row['志工分類'], '動作': action, 
+                            '時間': now.strftime("%H:%M:%S"), '日期': today, 
+                            '活動內容': final_act
+                        }
                         
-                        if action == "簽到": st.toast(f"👋 歡迎 {name} 簽到成功！", icon="✅")
-                        else: st.toast(f"🏠 辛苦了 {name} 簽退成功！", icon="✅")
+                        # 直接追加，不重寫整張表
+                        if append_data("logs", new_log_dict, LOG_COLS):
+                            st.session_state['scan_cooldowns'][pid] = now
+                            if action == "簽到": st.toast(f"👋 歡迎 {name} 簽到成功！", icon="✅")
+                            else: st.toast(f"🏠 辛苦了 {name} 簽退成功！", icon="✅")
                 else: st.error("❌ 查無此人")
                 
                 st.session_state.input_pid = ""
