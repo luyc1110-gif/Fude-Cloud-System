@@ -133,13 +133,11 @@ st.markdown("""
 div[data-baseweb="calendar"] {
     background-color: #FFFFFF !important;
 }
-
 /* 強制日期與月份文字為深色 */
 div[data-baseweb="calendar"] div, 
 div[data-baseweb="calendar"] button {
     color: #333333 !important;
 }
-
 /* 讓「選中的日期」文字維持白色 */
 div[data-baseweb="calendar"] button[aria-selected="true"] {
     color: #FFFFFF !important;
@@ -147,14 +145,12 @@ div[data-baseweb="calendar"] button[aria-selected="true"] {
 div[data-baseweb="calendar"] button[aria-selected="true"]:hover {
     color: #FFFFFF !important;
 }
-
 /* 讓左右切換月份的箭頭變成深色 */
 div[data-baseweb="calendar"] svg {
     fill: #333333 !important;
     color: #333333 !important;
 }
-</style>
-""", unsafe_allow_html=True)
+
 </style>
 """, unsafe_allow_html=True)
 
