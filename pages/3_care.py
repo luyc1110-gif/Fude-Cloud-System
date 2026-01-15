@@ -1134,7 +1134,6 @@ elif st.session_state.page == 'inventory':
             if st.button("💾 儲存修改內容"): save_data(ed_i, "care_inventory")
 
 # --- [插入位置：分頁 4：訪視] ---
-# --- [分頁 4：訪視] ---
 elif st.session_state.page == 'visit':
     render_nav()
     st.markdown("## 🤝 訪視與物資發放紀錄")
@@ -1328,8 +1327,10 @@ elif st.session_state.page == 'visit':
         if not target_p:
             st.error("❌ 請選擇關懷戶")
         else:
+            # 1. 收集要寫入的資料
             items_to_give = [(k, v) for k, v in quantities.items() if v > 0]
-            new_logs = []
+            new_logs = [] # 變數名稱在這裡定義為 new_logs
+
             if items_to_give:
                 for item_name, amount in items_to_give:
                     new_logs.append({
@@ -1342,12 +1343,14 @@ elif st.session_state.page == 'visit':
                     "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note
                 })
             
+            # 2. 寫入資料庫
             try:
                 client = get_client()
                 sheet = client.open_by_key(SHEET_ID).worksheet("care_logs")
                 
                 rows_values = []
-                for row in logs_to_add:
+                # 🔥 修正點：將原本錯誤的 logs_to_add 改為正確的 new_logs
+                for row in new_logs:
                     # 轉成 list
                     rows_values.append([str(row.get(c, "")).strip() for c in COLS_LOG])
                 
