@@ -229,28 +229,43 @@ div[data-baseweb="calendar"] {{
     background-color: #262730 !important;
 }}
 
-/* 🎨 可調整：問卷題目卡片的背景與邊框 */
-.question-card {{
-    background-color: #FFFFFF;
-    border: 1px solid #E0E0E0;
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    transition: transform 0.2s;
+/* 🎨 [可調整] 標籤式單選按鈕 (Radio Tags) */
+div[role="radiogroup"] {{
+    gap: 10px;
+    display: flex;
+    flex-wrap: wrap;
 }}
-.question-card:hover {{
-    border-color: {GREEN}; /* 🎨 可調整：滑鼠移過去的邊框顏色 */
-    transform: translateY(-2px);
+div[role="radiogroup"] label {{
+    background-color: #FFFFFF;    /* 🎨 未選中時的背景顏色 */
+    border: 1px solid #aaa;       /* 🎨 邊框顏色 */
+    border-radius: 50px !important; /* 🔥 變成橢圓形的關鍵 (原本是矩形) */
+    padding: 5px 20px !important;   /* 🔥 調整標籤的大小 (內距) */
+    transition: all 0.2s;
+    margin-right: 8px;
+}}
+div[role="radiogroup"] label:hover {{
+    border-color: {GREEN};
+    background-color: #F1F8E9;
+}}
+div[role="radiogroup"] label[data-checked="true"] {{
+    background-color: {GREEN} !important; /* 🎨 選中時的背景顏色 (綠色) */
+    color: white !important;              /* 🎨 選中時的文字顏色 */
+    border-color: {GREEN} !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }}
 
 /* 題目文字樣式 */
-.q-label {{
+.q-text {{
     font-size: 1.1rem;
     font-weight: 700;
     color: #333;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     display: block;
+}}
+.q-help {{
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 5px;
 }}
 
 /* 🎨 可調整：優化 Streamlit 的 Radio Button 變成按鈕標籤狀 */
@@ -276,17 +291,16 @@ div[role="radiogroup"] label:hover {{
     background-color: #E8F5E9;
 }}
 
-/* 🎨 可調整：標籤式分頁 (Tabs) 的樣式優化 */
+/* 🎨 [可調整] 分頁籤 (Tabs) 樣式 */
 button[data-baseweb="tab"] {{
-    background-color: white !important;
-    border-radius: 20px !important;
-    margin-right: 8px !important;
+    border-radius: 20px !important; /* 🔥 讓分頁籤變圓 */
     border: 1px solid #eee !important;
-    padding: 5px 15px !important;
-    font-weight: bold !important;
+    background-color: white !important;
+    margin-right: 5px !important;
+    padding: 4px 15px !important;
 }}
 button[data-baseweb="tab"][aria-selected="true"] {{
-    background-color: {PRIMARY} !important; /* 🎨 可調整：選中分頁的顏色 */
+    background-color: {PRIMARY} !important; /* 🎨 選中分頁的顏色 */
     color: white !important;
     border: none !important;
 }}
@@ -422,35 +436,29 @@ def save_data(df, sn):
     except Exception as e:
         st.error(f"寫入失敗：{e}"); return False
 
-# 🔥 [新增] 渲染題目卡片與標籤選項的輔助函式
+# 🔥 [新增] 卡片式標籤題目 (完全符合草圖需求)
 def ui_card_radio(label, options, key=None, help_text=None, index=None):
     """
-    label: 題目文字
-    options: 選項列表
-    key: Streamlit key
+    產生一個帶邊框的卡片，內含題目與橢圓形標籤選項
     """
-    st.markdown(f"""
-    <div class="question-card">
-        <span class="q-label">{label}</span>
-        <div style="font-size:0.9rem; color:#666; margin-bottom:10px;">{help_text if help_text else ''}</div>
-    </div>
-    """, unsafe_allow_html=True)
-    # 使用 horizontal=True 配合 CSS 變成標籤按鈕
-    return st.radio(label, options, key=key, index=index, horizontal=True, label_visibility="collapsed")
+    # 🎨 border=True 會產生如草圖般的圓角矩形外框
+    with st.container(border=True): 
+        # 顯示題目
+        st.markdown(f'<span class="q-text">{label}</span>', unsafe_allow_html=True)
+        if help_text:
+            st.markdown(f'<span class="q-help">{help_text}</span>', unsafe_allow_html=True)
+        
+        # 顯示選項 (horizontal=True 讓選項橫向排列)
+        return st.radio(label, options, key=key, index=index, horizontal=True, label_visibility="collapsed")
 
-# 🔥 [新增] 渲染程度滑桿的輔助函式
+# 🔥 [新增] 卡片式滑桿題目 (含程度註記)
 def ui_card_slider(label, min_v, max_v, key=None, help_text=None, annotations=None):
-    """
-    annotations: 字典，例如 {0: "完全沒有", 4: "非常嚴重"}
-    """
-    st.markdown(f"""
-    <div class="question-card">
-        <span class="q-label">{label}</span>
-        <div style="font-size:0.9rem; color:#666; margin-bottom:5px;">{help_text if help_text else ''}</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    val = st.slider(label, min_v, max_v, key=key, label_visibility="collapsed")
+    with st.container(border=True):
+        st.markdown(f'<span class="q-text">{label}</span>', unsafe_allow_html=True)
+        if help_text:
+            st.markdown(f'<span class="q-help">{help_text}</span>', unsafe_allow_html=True)
+        
+        val = st.slider(label, min_v, max_v, key=key, label_visibility="collapsed")
     
     # 顯示滑桿下方的程度文字
     if annotations:
