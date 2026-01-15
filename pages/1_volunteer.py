@@ -127,7 +127,6 @@ div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadBut
 div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px solid {PRIMARY} !important; border-radius: 15px !important; padding: 15px !important; }}
 
 # --- 📅 修正日期選單配色的獨立區塊 ---
-st.markdown("""
 /* 強制日期選單背景改為白色 */
 div[data-baseweb="calendar"] {
     background-color: #FFFFFF !important;
