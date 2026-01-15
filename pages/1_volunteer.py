@@ -128,25 +128,25 @@ div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px s
 
 # --- 📅 修正日期選單配色的獨立區塊 ---
 /* 修正日期選單背景色為白色 */
-div[data-baseweb="calendar"] {
+div[data-baseweb="calendar"] {{
     background-color: #FFFFFF !important;
-}
+}}
 
 /* 修正日期文字顏色為深色 */
 div[data-baseweb="calendar"] div, 
-div[data-baseweb="calendar"] button {
+div[data-baseweb="calendar"] button {{
     color: #333333 !important;
-}
+}}
 
 /* 選中日期的文字維持白色 */
-div[data-baseweb="calendar"] button[aria-selected="true"] {
+div[data-baseweb="calendar"] button[aria-selected="true"] {{
     color: #FFFFFF !important;
-}
+}}
 
 /* 左右箭頭改為深色 */
-div[data-baseweb="calendar"] svg {
+div[data-baseweb="calendar"] svg {{
     fill: #333333 !important;
-}
+}}
 
 </style>
 """, unsafe_allow_html=True)
