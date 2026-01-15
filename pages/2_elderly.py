@@ -168,6 +168,36 @@ div[data-baseweb="toast"] {{
     box-shadow: 0 5px 20px rgba(0,0,0,0.3) !important;
 }}
 div[data-baseweb="toast"] * {{ color: #000000 !important; font-weight: 900 !important; }}
+
+/* 1. 將所有日期選單內的文字強制改為「白色」，確保在深色背景下清晰可見 */
+div[data-baseweb="calendar"] div, 
+div[data-baseweb="calendar"] button, 
+div[data-baseweb="calendar"] h1, 
+div[data-baseweb="calendar"] h2, 
+div[data-baseweb="calendar"] h3, 
+div[data-baseweb="calendar"] h4, 
+div[data-baseweb="calendar"] h5, 
+div[data-baseweb="calendar"] h6 {{
+    color: #FFFFFF !important;
+}}
+
+/* 2. 將月份左右切換的箭頭改為「白色」 */
+div[data-baseweb="calendar"] svg {{
+    fill: #FFFFFF !important;
+}}
+
+/* 3. 修正「滑鼠移過去」和「被選中」日期的文字顏色 */
+div[data-baseweb="calendar"] button:hover,
+div[data-baseweb="calendar"] button[aria-selected="true"] {{
+    color: #FFFFFF !important; 
+    font-weight: bold !important;
+}}
+
+/* 4. 確保選單背景維持深色 (避免半白半黑的狀況) */
+div[data-baseweb="calendar"] {{
+    background-color: #262730 !important;
+}}
+
 </style>
 """, unsafe_allow_html=True)
 
