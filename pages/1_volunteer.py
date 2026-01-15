@@ -126,26 +126,40 @@ div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadBut
 /* Toast */
 div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px solid {PRIMARY} !important; border-radius: 15px !important; padding: 15px !important; }}
 
-# --- 📅 修正日期選單配色的獨立區塊 ---
-/* 修正日期選單背景色為白色 */
-div[data-baseweb="calendar"] {{
-    background-color: #FFFFFF !important;
+/* --- 📅 DatePicker Popover：強制白底黑字，避免黑底看不清 --- */
+div[data-baseweb="popover"] {{
+    background: #FFFFFF !important;
+    color: #333333 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.18) !important;
 }}
 
-/* 修正日期文字顏色為深色 */
-div[data-baseweb="calendar"] div, 
-div[data-baseweb="calendar"] button {{
+/* Popover 內全部字色強制深色（含月份、星期、日期數字） */
+div[data-baseweb="popover"] * {{
     color: #333333 !important;
 }}
 
-/* 選中日期的文字維持白色 */
-div[data-baseweb="calendar"] button[aria-selected="true"] {{
+/* Calendar 本體白底 */
+div[data-baseweb="popover"] div[data-baseweb="calendar"] {{
+    background-color: #FFFFFF !important;
+}}
+
+/* 日期按鈕 hover */
+div[data-baseweb="popover"] div[data-baseweb="calendar"] button:hover {{
+    background-color: #F3E5F5 !important;
+}}
+
+/* 被選取日期：維持你想要的主色＋白字 */
+div[data-baseweb="popover"] div[data-baseweb="calendar"] button[aria-selected="true"] {{
+    background-color: {PRIMARY} !important;
     color: #FFFFFF !important;
 }}
 
-/* 左右箭頭改為深色 */
-div[data-baseweb="calendar"] svg {{
-    fill: #333333 !important;
+/* 月份/年份的下拉（有些版本會用到 BaseWeb select） */
+div[data-baseweb="popover"] div[data-baseweb="select"] > div {{
+    background-color: #FFFFFF !important;
+    color: #333333 !important;
+    border: 1px solid #E0E0E0 !important;
 }}
 
 </style>
