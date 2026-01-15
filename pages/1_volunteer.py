@@ -126,39 +126,33 @@ div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadBut
 /* Toast */
 div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px solid {PRIMARY} !important; border-radius: 15px !important; padding: 15px !important; }}
 
-/* =========================================================
-   ✅ 針對「年月列黑底」：覆蓋 BaseWeb inline background（只限日期彈窗）
-   ========================================================= */
-
-/* 1) 在彈窗範圍內，任何 inline background 都強制白底 */
-:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
-  [style*="background"] {{
-  background: #FFFFFF !important;
-  background-color: #FFFFFF !important;
+/* 1. 將所有日期選單內的文字強制改為「白色」，確保在深色背景下清晰可見 */
+div[data-baseweb="calendar"] div, 
+div[data-baseweb="calendar"] button, 
+div[data-baseweb="calendar"] h1, 
+div[data-baseweb="calendar"] h2, 
+div[data-baseweb="calendar"] h3, 
+div[data-baseweb="calendar"] h4, 
+div[data-baseweb="calendar"] h5, 
+div[data-baseweb="calendar"] h6 {{
+    color: #FFFFFF !important;
 }}
 
-/* 2) 有些版本用漸層或深色陰影，也一併處理 */
-:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
-  [style*="linear-gradient"] {{
-  background: #FFFFFF !important;
-  background-color: #FFFFFF !important;
+/* 2. 將月份左右切換的箭頭改為「白色」 */
+div[data-baseweb="calendar"] svg {{
+    fill: #FFFFFF !important;
 }}
 
-/* 3) Header 區塊常見會是 calendar 的第一層/前兩層 div，直接白底保險 */
-:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
-  div[data-baseweb="calendar"] > div {{
-  background: #FFFFFF !important;
+/* 3. 修正「滑鼠移過去」和「被選中」日期的文字顏色 */
+div[data-baseweb="calendar"] button:hover,
+div[data-baseweb="calendar"] button[aria-selected="true"] {{
+    color: #FFFFFF !important; 
+    font-weight: bold !important;
 }}
 
-/* 4) 確保月份/年份與星期列文字真的變深色（避免被內建樣式蓋回去） */
-:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
-  div[data-baseweb="calendar"] > div * {{
-  color: #333333 !important;
-}}
-
-:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
-  div[data-baseweb="input"] > div {{
-  background: #FFFFFF !important;
+/* 4. 確保選單背景維持深色 (避免半白半黑的狀況) */
+div[data-baseweb="calendar"] {{
+    background-color: #262730 !important;
 }}
 
 </style>
