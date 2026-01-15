@@ -162,6 +162,46 @@ div[data-baseweb="popover"] div[data-baseweb="select"] > div {{
     border: 1px solid #E0E0E0 !important;
 }}
 
+/* --- ✅ 強制 DatePicker Popover 用 light scheme（避免黑底系統樣式） --- */
+div[data-baseweb="popover"] {{
+  color-scheme: light !important;
+  background: #FFFFFF !important;
+}}
+
+/* --- ✅ 上方「年月/箭頭」那一列：常見是 role="navigation" --- */
+div[data-baseweb="popover"] div[role="navigation"] {{
+  background: #FFFFFF !important;
+}}
+div[data-baseweb="popover"] div[role="navigation"] * {{
+  color: #333333 !important;
+}}
+
+/* --- ✅ 若你的版本沒有 role="navigation"，再用 header 容器備援覆蓋 --- */
+div[data-baseweb="popover"] div[data-baseweb="calendar"] > div:first-child {{
+  background: #FFFFFF !important;
+}}
+div[data-baseweb="popover"] div[data-baseweb="calendar"] > div:first-child * {{
+  color: #333333 !important;
+}}
+
+/* --- ✅ 月/年下拉（BaseWeb Select）本體：白底黑字 --- */
+div[data-baseweb="popover"] div[data-baseweb="select"] > div {{
+  background: #FFFFFF !important;
+  color: #333333 !important;
+  border: 1px solid #E0E0E0 !important;
+  border-radius: 10px !important;
+}}
+
+/* 下拉箭頭/圖示顏色 */
+div[data-baseweb="popover"] div[data-baseweb="select"] svg {{
+  fill: #333333 !important;
+}}
+
+/* 左右箭頭按鈕（有些版本是 button 內含 svg） */
+div[data-baseweb="popover"] button svg {{
+  fill: #333333 !important;
+}}
+
 </style>
 """, unsafe_allow_html=True)
 
