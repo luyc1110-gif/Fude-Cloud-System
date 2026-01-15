@@ -229,6 +229,73 @@ div[data-baseweb="calendar"] {{
     background-color: #262730 !important;
 }}
 
+/* 🎨 可調整：問卷題目卡片的背景與邊框 */
+.question-card {{
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+}}
+.question-card:hover {{
+    border-color: {GREEN}; /* 🎨 可調整：滑鼠移過去的邊框顏色 */
+    transform: translateY(-2px);
+}}
+
+/* 題目文字樣式 */
+.q-label {{
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 10px;
+    display: block;
+}}
+
+/* 🎨 可調整：優化 Streamlit 的 Radio Button 變成按鈕標籤狀 */
+/* 注意：這會影響全域的橫向 radio，若只想影響特定區域需更精細的 CSS selector，但在此範例中統一風格較佳 */
+div[data-testid="stRadio"] > div {{
+    gap: 10px;
+}}
+div[role="radiogroup"] label {{
+    background-color: #F1F3F4;
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}}
+div[role="radiogroup"] label[data-checked="true"] {{
+    background-color: {GREEN} !important; /* 🎨 可調整：選中時的背景色 */
+    color: white !important;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}}
+div[role="radiogroup"] label:hover {{
+    border-color: {GREEN};
+    background-color: #E8F5E9;
+}}
+
+/* 🎨 可調整：標籤式分頁 (Tabs) 的樣式優化 */
+button[data-baseweb="tab"] {{
+    background-color: white !important;
+    border-radius: 20px !important;
+    margin-right: 8px !important;
+    border: 1px solid #eee !important;
+    padding: 5px 15px !important;
+    font-weight: bold !important;
+}}
+button[data-baseweb="tab"][aria-selected="true"] {{
+    background-color: {PRIMARY} !important; /* 🎨 可調整：選中分頁的顏色 */
+    color: white !important;
+    border: none !important;
+}}
+
+/* 滑桿區塊優化 */
+div[data-testid="stSlider"] {{
+    padding-top: 10px;
+}}
+
 </style>
 """, unsafe_allow_html=True)
 
