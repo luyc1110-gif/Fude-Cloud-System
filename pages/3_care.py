@@ -652,7 +652,7 @@ elif st.session_state.page == 'members':
 # =========================================================
 elif st.session_state.page == 'health':
     render_nav()
-    st.markdown("## 🏥 綜合健康評估 (2026前測版)")
+    st.markdown("## 🏥 綜合健康評估")
     h_df, m_df = load_data("care_health", COLS_HEALTH), load_data("care_members", COLS_MEM)
     
     with st.expander("➕ 新增/更新 評估紀錄 (請依序填寫)", expanded=True):
@@ -690,7 +690,7 @@ elif st.session_state.page == 'health':
                 st.caption("1.性別, 2.生日, 3.年齡 已自動帶入")
 
                 c1, c2, c3 = st.columns(3)
-                edu = c1.ui_card_radio("4. 您的教育程度是？", ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"], index=None)
+                edu = ui_card_radio("4. 您的教育程度是？", ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"], index=None)
                 marry = c2.ui_card_radio("5. 您的婚姻狀況是？", ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"], index=None)
                 
                 if p_info.get('floor', '無法推斷') == '無法推斷':
