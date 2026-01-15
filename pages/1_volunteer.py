@@ -127,26 +127,25 @@ div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadBut
 div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px solid {PRIMARY} !important; border-radius: 15px !important; padding: 15px !important; }}
 
 # --- 📅 修正日期選單配色的獨立區塊 ---
-/* 強制日期選單背景改為白色 */
+/* 修正日期選單背景色為白色 */
 div[data-baseweb="calendar"] {
     background-color: #FFFFFF !important;
 }
-/* 強制日期與月份文字為深色 */
+
+/* 修正日期文字顏色為深色 */
 div[data-baseweb="calendar"] div, 
 div[data-baseweb="calendar"] button {
     color: #333333 !important;
 }
-/* 讓「選中的日期」文字維持白色 */
+
+/* 選中日期的文字維持白色 */
 div[data-baseweb="calendar"] button[aria-selected="true"] {
     color: #FFFFFF !important;
 }
-div[data-baseweb="calendar"] button[aria-selected="true"]:hover {
-    color: #FFFFFF !important;
-}
-/* 讓左右切換月份的箭頭變成深色 */
+
+/* 左右箭頭改為深色 */
 div[data-baseweb="calendar"] svg {
     fill: #333333 !important;
-    color: #333333 !important;
 }
 
 </style>
