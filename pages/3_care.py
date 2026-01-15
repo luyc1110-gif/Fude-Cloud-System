@@ -1481,6 +1481,34 @@ elif st.session_state.page == 'stats':
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
+                # 🔥 [新增] 健康趨勢分析區塊
+        if target_name and not h_df.empty:
+            p_history = h_df[h_df['姓名'] == target_name].copy()
+            if len(p_history) > 1: # 至少要有兩筆資料才有趨勢
+                st.markdown("---")
+                st.markdown("#### 📈 健康追蹤趨勢變化")
+                
+                # 整理資料
+                p_history['評估日期'] = pd.to_datetime(p_history['評估日期'])
+                p_history = p_history.sort_values('評估日期')
+
+                # 選擇要觀察的指標
+                # 🎨 可調整：這裡列出您想讓使用者畫圖的數值欄位
+                trend_opts = ["BMI", "體重", "收縮壓", "右手握力", "BSRS_總分", "WHO5_總分", "MNA_篩檢分數"]
+                trend_col = st.selectbox("選擇觀察指標", trend_opts)
+
+                # 確保數值格式正確 (防呆)
+                p_history[trend_col] = pd.to_numeric(p_history[trend_col], errors='coerce')
+
+                # 畫圖
+                fig = px.line(p_history, x='評估日期', y=trend_col, markers=True, title=f"{target_name} 的 {trend_col} 變化")
+                fig.update_layout(xaxis_title="日期", yaxis_title=trend_col, hovermode="x unified")
+                # 🎨 可調整：線條顏色
+                fig.update_traces(line_color=GREEN, marker_size=10)
+                
+                st.plotly_chart(fig, use_container_width=True)
+            elif len(p_history) == 1:
+                st.info("💡 目前僅有一筆紀錄，累積更多資料後將自動顯示趨勢圖。")
 
                 # 機敏資料
                 if not st.session_state.unlock_details:
