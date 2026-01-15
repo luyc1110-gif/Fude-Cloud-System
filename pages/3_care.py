@@ -1258,106 +1258,125 @@ elif st.session_state.page == 'visit':
         st.dataframe(logs.sort_values('發放日期', ascending=False).head(10), use_container_width=True)
 
 # --- [分頁 5：統計 (加入健康警示)] ---
+# --- [分頁 5：統計 (加入健康警示)] ---
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
     logs, mems = load_data("care_logs", COLS_LOG), load_data("care_members", COLS_MEM)
     h_df = load_data("care_health", COLS_HEALTH)
 
-    tab1, tab2, tab3 = st.tabs(["👤 個案詳細檔案 (含警示)", "🔍 題項交叉篩選", "📈 物資統計"])
-
-    # --- Tab 1: 詳細檔案 (自動生成警示卡片) ---
+    tab1, tab2 = st.tabs(["👤 個案詳細檔案", "📈 整體物資統計"])
+    
     with tab1:
-        if mems.empty: st.info("無資料")
+        if mems.empty: st.info("目前尚無關懷戶名冊資料")
         else:
-            target_name = st.selectbox("請選擇關懷戶", mems['姓名'].unique())
+            all_names = mems['姓名'].unique().tolist()
+            target_name = st.selectbox("🔍 請選擇或輸入關懷戶姓名", all_names)
             if target_name:
-                # ... (保留原有基本資料卡片) ...
                 p_data = mems[mems['姓名'] == target_name].iloc[0]
                 age = calculate_age(p_data['生日'])
+                try:
+                    c = int(p_data['18歲以下子女']) if p_data['18歲以下子女'] else 0
+                    a = int(p_data['成人數量']) if p_data['成人數量'] else 0
+                    s = int(p_data['65歲以上長者']) if p_data['65歲以上長者'] else 0
+                    total_fam = c + a + s
+                except: total_fam = 0
+
+                # 基本資料卡片
                 st.markdown(f"""
-                <div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
-                    <h3>{p_data['姓名']} <span style='font-size:1rem; color:#666;'>({p_data['性別']} / {age}歲)</span></h3>
-                    <div>{p_data['身分別']} | {p_data['電話']} | {p_data['地址']}</div>
-                </div>
-                """, unsafe_allow_html=True)
+<div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 10px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+<div style="font-size: 1.8rem; font-weight: 900; color: #333;">{p_data['姓名']} <span style="font-size: 1rem; color: #666; background: #eee; padding: 2px 8px; border-radius: 10px;">{p_data['性別']} / {age} 歲</span></div>
+<div style="font-weight: bold; color: {PRIMARY}; border: 2px solid {PRIMARY}; padding: 5px 15px; border-radius: 20px;">{p_data['身分別']}</div>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+<div><b>📞 電話：</b> {p_data['電話']}</div>
+<div><b>📍 地址：</b> {p_data['地址']}</div>
+</div>
+<div style="color: #555;"><b>🏠 家庭結構：</b> 總人數 <b>{total_fam}</b> 人</div>
+</div>
+""", unsafe_allow_html=True)
                 
-                # 🔥 自動警示卡片邏輯
+                # --- 新增：健康狀態與風險警示 (美化版) ---
                 if not h_df.empty:
+                    # 抓取該個案最近的一筆評估
                     p_health = h_df[h_df['姓名'] == target_name]
                     if not p_health.empty:
                         last_h = p_health.sort_values("評估日期").iloc[-1]
-                        st.markdown("#### 🩺 健康評估警示 (自動偵測異常項目)")
                         
-                        alerts = []
-                        # 定義警示規則 (欄位名, 觸發值, 顯示標題, 圖示, 顏色類別)
-                        # 注意：觸發值要對應 radio 的選項字串
-                        rules = [
-                            ("BSRS_6_自殺", lambda x: str(x) != "0分" and str(x) != "0", "自殺意念", "🚨", "danger"),
-                            ("MNA_狀態", "營養不良", "營養不良", "📉", "danger"),
-                            ("ICOPE_7_曾洗牙", "否", "半年未洗牙", "🦷", "warning"),
-                            ("ICOPE_2_跌倒風險", "是", "跌倒風險", "🤕", "warning"),
-                            ("ICOPE_5_視力困難", "是", "視力異常", "👓", "warning"),
-                            ("ICOPE_8_聽力困擾", "是", "聽力異常", "👂", "warning"),
-                            ("ICOPE_9_心情低落", "是", "心情低落", "☁️", "warning"),
-                            ("膀胱_1_頻尿", ["會(中等)", "會(嚴重)"], "頻尿困擾", "🚽", "warning"),
-                        ]
+                        st.markdown("### 🩺 健康與風險評估摘要")
+                        st.caption(f"最近評估日期：{last_h['評估日期']}")
                         
-                        for col, trigger, title, icon, level in rules:
-                            val = str(last_h.get(col, ''))
-                            is_hit = False
-                            if callable(trigger):
-                                is_hit = trigger(val)
-                            elif isinstance(trigger, list):
-                                is_hit = val in trigger
-                            elif val == trigger:
-                                is_hit = True
+                        # 1. 自殺意念檢測 (最優先顯示)
+                        sr = last_h['有自殺意念']
+                        if sr == "是":
+                            st.markdown(f"""
+                            <div class="health-dashboard-card h-card-danger" style="margin-bottom: 15px;">
+                                <div class="h-card-icon">🚨</div>
+                                <div class="h-card-content">
+                                    <div class="h-card-title">嚴重警示</div>
+                                    <div class="h-card-value">檢測到自殺意念</div>
+                                </div>
+                                <div style="font-size:3rem; opacity:0.3;">🆘</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                        # 2. 營養與情緒 (並排顯示)
+                        hc1, hc2 = st.columns(2)
+                        
+                        # --- 營養卡片 ---
+                        with hc1:
+                            ns = last_h['營養狀態']
+                            n_score = last_h['營養篩檢分數']
                             
-                            if is_hit:
-                                alerts.append({'icon': icon, 'title': title, 'val': val, 'type': level})
+                            # 判斷顏色與圖示
+                            if "營養不良" in ns: # 包含 '有營養不良風險' 或 '營養不良'
+                                n_class = "h-card-warning" if "風險" in ns else "h-card-danger"
+                                n_icon = "⚠️" if "風險" in ns else "📉"
+                            else:
+                                n_class = "h-card-safe"
+                                n_icon = "🍱"
+                            
+                            st.markdown(f"""
+                            <div class="health-dashboard-card {n_class}">
+                                <div class="h-card-icon">{n_icon}</div>
+                                <div class="h-card-content">
+                                    <div class="h-card-title">營養狀態</div>
+                                    <div class="h-card-value">{ns}</div>
+                                </div>
+                                <div class="h-card-score">分數: {n_score}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
 
-                        if alerts:
-                            # 自動排版：每行放 3 個卡片，若多於 3 個會自動換行
-                            cols = st.columns(3)
-                            for i, alert in enumerate(alerts):
-                                with cols[i % 3]:
-                                    css_cls = "h-card-danger" if alert['type'] == 'danger' else "h-card-warning"
-                                    st.markdown(f"""
-                                    <div class="health-dashboard-card {css_cls}">
-                                        <div class="h-card-icon">{alert['icon']}</div>
-                                        <div class="h-card-content">
-                                            <div class="h-card-title">{alert['title']}</div>
-                                            <div class="h-card-value" style="font-size:1rem;">{alert['val']}</div>
-                                        </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-                        else:
-                            st.info("✅ 該個案近期評估無明顯異常。")
+                        # --- 情緒卡片 ---
+                        with hc2:
+                            ms = last_h['情緒狀態']
+                            m_score = last_h['心情溫度計分數']
+                            
+                            # 判斷顏色與圖示
+                            if "中度" in ms or "重度" in ms:
+                                m_class = "h-card-danger"
+                                m_icon = "⛈️"
+                            elif "輕度" in ms:
+                                m_class = "h-card-warning"
+                                m_icon = "☁️"
+                            else:
+                                m_class = "h-card-safe"
+                                m_icon = "☀️"
 
-    # --- Tab 2: 多題項篩選 (滿足您的查找需求) ---
-    with tab2:
-        st.markdown("### 🔍 進階篩選：查找特定回答的族群")
-        if h_df.empty:
-            st.warning("尚無資料")
-        else:
-            # 排除基本資料，列出所有問卷題目
-            filter_cols = [c for c in COLS_HEALTH if c not in ['姓名', '身分證字號', '評估日期']]
-            
-            c_f1, c_f2 = st.columns([1, 2])
-            target_col = c_f1.selectbox("1. 選擇要查找的題目", filter_cols, index=filter_cols.index('ICOPE_7_曾洗牙') if 'ICOPE_7_曾洗牙' in filter_cols else 0)
-            
-            # 取得該題目的所有出現過的答案
-            unique_vals = h_df[target_col].dropna().unique().tolist()
-            selected_vals = c_f2.multiselect(f"2. 選擇「{target_col}」的答案 (可複選)", unique_vals)
-            
-            if selected_vals:
-                res = h_df[h_df[target_col].isin(selected_vals)]
-                st.markdown(f"**篩選結果：共 {len(res)} 人**")
-                # 顯示簡易名冊
-                show_df = res[['姓名', '評估日期', target_col]].merge(mems[['姓名', '電話', '地址']], on='姓名', how='left')
-                st.dataframe(show_df, use_container_width=True)
-            else:
-                st.info("請選擇至少一個答案進行篩選。")
+                            st.markdown(f"""
+                            <div class="health-dashboard-card {m_class}">
+                                <div class="h-card-icon">{m_icon}</div>
+                                <div class="h-card-content">
+                                    <div class="h-card-title">情緒狀態</div>
+                                    <div class="h-card-value">{ms}</div>
+                                </div>
+                                <div class="h-card-score">分數: {m_score}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                    else:
+                        st.info("尚無健康評估資料")
 
                 # 機敏資料
                 if not st.session_state.unlock_details:
