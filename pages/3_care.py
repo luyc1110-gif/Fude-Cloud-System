@@ -1532,45 +1532,82 @@ elif st.session_state.page == 'stats':
 </div>
 """, unsafe_allow_html=True)
 
-    # --- Tab 2: 多題項篩選 (新增功能) ---
+    # --- Tab 2: 多題項交叉篩選 (跨問卷) ---
     with tab2:
-        st.markdown("### 🔍 進階篩選：查找特定回答的族群")
+        st.markdown("### 🔍 跨題項交叉篩選")
+        st.caption("💡 可同時選擇多個條件，例如：找「年齡<65」且「有跌倒風險」且「心情不好」的人")
+
         if h_df.empty:
-            st.warning("尚無資料")
+            st.warning("尚無健康資料")
         else:
-            # 1. 準備篩選欄位 (排除基本個資，只留問卷題目)
-            filter_cols = [c for c in COLS_HEALTH if c not in ['姓名', '身分證字號', '評估日期', '身高', '體重', '收縮壓', '舒張壓', '心跳', '右手握力', '左手握力']]
-            
-            c_f1, c_f2 = st.columns([1, 2])
-            
-            # 預設選取 "ICOPE_7_曾洗牙" 方便您測試
-            default_idx = filter_cols.index('ICOPE_7_曾洗牙') if 'ICOPE_7_曾洗牙' in filter_cols else 0
-            
-            with c_f1:
-                target_col = st.selectbox("1. 選擇要查找的題目", filter_cols, index=default_idx)
-            
-            with c_f2:
-                # 取得該題目資料庫中出現過的所有答案
-                unique_vals = sorted(h_df[target_col].dropna().unique().tolist())
-                selected_vals = st.multiselect(f"2. 選擇「{target_col}」的答案 (可多選)", unique_vals)
-            
-            st.markdown("---")
+            # 1. 準備可篩選的欄位 (排除不必要的)
+            # 🎨 可調整：如果您希望身分別或地址也能篩選，可以在這裡把 mems 的欄位 merge 進來
+            # 這裡我們先做一個包含年齡的大表
+            full_data = h_df.copy()
+            if not mems.empty:
+                mems_mini = mems[['姓名', '電話', '地址', '身分別', '生日']]
+                full_data = full_data.merge(mems_mini, on='姓名', how='left')
+                full_data['數值年齡'] = full_data['生日'].apply(calculate_age) # 轉成數字方便篩選
 
-            if selected_vals:
-                # 執行篩選
-                res = h_df[h_df[target_col].isin(selected_vals)]
+            # 定義可用的篩選欄位 (包含問卷題目 + 年齡 + 身分別)
+            filter_options = [c for c in COLS_HEALTH if c not in ['姓名', '身分證字號', '評估日期']] + ['數值年齡', '身分別']
+            
+            # 🔥 [修改] 使用多重選單讓使用者決定要篩選哪些「欄位」
+            selected_criteria = st.multiselect("1. 請先選擇您要篩選的條件項目 (可多選)", filter_options)
+            
+            # 動態生成篩選器
+            filters = {}
+            if selected_criteria:
+                st.markdown("---")
+                st.write("##### 2. 設定條件細節：")
+                c_filters = st.columns(len(selected_criteria)) if len(selected_criteria) <= 3 else st.columns(3)
                 
-                # 合併電話與地址資料
-                if not mems.empty:
-                    # 只取需要的欄位合併
-                    show_df = res[['姓名', '評估日期', target_col]].merge(mems[['姓名', '電話', '地址']], on='姓名', how='left')
-                else:
-                    show_df = res[['姓名', '評估日期', target_col]]
+                for idx, col in enumerate(selected_criteria):
+                    with c_filters[idx % 3]:
+                        # 針對數值型欄位 (如年齡、BMI) 顯示滑桿
+                        if col in ['數值年齡', 'BMI', '收縮壓', '舒張壓']:
+                            # 嘗試轉數值
+                            try:
+                                min_val = float(full_data[col].min()) if not full_data[col].empty else 0
+                                max_val = float(full_data[col].max()) if not full_data[col].empty else 100
+                                filters[col] = st.slider(f"{col} 範圍", min_val, max_val, (min_val, max_val), key=f"f_{col}")
+                            except:
+                                st.warning(f"{col} 無法轉為數值")
+                        
+                        # 針對文字型/類別型欄位 顯示多選單
+                        else:
+                            # 取得所有可能的答案
+                            unique_opts = sorted(full_data[col].astype(str).unique().tolist())
+                            filters[col] = st.multiselect(f"{col} 包含", unique_opts, key=f"f_{col}")
 
-                st.markdown(f"#### 🎯 篩選結果：共 {len(show_df)} 人")
-                st.dataframe(show_df, use_container_width=True)
-            else:
-                st.info("👈 請在左上方選擇答案以開始篩選。")
+            # 執行篩選邏輯
+            if filters:
+                result_df = full_data.copy()
+                for col, condition in filters.items():
+                    # 如果是數值範圍 (tuple)
+                    if isinstance(condition, tuple):
+                        # 先轉數值再比對
+                        result_df[col] = pd.to_numeric(result_df[col], errors='coerce').fillna(0)
+                        result_df = result_df[
+                            (result_df[col] >= condition[0]) & 
+                            (result_df[col] <= condition[1])
+                        ]
+                    # 如果是多選列表 (list)
+                    elif isinstance(condition, list) and condition:
+                        # 只要包含其中一個就符合 (Is In)
+                        # 針對身分別這種 "低收,老人" 的逗號字串，可能需要用 str.contains，但這裡先做精確比對
+                        if col == '身分別':
+                            # 特殊處理：只要字串中有出現關鍵字即可
+                            # 邏輯：對於每一個選中的 tag，篩選出包含該 tag 的 rows
+                            for tag in condition:
+                                result_df = result_df[result_df[col].astype(str).str.contains(tag, na=False)]
+                        else:
+                            result_df = result_df[result_df[col].astype(str).isin(condition)]
+                
+                st.markdown(f"#### 🎯 篩選結果：共 {len(result_df)} 人")
+                st.dataframe(result_df[['姓名', '評估日期'] + list(filters.keys()) + ['電話', '地址']], use_container_width=True)
+            elif selected_criteria:
+                st.info("請設定上方條件細節...")
 
     # --- Tab 3: 物資統計 (原有的) ---
     with tab3:
