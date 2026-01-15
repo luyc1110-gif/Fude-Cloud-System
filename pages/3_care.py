@@ -691,21 +691,21 @@ elif st.session_state.page == 'health':
 
                 c1, c2, c3 = st.columns(3)
                 edu = ui_card_radio("4. 您的教育程度是？", ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"], index=None)
-                marry = c2.ui_card_radio("5. 您的婚姻狀況是？", ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"], index=None)
+                marry = ui_card_radio("5. 您的婚姻狀況是？", ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"], index=None)
                 
                 if p_info.get('floor', '無法推斷') == '無法推斷':
-                    floor_final = c3.ui_card_radio("7. 您目前住幾樓？", ["一樓", "二樓以上無電梯", "二樓以上有電梯"], index=None)
+                    floor_final = ui_card_radio("7. 您目前住幾樓？", ["一樓", "二樓以上無電梯", "二樓以上有電梯"], index=None)
                 else:
                     floor_final = p_info['floor']
                     c3.success(f"7. 住幾樓：{floor_final} (已帶入)")
                     
                 c4, c5 = st.columns(2)
-                live_st = c4.ui_card_radio("6. 您目前居住狀況是？", ["獨居", "榮家", "僅與配偶居", "與家人居(含配偶)", "與家人居(不含配偶)", "與親友居", "機構", "其他"], index=None)
-                relig = c5.ui_card_radio("8. 您的信仰是？", ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"], index=None)
+                live_st = ui_card_radio("6. 您目前居住狀況是？", ["獨居", "榮家", "僅與配偶居", "與家人居(含配偶)", "與家人居(不含配偶)", "與親友居", "機構", "其他"], index=None)
+                relig = ui_card_radio("8. 您的信仰是？", ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"], index=None)
                 
                 c6, c7, c8 = st.columns(3)
-                work = c6.ui_card_radio("9. 您目前是否有工作？", ["退休", "家管", "目前有工作"], index=None)
-                econ = c7.ui_card_radio("10. 您的經濟狀況是？", ["富裕", "小康", "貧窮", "其他"], index=None)
+                work = ui_card_radio("9. 您目前是否有工作？", ["退休", "家管", "目前有工作"], index=None)
+                econ = ui_card_radio("10. 您的經濟狀況是？", ["富裕", "小康", "貧窮", "其他"], index=None)
                 caregiver = c8.multiselect("11. 誰是主要照顧您的人？(可複選)", ["自己", "配偶", "子女", "看護", "其他"])
                 
                 dis_hist = st.multiselect("12. 您過去是否有以下疾病？(可複選)", ["無", "糖尿病", "高血壓", "高血脂", "心臟病", "腎臟病", "肝炎", "關節炎", "骨質疏鬆", "氣喘", "癌症", "其他"])
@@ -749,16 +749,16 @@ elif st.session_state.page == 'health':
                 with st.container():
                     st.markdown("**D. 其他習慣**")
                     d1, d2, d3 = st.columns(3)
-                    med_sleep = d1.ui_card_radio("11. 服用助眠藥?", ["有", "沒有"], index=None)
-                    med_cv = d2.ui_card_radio("12. 服用心血管藥?", ["有", "沒有"], index=None)
-                    milk_habit = d3.ui_card_radio("13. 喝乳品習慣?", ["有", "沒有"], index=None)
+                    med_sleep = ui_card_radio("11. 服用助眠藥?", ["有", "沒有"], index=None)
+                    med_cv = ui_card_radio("12. 服用心血管藥?", ["有", "沒有"], index=None)
+                    milk_habit = ui_card_radio("13. 喝乳品習慣?", ["有", "沒有"], index=None)
 
                     # 性別邏輯題
                     if p_info.get('gender') == '女':
-                        pad_use = st.ui_card_radio("14. (女性) 使用漏尿墊/護墊?", ["有", "沒有"], index=None)
+                        pad_use = ui_card_radio("14. (女性) 使用漏尿墊/護墊?", ["有", "沒有"], index=None)
                         male_urine = "不適用"
                     elif p_info.get('gender') == '男':
-                        male_urine = st.ui_card_radio("15. (男性) 小便斷續不連貫?", ["有", "沒有"], index=None)
+                        male_urine = ui_card_radio("15. (男性) 小便斷續不連貫?", ["有", "沒有"], index=None)
                         pad_use = "不適用"
                     else:
                         pad_use = "未填"
@@ -769,19 +769,19 @@ elif st.session_state.page == 'health':
                 st.markdown("### 🧠 第二部分：高齡功能 ICOPE")
                 
                 c_i1, c_i2 = st.columns(2)
-                icope_mem = c_i1.ui_card_radio("1. 最近一年是否有記憶明顯減退?", ["否", "是"], index=None)
-                icope_fall = c_i2.ui_card_radio("2. 過去一年曾跌倒/擔心跌倒/需扶東西?", ["否", "是"], index=None)
+                icope_mem = ui_card_radio("1. 最近一年是否有記憶明顯減退?", ["否", "是"], index=None)
+                icope_fall = ui_card_radio("2. 過去一年曾跌倒/擔心跌倒/需扶東西?", ["否", "是"], index=None)
                 
                 st.markdown("---")
                 c_i3, c_i4 = st.columns(2)
-                icope_weight_val = c_i3.ui_card_radio("3. 過去三個月體重減輕>3kg?", ["否", "是"], index=None)
-                icope_eat_val = c_i4.ui_card_radio("4. 過去三個月食慾不好?", ["否", "是"], index=None)
+                icope_weight_val = ui_card_radio("3. 過去三個月體重減輕>3kg?", ["否", "是"], index=None)
+                icope_eat_val = ui_card_radio("4. 過去三個月食慾不好?", ["否", "是"], index=None)
                 
                 st.markdown("---")
                 c_i5, c_i6, c_i7 = st.columns(3)
-                icope_eye = c_i5.ui_card_radio("5. 看遠近/閱讀困難?", ["否", "是"], index=None)
-                icope_opt = c_i6.ui_card_radio("6. 過去一年「曾」接受眼睛檢查?", ["否", "是"], index=None)
-                icope_teeth = c_i7.ui_card_radio("7. 過去六個月「曾」到牙科洗牙?", ["否", "是"], index=None)
+                icope_eye = ui_card_radio("5. 看遠近/閱讀困難?", ["否", "是"], index=None)
+                icope_opt = ui_card_radio("6. 過去一年「曾」接受眼睛檢查?", ["否", "是"], index=None)
+                icope_teeth = ui_card_radio("7. 過去六個月「曾」到牙科洗牙?", ["否", "是"], index=None)
 
                 st.markdown("---")
                 st.write("8. 聽力狀況 (若無勾選則視為正常)")
@@ -790,8 +790,8 @@ elif st.session_state.page == 'health':
                 
                 st.markdown("---")
                 c_i8, c_i9 = st.columns(2)
-                icope_mood = c_i8.ui_card_radio("9. 過去兩週常心情不好/沒希望?", ["否", "是"], index=None)
-                icope_soc = c_i9.ui_card_radio("10. 過去兩週減少活動/朋友來往?", ["否", "是"], index=None)
+                icope_mood = ui_card_radio("9. 過去兩週常心情不好/沒希望?", ["否", "是"], index=None)
+                icope_soc = ui_card_radio("10. 過去兩週減少活動/朋友來往?", ["否", "是"], index=None)
 
             # --- 三、BSRS-5 ---
             with t3:
