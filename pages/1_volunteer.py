@@ -128,7 +128,6 @@ div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px s
 
 # --- 📅 修正日期選單配色的獨立區塊 ---
 st.markdown("""
-<style>
 /* 強制日期選單背景改為白色 */
 div[data-baseweb="calendar"] {
     background-color: #FFFFFF !important;
