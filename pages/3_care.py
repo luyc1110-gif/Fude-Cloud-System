@@ -422,6 +422,43 @@ def save_data(df, sn):
     except Exception as e:
         st.error(f"寫入失敗：{e}"); return False
 
+# 🔥 [新增] 渲染題目卡片與標籤選項的輔助函式
+def ui_card_radio(label, options, key=None, help_text=None, index=None):
+    """
+    label: 題目文字
+    options: 選項列表
+    key: Streamlit key
+    """
+    st.markdown(f"""
+    <div class="question-card">
+        <span class="q-label">{label}</span>
+        <div style="font-size:0.9rem; color:#666; margin-bottom:10px;">{help_text if help_text else ''}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    # 使用 horizontal=True 配合 CSS 變成標籤按鈕
+    return st.radio(label, options, key=key, index=index, horizontal=True, label_visibility="collapsed")
+
+# 🔥 [新增] 渲染程度滑桿的輔助函式
+def ui_card_slider(label, min_v, max_v, key=None, help_text=None, annotations=None):
+    """
+    annotations: 字典，例如 {0: "完全沒有", 4: "非常嚴重"}
+    """
+    st.markdown(f"""
+    <div class="question-card">
+        <span class="q-label">{label}</span>
+        <div style="font-size:0.9rem; color:#666; margin-bottom:5px;">{help_text if help_text else ''}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    val = st.slider(label, min_v, max_v, key=key, label_visibility="collapsed")
+    
+    # 顯示滑桿下方的程度文字
+    if annotations:
+        current_anno = annotations.get(val, f"{val} 分")
+        st.caption(f"📍 目前選擇程度：**{current_anno}**")
+    
+    return val
+
 # 優化 B：新增「追加模式」函式 (新增資料專用)
 def append_data(sn, row_dict, col_order):
     """
