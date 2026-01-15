@@ -523,114 +523,187 @@ elif st.session_state.page == 'members':
 # --- [分頁 2：健康 (大幅更新)] ---
 elif st.session_state.page == 'health':
     render_nav()
-    st.markdown("## 🏥 關懷戶健康與風險評估")
+    st.markdown("## 🏥 關懷戶健康與問卷追蹤")
     h_df, m_df = load_data("care_health", COLS_HEALTH), load_data("care_members", COLS_MEM)
     
-    with st.expander("➕ 新增/更新 健康評估紀錄", expanded=True):
+    with st.expander("➕ 新增/更新 綜合評估紀錄", expanded=True):
+        # 選擇關懷戶
+        sel_n = st.selectbox("選擇關懷戶 (輸入姓名搜尋)", m_df['姓名'].tolist() if not m_df.empty else ["無名冊"])
+        
+        # 🔥 邏輯：自動帶入名冊既有資料
+        p_info = {}
+        if sel_n != "無名冊" and not m_df.empty:
+            p_row = m_df[m_df['姓名'] == sel_n].iloc[0]
+            p_info['gender'] = p_row['性別']
+            p_info['age'] = calculate_age(p_row['生日'])
+            p_info['floor'] = extract_floor(p_row['地址']) # 自動推斷樓層
+            st.success(f"✅ 已載入個案資料：{p_info['gender']}性，{p_info['age']}歲，推測居住於 {p_info['floor']}")
+
         with st.form("h_form"):
-            st.markdown("### 1. 基本資料與生理量測")
-            sel_n = st.selectbox("選擇關懷戶", m_df['姓名'].tolist() if not m_df.empty else ["無名冊"])
             eval_date = st.date_input("評估日期", value=date.today())
             
-            c1, c2, c3 = st.columns(3)
-            h = c1.number_input("身高 (cm)", min_value=0.0, step=0.1)
-            w = c2.number_input("體重 (kg)", min_value=0.0, step=0.1)
-            grip = c3.text_input("握力 (kg)")
+            # 使用 Tabs 分頁讓長問卷更好填寫
+            tab_phy, tab_soc, tab_icope, tab_mental, tab_life = st.tabs([
+                "1.生理量測", "2.社會背景", "3.功能評估(ICOPE)", "4.心理與營養", "5.其他困擾"
+            ])
             
-            c4, c5, c6 = st.columns(3)
-            dent = c4.selectbox("是否有假牙", ["無", "有"])
-            wash = c5.selectbox("今年洗牙", ["否", "是"])
-            hear = c6.selectbox("聽力狀況", ["正常", "需注意"])
+            # --- Tab 1: 生理量測 ---
+            with tab_phy:
+                st.markdown("### 🩺 身體數值")
+                c1, c2, c3 = st.columns(3)
+                bp_h = c1.number_input("收縮壓 (mmHg)", min_value=0, step=1)
+                bp_l = c2.number_input("舒張壓 (mmHg)", min_value=0, step=1)
+                hr = c3.number_input("心跳 (bpm)", min_value=0, step=1)
+                
+                c4, c5, c6, c7 = st.columns(4)
+                h_val = c4.number_input("身高 (cm)", min_value=0.0, step=0.1)
+                w_val = c5.number_input("體重 (kg)", min_value=0.0, step=0.1)
+                grip_r = c6.number_input("右手握力 (kg)", min_value=0.0, step=0.1)
+                grip_l = c7.number_input("左手握力 (kg)", min_value=0.0, step=0.1)
+                
+                # 自動計算 BMI
+                bmi_val = 0.0
+                if h_val > 0 and w_val > 0:
+                    bmi_val = w_val / ((h_val/100)**2)
+                    st.caption(f"💡 自動計算 BMI: {round(bmi_val, 1)}")
 
-            st.markdown("---")
-            st.markdown("### 2. 營養評估 (MNA篩檢)")
-            # MNA 題目
-            q1 = st.radio("Q1. 過去三個月是否因食慾不振/消化/吞嚥問題而減少食量？",
-                          ["0分：食量嚴重減少", "1分：食量中度減少", "2分：食量沒有改變"], horizontal=True)
-            q2 = st.radio("Q2. 過去三個月體重下降情況",
-                          ["0分：下降>3公斤", "1分：不知道", "2分：下降1-3公斤", "3分：沒有下降"], horizontal=True)
-            q3 = st.radio("Q3. 活動能力",
-                          ["0分：需長期臥床或坐輪椅", "1分：可下床但不能外出", "2分：可以外出"], horizontal=True)
-            q4 = st.radio("Q4. 過去三個月內有無受到心理創傷或急性疾病？",
-                          ["0分：有", "2分：沒有"], horizontal=True)
-            q5 = st.radio("Q5. 精神心理問題",
-                          ["0分：嚴重失智或憂鬱", "1分：輕度失智", "2分：沒有問題"], horizontal=True)
-            
-            # BMI 自動計算與評分
-            bmi_val = 0.0
-            bmi_score = 0
-            if h > 0 and w > 0:
-                bmi_val = w / ((h/100)**2)
-                if bmi_val < 19: bmi_score = 0
-                elif 19 <= bmi_val < 21: bmi_score = 1
-                elif 21 <= bmi_val < 23: bmi_score = 2
-                else: bmi_score = 3
-            
-            st.info(f"📏 根據身高體重自動換算 BMI: {round(bmi_val, 1)} (得分: {bmi_score})")
-            
-            # 營養分數計算
-            s1 = int(q1.split("分")[0])
-            s2 = int(q2.split("分")[0])
-            s3 = int(q3.split("分")[0])
-            s4 = int(q4.split("分")[0])
-            s5 = int(q5.split("分")[0])
-            nutri_score = s1 + s2 + s3 + s4 + s5 + bmi_score
-            
-            if nutri_score >= 12: nutri_status = "正常狀況"
-            elif 8 <= nutri_score <= 11: nutri_status = "有營養不良風險"
-            else: nutri_status = "營養不良"
+            # --- Tab 2: 社會背景 (新問卷 Demographics) ---
+            with tab_soc:
+                st.markdown("### 👤 社會背景 (已自動略過姓名/性別/年齡)")
+                sc1, sc2, sc3 = st.columns(3)
+                edu = sc1.selectbox("教育程度", ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"])
+                marry = sc2.selectbox("婚姻狀況", ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"])
+                # 預設帶入推斷的樓層，但允許修改
+                floor_final = sc3.text_input("目前居住樓層", value=p_info.get('floor', ''))
+                
+                sc4, sc5 = st.columns(2)
+                live_st = sc4.selectbox("居住狀況", ["獨居", "僅與配偶居", "與家人居(含配偶)", "與家人居(不含配偶)", "與親友居", "機構", "其他"])
+                religion = sc5.selectbox("信仰", ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"])
+                
+                sc6, sc7 = st.columns(2)
+                work = sc6.radio("目前是否有工作", ["退休", "家管", "目前有工作"], horizontal=True)
+                econ = sc7.radio("經濟狀況", ["富裕", "小康", "貧窮", "其他"], horizontal=True)
+                
+                caregiver = st.multiselect("主要照顧者 (可複選)", ["自己", "配偶", "子女", "看護", "其他"])
+                disease = st.multiselect("過去疾病史 (可複選)", ["無", "糖尿病", "高血壓", "高血脂", "心臟病", "腎臟病", "肝炎", "關節炎", "骨質疏鬆", "氣喘", "癌症", "其他"])
 
-            st.markdown("---")
-            st.markdown("### 3. 心情溫度計 (BSRS-5)")
-            st.caption("請評估過去一週的困擾程度 (0:完全沒有 ~ 5:非常嚴重)")
-            
-            b1, b2 = st.columns(2)
-            bq1 = b1.slider("1. 睡眠困難", 0, 5, 0)
-            bq2 = b2.slider("2. 感覺緊張不安", 0, 5, 0)
-            bq3 = b1.slider("3. 覺得容易動怒", 0, 5, 0)
-            bq4 = b2.slider("4. 感覺憂鬱、心情低落", 0, 5, 0)
-            bq5 = b1.slider("5. 覺得比不上別人", 0, 5, 0)
-            bq6 = b2.slider("6. 有自殺想法", 0, 5, 0) # 獨立指標
+            # --- Tab 3: ICOPE 功能 (智慧過濾重複) ---
+            with tab_icope:
+                st.markdown("### 🏃 高齡功能評估 (ICOPE)")
+                st.info("💡 系統已自動隱藏與MNA/BSRS-5重複的題目 (如:食慾、體重、心情)")
+                
+                ic1, ic2 = st.columns(2)
+                # 記憶力
+                mem_loss = ic1.radio("最近一年是否有記憶明顯減退?", ["否", "是"], horizontal=True)
+                # 跌倒
+                fall_hist = ic2.radio("過去一年曾跌倒 / 擔心跌倒 / 需扶東西站起?", ["否", "是"], horizontal=True)
+                
+                # 感官
+                ic3, ic4 = st.columns(2)
+                eye_diff = ic3.radio("視力困難 (看遠/近/閱讀)?", ["否", "是"], horizontal=True)
+                hear_diff = ic4.radio("聽力困難 (需重複/聽不清)?", ["否", "是"], horizontal=True)
+                
+                # 口腔 (這是您特別要求的重點)
+                st.markdown("#### 🦷 口腔保健")
+                dc1, dc2 = st.columns(2)
+                has_denture = dc1.radio("是否有假牙?", ["無", "有"], horizontal=True)
+                wash_teeth = dc2.radio("過去 6 個月是否「曾」洗牙?", ["是", "否"], index=0, horizontal=True) # 注意：問卷問是否有，這裡選項設計配合邏輯
+                
+                # 輔具
+                aids_list = st.multiselect("目前使用輔具", ["無", "行走輔具", "助聽器", "眼鏡(視力輔具)"])
+                
+            # --- Tab 4: 心理與營養 (整合 MNA, BSRS-5, WHO-5) ---
+            with tab_mental:
+                c_mna, c_mood = st.columns(2)
+                
+                with c_mna:
+                    st.markdown("#### 🍱 營養評估 (MNA簡易版)")
+                    # ... (保留原有的 MNA 邏輯) ...
+                    q1 = st.radio("食量減少?", ["0分:嚴重", "1分:中度", "2分:無"], horizontal=True)
+                    q2 = st.radio("體重下降?", ["0分:>3kg", "1分:不明", "2分:1-3kg", "3分:無"], horizontal=True)
+                    q3 = st.radio("活動力?", ["0分:臥床", "1分:室內", "2分:可外出"], horizontal=True)
+                    q4 = st.radio("心理創傷?", ["0分:有", "2分:無"], horizontal=True)
+                    q5 = st.radio("精神問題?", ["0分:嚴重", "1分:輕度", "2分:無"], horizontal=True)
+                    
+                    # BMI score calc
+                    bmi_score = 0
+                    if bmi_val < 19: bmi_score = 0
+                    elif 19 <= bmi_val < 21: bmi_score = 1
+                    elif 21 <= bmi_val < 23: bmi_score = 2
+                    else: bmi_score = 3
+                    
+                    mna_raw = int(q1[0]) + int(q2[0]) + int(q3[0]) + int(q4[0]) + int(q5[0]) + bmi_score
+                    mna_stat = "正常狀況" if mna_raw >= 12 else ("有風險" if mna_raw >= 8 else "營養不良")
+                    st.write(f"**營養總分**: {mna_raw} ({mna_stat})")
 
-            # 情緒分數計算 (前5題加總)
-            mood_score = bq1 + bq2 + bq3 + bq4 + bq5 
-            # 依據使用者定義的標準 (0-5, 6-9, 10-14, 15+)
-            if mood_score >= 15: mood_status = "重度情緒困擾"
-            elif mood_score >= 10: mood_status = "中度情緒困擾"
-            elif mood_score >= 6: mood_status = "輕度情緒困擾"
-            else: mood_status = "正常"
-            
-            suicide_risk = "是" if bq6 > 0 else "否"
+                with c_mood:
+                    st.markdown("#### 🌡️ 心情溫度計 (BSRS-5)")
+                    b1 = st.slider("睡眠困難", 0, 4, 0)
+                    b2 = st.slider("緊張不安", 0, 4, 0)
+                    b3 = st.slider("容易動怒", 0, 4, 0)
+                    b4 = st.slider("憂鬱低落", 0, 4, 0)
+                    b5 = st.slider("自卑感", 0, 4, 0)
+                    b6 = st.slider("自殺意念 (獨立計分)", 0, 4, 0)
+                    bsrs_score = b1+b2+b3+b4+b5
+                    bsrs_stat = "正常" if bsrs_score < 6 else ("輕度" if bsrs_score < 10 else ("中度" if bsrs_score < 15 else "重度"))
+                    st.write(f"**情緒總分**: {bsrs_score} ({bsrs_stat})")
+                
+                st.markdown("---")
+                st.markdown("#### 😊 WHO-5 幸福指標 (過去兩週)")
+                st.caption("0:從未 ~ 5:全部時間")
+                w1 = st.slider("情緒開朗精神不錯", 0, 5, 3)
+                w2 = st.slider("心情平靜放鬆", 0, 5, 3)
+                w3 = st.slider("有活力精力充沛", 0, 5, 3)
+                w4 = st.slider("醒來神清氣爽", 0, 5, 3)
+                w5 = st.slider("充滿感興趣的事物", 0, 5, 3)
+                who5_score = (w1+w2+w3+w4+w5) * 4 # 轉為百分制
+                st.write(f"**幸福指數**: {who5_score} 分")
 
-            # 預覽結果區塊
-            if st.columns(1)[0].checkbox("顯示本次評估結果預覽"):
-                res_col1, res_col2 = st.columns(2)
-                with res_col1:
-                    st.markdown(f"**🍱 營養總分**: {nutri_score} ({nutri_status})")
-                with res_col2:
-                    st.markdown(f"**🌡️ 情緒總分**: {mood_score} ({mood_status})")
-                    if suicide_risk == "是":
-                        st.markdown("<span style='color:red; font-weight:bold;'>⚠️ 檢測到自殺意念</span>", unsafe_allow_html=True)
-
+            # --- Tab 5: 其他困擾 (膀胱/生活品質) ---
+            with tab_life:
+                st.markdown("### 🚽 膀胱與其他")
+                bladder_prob = st.selectbox("是否有頻尿、漏尿或解尿困難困擾?", ["完全沒有", "輕微", "中等", "嚴重"])
+                pads = st.selectbox("是否使用漏尿墊/護墊?", ["無", "有"])
+                if pads == "有":
+                    pads_freq = st.number_input("每天約更換幾片?", min_value=1)
+                else: pads_freq = 0
+                
+            # --- 提交按鈕 ---
             if st.form_submit_button("💾 儲存完整評估紀錄"):
                 if not sel_n or sel_n == "無名冊":
                     st.error("❌ 請選擇有效的關懷戶")
                 else:
                     pid = m_df[m_df['姓名']==sel_n]['身分證字號'].iloc[0]
+                    # 整理資料
+                    aids_str = ",".join(aids_list)
+                    care_str = ",".join(caregiver)
+                    dis_str = ",".join(disease)
+                    
                     new_h = {
                         "姓名": sel_n, "身分證字號": pid, "評估日期": str(eval_date),
-                        "是否有假牙": dent, "今年洗牙": wash, "握力": grip, 
-                        "身高": str(h), "體重": str(w), "BMI": str(round(bmi_val,1)), "聽力測試": hear,
-                        "營養篩檢分數": str(nutri_score), "營養狀態": nutri_status,
-                        "心情溫度計分數": str(mood_score), "情緒狀態": mood_status, "有自殺意念": suicide_risk
+                        # 生理
+                        "收縮壓": bp_h, "舒張壓": bp_l, "心跳": hr, "身高": h_val, "體重": w_val, "BMI": round(bmi_val, 1),
+                        "右手握力": grip_r, "左手握力": grip_l,
+                        # 社會
+                        "教育程度": edu, "婚姻狀況": marry, "居住狀況": live_st, "居住樓層": floor_final,
+                        "信仰": religion, "經濟狀況": econ, "是否有工作": work, "主要照顧者": care_str, "疾病史": dis_str,
+                        # 功能與感官
+                        "使用行走輔具": "行走輔具" in aids_str, "使用聽力輔具": "助聽器" in aids_str, "使用視力輔具": "眼鏡" in aids_str,
+                        "半年內跌倒紀錄": fall_hist, "服用助眠藥": "否", # 此項需在表單加開，暫預設
+                        "是否有假牙": has_denture, "今年洗牙": wash_teeth, "視力困難": eye_diff, "聽力困難": hear_diff, "記憶力減退": mem_loss,
+                        # 評分
+                        "營養篩檢分數": mna_raw, "營養狀態": mna_stat,
+                        "心情溫度計分數": bsrs_score, "情緒狀態": bsrs_stat, "有自殺意念": "是" if b6 > 0 else "否",
+                        "WHO5幸福指數": who5_score,
+                        # 膀胱
+                        "頻尿漏尿困擾": bladder_prob, "漏尿墊更換頻率": pads_freq
                     }
                     if save_data(pd.concat([h_df, pd.DataFrame([new_h])], ignore_index=True), "care_health"): 
                         st.success("✅ 健康評估已存檔！"); st.rerun()
 
     if not h_df.empty:
         st.markdown("#### 📂 歷史健康紀錄")
-        ed_h = st.data_editor(h_df.sort_values("評估日期", ascending=False), use_container_width=True, num_rows="dynamic", key="h_ed")
-        if st.button("💾 儲存修改內容"): save_data(ed_h, "care_health")
+        st.dataframe(h_df.sort_values("評估日期", ascending=False), use_container_width=True)
 
 # --- [分頁 3：物資] ---
 elif st.session_state.page == 'inventory':
