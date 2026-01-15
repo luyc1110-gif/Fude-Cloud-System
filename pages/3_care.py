@@ -698,22 +698,22 @@ elif st.session_state.page == 'health':
                 st.caption("1.性別, 2.生日, 3.年齡 已自動帶入")
 
                 c1, c2, c3 = st.columns(3)
-                edu = ui_card_radio("4. 您的教育程度是？", ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"], index=None)
-                marry = ui_card_radio("5. 您的婚姻狀況是？", ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"], index=None)
+                edu = ui_card_radio("4. 您的教育程度是？", ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"], key="q4_edu", index=None)
+                marry = ui_card_radio("5. 您的婚姻狀況是？", ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"], key="q5_marry", index=None)
                 
                 if p_info.get('floor', '無法推斷') == '無法推斷':
-                    floor_final = ui_card_radio("7. 您目前住幾樓？", ["一樓", "二樓以上無電梯", "二樓以上有電梯"], index=None)
+                    floor_final = ui_card_radio("7. 您目前住幾樓？", ["一樓", "二樓以上無電梯", "二樓以上有電梯"], key="q7_floor", index=None)
                 else:
                     floor_final = p_info['floor']
                     c3.success(f"7. 住幾樓：{floor_final} (已帶入)")
                     
                 c4, c5 = st.columns(2)
-                live_st = ui_card_radio("6. 您目前居住狀況是？", ["獨居", "榮家", "僅與配偶居", "與家人居(含配偶)", "與家人居(不含配偶)", "與親友居", "機構", "其他"], index=None)
-                relig = ui_card_radio("8. 您的信仰是？", ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"], index=None)
+                live_st = ui_card_radio("6. 您目前居住狀況是？", ["獨居", "榮家", "僅與配偶居", "與家人居(含配偶)", "與家人居(不含配偶)", "與親友居", "機構", "其他"], key="q6_live", index=None)
+                relig = ui_card_radio("8. 您的信仰是？", ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"], key="q8_relig", index=None)
                 
                 c6, c7, c8 = st.columns(3)
-                work = ui_card_radio("9. 您目前是否有工作？", ["退休", "家管", "目前有工作"], index=None)
-                econ = ui_card_radio("10. 您的經濟狀況是？", ["富裕", "小康", "貧窮", "其他"], index=None)
+                work = ui_card_radio("9. 您目前是否有工作？", ["退休", "家管", "目前有工作"], key="q9_work", index=None)
+                econ = ui_card_radio("10. 您的經濟狀況是？", ["富裕", "小康", "貧窮", "其他"], key="q10_econ", index=None)
                 caregiver = c8.multiselect("11. 誰是主要照顧您的人？(可複選)", ["自己", "配偶", "子女", "看護", "其他"])
                 
                 dis_hist = st.multiselect("12. 您過去是否有以下疾病？(可複選)", ["無", "糖尿病", "高血壓", "高血脂", "心臟病", "腎臟病", "肝炎", "關節炎", "骨質疏鬆", "氣喘", "癌症", "其他"])
@@ -777,19 +777,19 @@ elif st.session_state.page == 'health':
                 st.markdown("### 🧠 第二部分：高齡功能 ICOPE")
                 
                 c_i1, c_i2 = st.columns(2)
-                icope_mem = ui_card_radio("1. 最近一年是否有記憶明顯減退?", ["否", "是"], index=None)
-                icope_fall = ui_card_radio("2. 過去一年曾跌倒/擔心跌倒/需扶東西?", ["否", "是"], index=None)
+                icope_mem = ui_card_radio("1. 最近一年是否有記憶明顯減退?", ["否", "是"], key="ic_1", index=None)
+                icope_fall = ui_card_radio("2. 過去一年曾跌倒/擔心跌倒/需扶東西?", ["否", "是"], key="ic_2", index=None)
                 
                 st.markdown("---")
                 c_i3, c_i4 = st.columns(2)
-                icope_weight_val = ui_card_radio("3. 過去三個月體重減輕>3kg?", ["否", "是"], index=None)
-                icope_eat_val = ui_card_radio("4. 過去三個月食慾不好?", ["否", "是"], index=None)
+                icope_weight_val = ui_card_radio("3. 過去三個月體重減輕>3kg?", ["否", "是"], key="ic_3", index=None)
+                icope_eat_val = ui_card_radio("4. 過去三個月食慾不好?", ["否", "是"], key="ic_4", index=None)
                 
                 st.markdown("---")
                 c_i5, c_i6, c_i7 = st.columns(3)
-                icope_eye = ui_card_radio("5. 看遠近/閱讀困難?", ["否", "是"], index=None)
-                icope_opt = ui_card_radio("6. 過去一年「曾」接受眼睛檢查?", ["否", "是"], index=None)
-                icope_teeth = ui_card_radio("7. 過去六個月「曾」到牙科洗牙?", ["否", "是"], index=None)
+                icope_eye = ui_card_radio("5. 看遠近/閱讀困難?", ["否", "是"], key="ic_5", index=None)
+                icope_opt = ui_card_radio("6. 過去一年「曾」接受眼睛檢查?", ["否", "是"], key="ic_6", index=None)
+                icope_teeth = ui_card_radio("7. 過去六個月「曾」到牙科洗牙?", ["否", "是"], key="ic_7", index=None)
 
                 st.markdown("---")
                 st.write("8. 聽力狀況 (若無勾選則視為正常)")
@@ -798,20 +798,16 @@ elif st.session_state.page == 'health':
                 
                 st.markdown("---")
                 c_i8, c_i9 = st.columns(2)
-                icope_mood = ui_card_radio("9. 過去兩週常心情不好/沒希望?", ["否", "是"], index=None)
-                icope_soc = ui_card_radio("10. 過去兩週減少活動/朋友來往?", ["否", "是"], index=None)
+                icope_mood = ui_card_radio("9. 過去兩週常心情不好/沒希望?", ["否", "是"], key="ic_9", index=None)
+                icope_soc = ui_card_radio("10. 過去兩週減少活動/朋友來往?", ["否", "是"], key="ic_10", index=None)
 
-            # --- 三、BSRS-5 ---
+            # --- 三、BSRS-5 (使用滑桿卡片) ---
             with t3:
-                st.markdown("### 🌡️ 第三部分：BSRS-5 心情溫度計")
-                # 定義程度註記 (🎨 可調整文字)
+                st.markdown("### 🌡️ BSRS-5 心情溫度計")
+                st.info("請滑動滑桿選擇程度 (0~4分)")
+                
+                # 🔥 定義程度文字 (可自行修改)
                 scale_anno = {0: "完全沒有", 1: "輕微", 2: "中等程度", 3: "厲害", 4: "非常厲害"}
-                
-                # 使用 select_slider 取代 slider 以支援 index=None (如果 Streamlit 版本支援) 
-                # 或者為了強制選擇，使用 radio 橫向排列
-                
-                def score_radio(label):
-                    return st.radio(label, [0, 1, 2, 3, 4], index=None, horizontal=True, format_func=lambda x: f"{x}分")
 
                 b1 = ui_card_slider("1. 睡眠困難", 0, 4, key="bs_1", annotations=scale_anno)
                 b2 = ui_card_slider("2. 感覺緊張不安", 0, 4, key="bs_2", annotations=scale_anno)
@@ -1492,34 +1488,32 @@ elif st.session_state.page == 'stats':
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
-                # 🔥 [新增] 健康趨勢分析區塊
+                # 🔥 [新增] 健康追蹤趨勢圖
         if target_name and not h_df.empty:
             p_history = h_df[h_df['姓名'] == target_name].copy()
-            if len(p_history) > 1: # 至少要有兩筆資料才有趨勢
+            
+            # 至少有兩筆資料才畫圖
+            if len(p_history) >= 2:
                 st.markdown("---")
-                st.markdown("#### 📈 健康追蹤趨勢變化")
+                st.markdown("#### 📈 健康數據趨勢變化")
                 
-                # 整理資料
+                # 整理日期格式
                 p_history['評估日期'] = pd.to_datetime(p_history['評估日期'])
                 p_history = p_history.sort_values('評估日期')
 
-                # 選擇要觀察的指標
-                # 🎨 可調整：這裡列出您想讓使用者畫圖的數值欄位
-                trend_opts = ["BMI", "體重", "收縮壓", "右手握力", "BSRS_總分", "WHO5_總分", "MNA_篩檢分數"]
-                trend_col = st.selectbox("選擇觀察指標", trend_opts)
+                # 選擇要畫圖的指標
+                trend_opts = ["BMI", "體重", "收縮壓", "BSRS_總分", "WHO5_總分", "MNA_篩檢分數"]
+                trend_col = st.selectbox("選擇趨勢指標", trend_opts)
 
-                # 確保數值格式正確 (防呆)
+                # 強制轉數值以免報錯
                 p_history[trend_col] = pd.to_numeric(p_history[trend_col], errors='coerce')
 
-                # 畫圖
-                fig = px.line(p_history, x='評估日期', y=trend_col, markers=True, title=f"{target_name} 的 {trend_col} 變化")
-                fig.update_layout(xaxis_title="日期", yaxis_title=trend_col, hovermode="x unified")
-                # 🎨 可調整：線條顏色
-                fig.update_traces(line_color=GREEN, marker_size=10)
-                
+                # 繪製折線圖
+                fig = px.line(p_history, x='評估日期', y=trend_col, markers=True, title=f"{target_name} 的 {trend_col} 歷史變化")
+                fig.update_traces(line_color=GREEN, marker_size=10) # 🎨 可在此調整線條顏色
                 st.plotly_chart(fig, use_container_width=True)
             elif len(p_history) == 1:
-                st.info("💡 目前僅有一筆紀錄，累積更多資料後將自動顯示趨勢圖。")
+                st.caption("💡 累積兩次以上評估後，此處將自動顯示趨勢圖。")
 
                 # 機敏資料
                 if not st.session_state.unlock_details:
@@ -1571,82 +1565,77 @@ elif st.session_state.page == 'stats':
 </div>
 """, unsafe_allow_html=True)
 
-    # --- Tab 2: 多題項交叉篩選 (跨問卷) ---
+    # --- Tab 2: 跨問卷交叉篩選 (完全改寫) ---
     with tab2:
-        st.markdown("### 🔍 跨題項交叉篩選")
-        st.caption("💡 可同時選擇多個條件，例如：找「年齡<65」且「有跌倒風險」且「心情不好」的人")
+        st.markdown("### 🔍 跨題項/跨名冊 交叉篩選")
+        st.caption("💡 可同時篩選「名冊資料(如年齡)」與「健康問卷(如跌倒風險)」")
 
         if h_df.empty:
             st.warning("尚無健康資料")
         else:
-            # 1. 準備可篩選的欄位 (排除不必要的)
-            # 🎨 可調整：如果您希望身分別或地址也能篩選，可以在這裡把 mems 的欄位 merge 進來
-            # 這裡我們先做一個包含年齡的大表
+            # 1. 資料合併：將 健康問卷(h_df) 與 名冊(mems) 接在一起
             full_data = h_df.copy()
             if not mems.empty:
+                # 只取名冊的關鍵欄位
                 mems_mini = mems[['姓名', '電話', '地址', '身分別', '生日']]
                 full_data = full_data.merge(mems_mini, on='姓名', how='left')
-                full_data['數值年齡'] = full_data['生日'].apply(calculate_age) # 轉成數字方便篩選
+                # 增加「數值年齡」欄位方便篩選
+                full_data['數值年齡'] = full_data['生日'].apply(calculate_age) 
 
-            # 定義可用的篩選欄位 (包含問卷題目 + 年齡 + 身分別)
-            filter_options = [c for c in COLS_HEALTH if c not in ['姓名', '身分證字號', '評估日期']] + ['數值年齡', '身分別']
+            # 2. 準備篩選欄位：問卷題項 + 年齡 + 身分別
+            filter_cols = [c for c in COLS_HEALTH if c not in ['姓名', '身分證字號', '評估日期']] + ['數值年齡', '身分別']
             
-            # 🔥 [修改] 使用多重選單讓使用者決定要篩選哪些「欄位」
-            selected_criteria = st.multiselect("1. 請先選擇您要篩選的條件項目 (可多選)", filter_options)
+            # 3. 使用者選擇要篩選哪些項目
+            selected_criteria = st.multiselect("1. 請先選擇篩選條件 (例如: 數值年齡, ICOPE_2_跌倒風險)", filter_cols)
             
-            # 動態生成篩選器
+            # 4. 動態生成篩選器
             filters = {}
             if selected_criteria:
                 st.markdown("---")
                 st.write("##### 2. 設定條件細節：")
-                c_filters = st.columns(len(selected_criteria)) if len(selected_criteria) <= 3 else st.columns(3)
+                # 自動排版：每行放3個篩選器
+                c_filters = st.columns(3)
                 
                 for idx, col in enumerate(selected_criteria):
                     with c_filters[idx % 3]:
-                        # 針對數值型欄位 (如年齡、BMI) 顯示滑桿
-                        if col in ['數值年齡', 'BMI', '收縮壓', '舒張壓']:
-                            # 嘗試轉數值
+                        # A. 針對數值欄位 (如年齡, BMI) -> 顯示滑桿範圍
+                        if col in ['數值年齡', 'BMI', '收縮壓', '體重', 'BSRS_總分']:
                             try:
-                                min_val = float(full_data[col].min()) if not full_data[col].empty else 0
-                                max_val = float(full_data[col].max()) if not full_data[col].empty else 100
-                                filters[col] = st.slider(f"{col} 範圍", min_val, max_val, (min_val, max_val), key=f"f_{col}")
+                                min_v = float(full_data[col].min())
+                                max_v = float(full_data[col].max())
+                                filters[col] = st.slider(f"{col} 範圍", min_v, max_v, (min_v, max_v), key=f"f_{col}")
                             except:
-                                st.warning(f"{col} 無法轉為數值")
+                                st.warning(f"{col} 無法轉數值")
                         
-                        # 針對文字型/類別型欄位 顯示多選單
+                        # B. 針對文字/選項欄位 -> 顯示多選單
                         else:
-                            # 取得所有可能的答案
+                            # 找出所有可能的答案 (排序)
                             unique_opts = sorted(full_data[col].astype(str).unique().tolist())
                             filters[col] = st.multiselect(f"{col} 包含", unique_opts, key=f"f_{col}")
 
-            # 執行篩選邏輯
+            # 5. 執行篩選
             if filters:
                 result_df = full_data.copy()
                 for col, condition in filters.items():
-                    # 如果是數值範圍 (tuple)
-                    if isinstance(condition, tuple):
-                        # 先轉數值再比對
+                    # 區分範圍篩選(Tuple) 與 選項篩選(List)
+                    if isinstance(condition, tuple): # 範圍
                         result_df[col] = pd.to_numeric(result_df[col], errors='coerce').fillna(0)
-                        result_df = result_df[
-                            (result_df[col] >= condition[0]) & 
-                            (result_df[col] <= condition[1])
-                        ]
-                    # 如果是多選列表 (list)
-                    elif isinstance(condition, list) and condition:
-                        # 只要包含其中一個就符合 (Is In)
-                        # 針對身分別這種 "低收,老人" 的逗號字串，可能需要用 str.contains，但這裡先做精確比對
+                        result_df = result_df[(result_df[col] >= condition[0]) & (result_df[col] <= condition[1])]
+                    
+                    elif isinstance(condition, list) and condition: # 選項
                         if col == '身分別':
-                            # 特殊處理：只要字串中有出現關鍵字即可
-                            # 邏輯：對於每一個選中的 tag，篩選出包含該 tag 的 rows
-                            for tag in condition:
-                                result_df = result_df[result_df[col].astype(str).str.contains(tag, na=False)]
+                            # 特殊處理：身分別是 "低收,老人" 這種字串，需用包含邏輯
+                            # 只要包含使用者選的任一身分即可
+                            mask = result_df[col].astype(str).apply(lambda x: any(tag in x for tag in condition))
+                            result_df = result_df[mask]
                         else:
+                            # 一般題目：精確比對
                             result_df = result_df[result_df[col].astype(str).isin(condition)]
                 
                 st.markdown(f"#### 🎯 篩選結果：共 {len(result_df)} 人")
-                st.dataframe(result_df[['姓名', '評估日期'] + list(filters.keys()) + ['電話', '地址']], use_container_width=True)
-            elif selected_criteria:
-                st.info("請設定上方條件細節...")
+                # 顯示結果 (包含姓名、日期、篩選的欄位、電話)
+                cols_to_show = ['姓名', '評估日期'] + list(filters.keys()) + ['電話']
+                st.dataframe(result_df[cols_to_show], use_container_width=True)
 
     # --- Tab 3: 物資統計 (原有的) ---
     with tab3:
