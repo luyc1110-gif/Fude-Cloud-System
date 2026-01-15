@@ -156,6 +156,11 @@ div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px s
   color: #333333 !important;
 }}
 
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
+  div[data-baseweb="input"] > div {{
+  background: #FFFFFF !important;
+}}
+
 </style>
 """, unsafe_allow_html=True)
 
