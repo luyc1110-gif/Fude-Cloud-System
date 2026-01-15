@@ -126,79 +126,76 @@ div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadBut
 /* Toast */
 div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px solid {PRIMARY} !important; border-radius: 15px !important; padding: 15px !important; }}
 
-/* --- 📅 DatePicker Popover：強制白底黑字，避免黑底看不清 --- */
-div[data-baseweb="popover"] {{
-    background: #FFFFFF !important;
-    color: #333333 !important;
-    border-radius: 16px !important;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.18) !important;
-}}
+/* =========================================================
+   ✅ DatePicker/RangePicker：強制白底黑字（跨版本選擇器）
+   命中 popover/layer/dialog 三種常見外層
+   ========================================================= */
 
-/* Popover 內全部字色強制深色（含月份、星期、日期數字） */
-div[data-baseweb="popover"] * {{
-    color: #333333 !important;
-}}
-
-/* Calendar 本體白底 */
-div[data-baseweb="popover"] div[data-baseweb="calendar"] {{
-    background-color: #FFFFFF !important;
-}}
-
-/* 日期按鈕 hover */
-div[data-baseweb="popover"] div[data-baseweb="calendar"] button:hover {{
-    background-color: #F3E5F5 !important;
-}}
-
-/* 被選取日期：維持你想要的主色＋白字 */
-div[data-baseweb="popover"] div[data-baseweb="calendar"] button[aria-selected="true"] {{
-    background-color: {PRIMARY} !important;
-    color: #FFFFFF !important;
-}}
-
-/* 月份/年份的下拉（有些版本會用到 BaseWeb select） */
-div[data-baseweb="popover"] div[data-baseweb="select"] > div {{
-    background-color: #FFFFFF !important;
-    color: #333333 !important;
-    border: 1px solid #E0E0E0 !important;
-}}
-
-/* --- ✅ 強制 DatePicker Popover 用 light scheme（避免黑底系統樣式） --- */
-div[data-baseweb="popover"] {{
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"]) {{
+  background: #FFFFFF !important;
+  color: #333333 !important;
   color-scheme: light !important;
-  background: #FFFFFF !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.18) !important;
 }}
 
-/* --- ✅ 上方「年月/箭頭」那一列：常見是 role="navigation" --- */
-div[data-baseweb="popover"] div[role="navigation"] {{
-  background: #FFFFFF !important;
-}}
-div[data-baseweb="popover"] div[role="navigation"] * {{
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"]) * {{
   color: #333333 !important;
 }}
 
-/* --- ✅ 若你的版本沒有 role="navigation"，再用 header 容器備援覆蓋 --- */
-div[data-baseweb="popover"] div[data-baseweb="calendar"] > div:first-child {{
+/* ✅ 最上方年月列/導覽列（很多版本是 role=navigation） */
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
+  :where(div[role="navigation"], div[aria-label*="Calendar"], div[aria-label*="calendar"]) {{
   background: #FFFFFF !important;
 }}
-div[data-baseweb="popover"] div[data-baseweb="calendar"] > div:first-child * {{
-  color: #333333 !important;
+
+/* ✅ Calendar 本體 */
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
+  div[data-baseweb="calendar"] {{
+  background: #FFFFFF !important;
 }}
 
-/* --- ✅ 月/年下拉（BaseWeb Select）本體：白底黑字 --- */
-div[data-baseweb="popover"] div[data-baseweb="select"] > div {{
+/* ✅ 月/年下拉（BaseWeb Select） */
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
+  div[data-baseweb="select"] > div {{
   background: #FFFFFF !important;
   color: #333333 !important;
   border: 1px solid #E0E0E0 !important;
   border-radius: 10px !important;
 }}
-
-/* 下拉箭頭/圖示顏色 */
-div[data-baseweb="popover"] div[data-baseweb="select"] svg {{
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
+  div[data-baseweb="select"] svg {{
   fill: #333333 !important;
 }}
 
-/* 左右箭頭按鈕（有些版本是 button 內含 svg） */
-div[data-baseweb="popover"] button svg {{
+/* ✅ 你截圖那塊黑色長條：通常是 BaseWeb input 容器 */
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
+  div[data-baseweb="input"] > div {{
+  background: #FFFFFF !important;
+  border: 1px solid #E0E0E0 !important;
+  border-radius: 10px !important;
+}}
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
+  input {{
+  background: #FFFFFF !important;
+  color: #333333 !important;
+}}
+
+/* ✅ 日期 hover / selected */
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
+  div[data-baseweb="calendar"] button:hover {{
+  background-color: #F3E5F5 !important;
+}}
+
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
+  div[data-baseweb="calendar"] button[aria-selected="true"] {{
+  background-color: {PRIMARY} !important;
+  color: #FFFFFF !important;
+}}
+
+/* ✅ 左右箭頭/圖示 */
+:where(div[data-baseweb="popover"], div[data-baseweb="layer"], div[role="dialog"])
+  button svg {{
   fill: #333333 !important;
 }}
 
