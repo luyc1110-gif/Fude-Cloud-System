@@ -712,7 +712,7 @@ elif st.session_state.page == 'health':
                 relig = ui_card_radio("8. 您的信仰是？", ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"], key="q8_relig", index=None)
                 
                 c6, c7, c8 = st.columns(3)
-                work = ui_card_radio("9. 您目前是否有工作？", ["退休", "家管", "目前有工作"], key="q9_work", index=None)
+                work = ui_card_radio("9. 您目前是否有工作？", ["退休", "家管", "目前有工作", "待業中"], key="q9_work", index=None)
                 econ = ui_card_radio("10. 您的經濟狀況是？", ["富裕", "小康", "貧窮", "其他"], key="q10_econ", index=None)
                 caregiver = c8.multiselect("11. 誰是主要照顧您的人？(可複選)", ["自己", "配偶", "子女", "看護", "其他"])
                 
@@ -778,27 +778,27 @@ elif st.session_state.page == 'health':
                 
                 c_i1, c_i2 = st.columns(2)
                 icope_mem = ui_card_radio("1. 最近一年是否有記憶明顯減退?", ["否", "是"], key="ic_1", index=None)
-                icope_fall = ui_card_radio("2. 過去一年曾跌倒/擔心跌倒/需扶東西?", ["否", "是"], key="ic_2", index=None)
+                icope_fall = ui_card_radio("2. 過去一年曾跌倒/擔心跌倒/需扶東西才能從椅子站起?", ["否", "是"], key="ic_2", index=None)
                 
                 st.markdown("---")
                 c_i3, c_i4 = st.columns(2)
                 icope_weight_val = ui_card_radio("3. 過去三個月體重減輕>3kg?", ["否", "是"], key="ic_3", index=None)
-                icope_eat_val = ui_card_radio("4. 過去三個月食慾不好?", ["否", "是"], key="ic_4", index=None)
+                icope_eat_val = ui_card_radio("4. 過去三個月「曾經」食慾不好?", ["否", "是"], key="ic_4", index=None)
                 
                 st.markdown("---")
                 c_i5, c_i6, c_i7 = st.columns(3)
-                icope_eye = ui_card_radio("5. 看遠近/閱讀困難?", ["否", "是"], key="ic_5", index=None)
+                icope_eye = ui_card_radio("5. 看遠近/閱讀有困難?", ["否", "是"], key="ic_5", index=None)
                 icope_opt = ui_card_radio("6. 過去一年「曾」接受眼睛檢查?", ["否", "是"], key="ic_6", index=None)
                 icope_teeth = ui_card_radio("7. 過去六個月「曾」到牙科洗牙?", ["否", "是"], key="ic_7", index=None)
 
                 st.markdown("---")
                 st.write("8. 聽力狀況 (若無勾選則視為正常)")
-                hear_opts = st.multiselect("請選擇符合的情況：", ["電話聽不清", "被說音量太大", "需對方重說", "因聽力不想聚會"])
+                hear_opts = st.multiselect("請選擇符合的情況：", ["電話交談時聽不清或因為沒聽到鈴聲而漏接", "看電視或聽收音機時被說音量開太大聲", "與對方交談需對方提高音量或重說", "因聽力問題而不想聚會"])
                 icope_hear_res = "是" if len(hear_opts) > 0 else "否"
                 
                 st.markdown("---")
                 c_i8, c_i9 = st.columns(2)
-                icope_mood = ui_card_radio("9. 過去兩週常心情不好/沒希望?", ["否", "是"], key="ic_9", index=None)
+                icope_mood = ui_card_radio("9. 過去兩週常心情不好/覺得沒希望?", ["否", "是"], key="ic_9", index=None)
                 icope_soc = ui_card_radio("10. 過去兩週減少活動/朋友來往?", ["否", "是"], key="ic_10", index=None)
 
             # --- 三、BSRS-5 (使用滑桿卡片) ---
@@ -809,7 +809,7 @@ elif st.session_state.page == 'health':
                 # 🔥 定義程度文字 (可自行修改)
                 scale_anno = {0: "完全沒有", 1: "輕微", 2: "中等程度", 3: "厲害", 4: "非常厲害"}
 
-                b1 = ui_card_slider("1. 睡眠困難", 0, 4, key="bs_1", annotations=scale_anno)
+                b1 = ui_card_slider("1. 睡眠困難（難以入睡、易醒或早醒）", 0, 4, key="bs_1", annotations=scale_anno)
                 b2 = ui_card_slider("2. 感覺緊張不安", 0, 4, key="bs_2", annotations=scale_anno)
                 b3 = ui_card_slider("3. 覺得容易動怒", 0, 4, key="bs_3", annotations=scale_anno)
                 b4 = ui_card_slider("4. 感覺憂鬱、心情低落", 0, 4, key="bs_4", annotations=scale_anno)
