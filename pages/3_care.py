@@ -479,7 +479,11 @@ def append_data(sn, row_dict, col_order):
         row_values = [str(row_dict.get(c, "")).strip() for c in col_order]
         client = get_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sn)
-        sheet.append_row(row_values) # 關鍵：只加一行
+        sheet.append_rows(
+            rows_values,
+            value_input_option="USER_ENTERED",
+            insert_data_option="INSERT_ROWS",
+        )
         st.cache_data.clear() # 清除快取，讓下次讀取能讀到新的
         return True
     except Exception as e:
