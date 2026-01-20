@@ -475,19 +475,22 @@ def append_data(sn, row_dict, col_order):
     col_order: 欄位順序列表 (如 COLS_LOG)
     """
     try:
-        # 依照固定欄位順序產生 list
         row_values = [str(row_dict.get(c, "")).strip() for c in col_order]
+
         client = get_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sn)
-        sheet.append_rows(
-            rows_values,
+
+        sheet.append_row(
+            row_values,
             value_input_option="USER_ENTERED",
             insert_data_option="INSERT_ROWS",
         )
-        st.cache_data.clear() # 清除快取，讓下次讀取能讀到新的
+
+        st.cache_data.clear()
         return True
     except Exception as e:
-        st.error(f"新增失敗：{e}"); return False
+        st.error(f"新增失敗：{e}")
+        return False
 
 # 🔥 新增函數：從地址推斷樓層
 def extract_floor(address_str):
