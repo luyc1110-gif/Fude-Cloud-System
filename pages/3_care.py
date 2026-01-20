@@ -1349,19 +1349,20 @@ elif st.session_state.page == 'visit':
             
             # 2. 寫入資料庫
             try:
-                client = get_client()
-                sheet = client.open_by_key(SHEET_ID).worksheet("care_logs")
+                success_count = 0
+                for row_data in new_logs:
+                    # 直接呼叫您原本定義好的 append_data 函式
+                    # 此函式使用的是 sheet.append_row，保證是「追加」
+                    if append_data("care_logs", row_data, COLS_LOG):
+                        success_count += 1
                 
-                rows_values = []
-                # 🔥 修正點：將原本錯誤的 logs_to_add 改為正確的 new_logs
-                for row in new_logs:
-                    # 轉成 list
-                    rows_values.append([str(row.get(c, "")).strip() for c in COLS_LOG])
-                
-                # 一次寫入多行 (最快)
-                sheet.append_rows(rows_values)
-                st.cache_data.clear()
-                st.success("✅ 紀錄已儲存！"); time.sleep(1); st.rerun()
+                if success_count == len(new_logs):
+                    st.success(f"✅ 成功新增 {success_count} 筆紀錄！")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.warning(f"⚠️ 部分資料寫入異常，僅成功 {success_count} 筆。")
+                    
             except Exception as e:
                 st.error(f"儲存失敗: {e}")
 
