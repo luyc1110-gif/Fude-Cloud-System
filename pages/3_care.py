@@ -1473,18 +1473,53 @@ elif st.session_state.page == 'stats':
                 age = calculate_age(p_data['生日'])
                 
                 # 1. 基本資料卡片
-                st.markdown(f"""
-                <div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
-                    <div style="font-size: 1.5rem; font-weight: 900; color: #333; margin-bottom: 5px;">
-                        {p_data['姓名']} <span style='font-size:1rem; color:#666; background:#eee; padding:2px 8px; border-radius:10px;'>{p_data['性別']} / {age}歲</span>
-                    </div>
-                    <div style="color: {PRIMARY}; font-weight:bold; margin-bottom: 10px;">{p_data['身分別']}</div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; color:#555;">
-                        <div>📞 {p_data['電話']}</div>
-                        <div>📍 {p_data['地址']}</div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown("### 🤝 近五筆訪視紀錄")
+                # 篩選該個案的紀錄
+                p_logs = logs[logs['關懷戶姓名'] == target_name]
+                
+                if p_logs.empty: 
+                    st.info("尚無訪視紀錄。")
+                else:
+                    # 🔥 關鍵修改：排序後只取前 5 筆
+                    p_logs = p_logs.sort_values("發放日期", ascending=False).head(5)
+                    
+                    for idx, row in p_logs.iterrows():
+                        # 判斷是「純訪視」還是「發物資」，設定不同顏色與標題
+                        is_pure_visit = (row['物資內容'] == "(僅訪視)")
+                        
+                        # 顏色：純訪視用灰色(#9E9E9E)，發物資用綠色(#8E9775)
+                        border_color = "#9E9E9E" if is_pure_visit else "#8E9775"
+                        
+                        # 物資顯示文字
+                        if is_pure_visit:
+                            item_display = "💬 純訪視關懷"
+                        else:
+                            # 顯示物資名稱與數量
+                            item_display = f"🎁 發放：{row['物資內容']} <span style='background:#fff; color:#333; padding:0 5px; border-radius:4px;'>x {row['發放數量']}</span>"
+
+                        # 訪視筆記內容 (若空則顯示提示)
+                        note_content = row['訪視紀錄'] if row['訪視紀錄'] else "（本次無詳細文字紀錄）"
+
+                        # 渲染卡片
+                        st.markdown(f"""
+                        <div class="visit-card" style="border-left: 5px solid {border_color}; margin-bottom: 15px;">
+                            <div class="visit-header" style="border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px;">
+                                <span class="visit-date" style="font-size:1.1rem; font-weight:900;">📅 {row['發放日期']}</span>
+                                <span class="visit-volunteer" style="font-size:0.9rem; background:#f0f0f0; padding:3px 8px; border-radius:10px;">👮 執行志工：{row['志工']}</span>
+                            </div>
+                            
+                            <div style="margin-bottom:10px;">
+                                <span style="background-color:{border_color}; color:white; padding:5px 12px; border-radius:15px; font-weight:bold; font-size:0.95rem; display:inline-block;">
+                                    {item_display}
+                                </span>
+                            </div>
+                            
+                            <div class="visit-note" style="background:#fafafa; padding:10px; border-radius:8px; color:#555; line-height:1.6;">
+                                <div style="font-size:0.85rem; color:#999; margin-bottom:3px;">📝 訪視內容/備註：</div>
+                                {note_content}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                 
                 # 2. 自動警示卡片邏輯 (Smart Alerts)
                 if not h_df.empty:
