@@ -419,10 +419,12 @@ if st.session_state.page == 'home':
 elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 長輩名冊管理")
+    
+    # 讀取最新名冊
     df = load_data("elderly_members")
     
     # 🟢 1. 新增功能 (公開，方便填寫)
-    with st.expander("➕ 新增長輩資料 (展開填寫)", expanded=True):
+    with st.expander("➕ 新增長輩資料 (展開填寫)", expanded=False):
         with st.form("add_elder"):
             c1, c2, c3 = st.columns(3)
             name, pid, gender = c1.text_input("姓名"), c2.text_input("身分證字號"), c3.selectbox("性別", ["男", "女"])
@@ -432,38 +434,62 @@ elif st.session_state.page == 'members':
             if st.form_submit_button("確認新增"):
                 if not pid or not name: st.error("姓名與身分證字號為必填")
                 else:
-                    new_row = {"姓名": name, "身分證字號": pid.upper(), "性別": gender, "出生年月日": str(dob), "電話": phone, "地址": addr, "備註": note, "加入日期": str(date.today())}
-                    # --- 修改為 append_data ---
-                    if append_data("elderly_members", new_row, M_COLS):
-                        st.success(f"已新增：{name}"); time.sleep(1); st.rerun()
-    
-    # 🔒 2. 完整名冊 (需密碼才能看)
-    st.markdown("### 📝 完整名冊資料 (需管理員權限)")
-    
-    if st.session_state.unlock_elder_list:
-        # 已解鎖狀態：顯示表格
-        if st.button("🔒 鎖定表格"):
-            st.session_state.unlock_elder_list = False
-            st.rerun()
+                    # 檢查是否重複
+                    if not df.empty and pid.upper() in df['身分證字號'].values:
+                        st.error(f"❌ 身分證字號 {pid} 已存在於名冊中！")
+                    else:
+                        new_row = {"姓名": name, "身分證字號": pid.upper(), "性別": gender, "出生年月日": str(dob), "電話": phone, "地址": addr, "備註": note, "加入日期": str(date.today())}
+                        if append_data("elderly_members", new_row, M_COLS):
+                            st.success(f"✅ 已新增：{name}"); time.sleep(1); st.rerun()
+
+    # 🔴 2. [新增] 退出/結案功能 (將長輩移出名單)
+    with st.expander("📤 長輩退出/結案 (移除名單)", expanded=False):
+        st.markdown("""
+        <div style="background-color:#FFF3E0; padding:10px; border-radius:10px; border-left:5px solid #FF9800; margin-bottom:10px;">
+        ⚠️ <b>注意：</b> 此操作會將長輩從「服務中名單」移除，並存入「elderly_archive」封存表中。<br>
+        過去的服務紀錄與血壓數據<b>不會</b>消失，但該長輩將無法再進行報到。
+        </div>
+        """, unsafe_allow_html=True)
+
+        if df.empty:
+            st.info("目前無長輩資料可供操作。")
+        else:
+            # 製作選單
+            member_options_exit = [f"{row.姓名} ({row.身分證字號})" for idx, row in enumerate(df.itertuples(index=False))]
+            c_sel, c_reason = st.columns([1, 1])
+            with c_sel:
+                target_exit = st.selectbox("選擇退出長輩", ["--- 請選擇 ---"] + member_options_exit)
+            with c_reason:
+                exit_reason = st.selectbox("退出/結案原因", ["過世", "搬遷/無法聯繫", "自願退出", "進入長照機構", "其他"])
             
-        if not df.empty:
-            df['年齡'] = df['出生年月日'].apply(calculate_age)
-            st.data_editor(df[["姓名", "性別", "年齡", "電話", "地址", "身分證字號", "出生年月日", "備註"]], use_container_width=True, num_rows="dynamic", key="elder_editor")
-    else:
-        # 未解鎖狀態：顯示密碼框
-        st.info("為了保護長輩個資，查看完整名冊請輸入密碼。")
-        c_pwd, c_btn = st.columns([2, 1])
-        with c_pwd:
-            pwd = st.text_input("請輸入管理員密碼", type="password", key="unlock_list_pwd")
-        with c_btn:
-            st.markdown("<br>", unsafe_allow_html=True) # 排版用
-            if st.button("🔓 解鎖名冊"):
-                if pwd == st.secrets["admin_password"]:
-                    st.session_state.unlock_elder_list = True
-                    st.success("✅ 解鎖成功！")
-                    st.rerun()
+            # 確認按鈕
+            if st.button("確認執行封存 (無法復原)", type="primary"):
+                if target_exit == "--- 請選擇 ---":
+                    st.error("請先選擇長輩！")
                 else:
-                    st.error("❌ 密碼錯誤")
+                    # 1. 抓出該長輩資料
+                    target_pid = target_exit.split("(")[-1].replace(")", "")
+                    target_row = df[df['身分證字號'] == target_pid].iloc[0].to_dict()
+                    
+                    # 2. 加上退出資訊
+                    target_row["退出日期"] = str(date.today())
+                    target_row["退出原因"] = exit_reason
+                    
+                    # 3. 定義封存的欄位順序 (包含原欄位 + 新增欄位)
+                    ARCHIVE_COLS = M_COLS + ["退出日期", "退出原因"]
+                    
+                    # 4. 寫入 Archive 表
+                    if append_data("elderly_archive", target_row, ARCHIVE_COLS):
+                        # 5. 從原表中刪除 (透過篩選掉該身分證號)
+                        df_new = df[df['身分證字號'] != target_pid]
+                        if save_data(df_new, "elderly_members"):
+                            st.success(f"✅ 已將 {target_row['姓名']} 移至封存名單。")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("寫入封存成功，但刪除舊資料失敗，請聯繫管理員。")
+                    else:
+                        st.error("寫入封存失敗，請檢查 Google Sheet 是否有建立 'elderly_archive' 分頁。")
 
 # --- [分頁 2：據點報到 (完全公開)] ---
 elif st.session_state.page == 'checkin':
