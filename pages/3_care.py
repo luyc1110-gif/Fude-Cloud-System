@@ -1623,73 +1623,59 @@ elif st.session_state.page == 'stats':
 </div>
 """, unsafe_allow_html=True)
                 
-                st.markdown("### 🤝 近五筆訪視服務紀錄")
+                st.markdown("---") # 加一條分隔線會比較清楚
+        st.markdown("### 🤝 近五筆訪視紀錄")
+        
+        # 篩選該個案的紀錄 (這裡開始都要向左縮排，確保與 if target_name and not h_df.empty: 同層級)
+        p_logs = logs[logs['關懷戶姓名'] == target_name]
+        
+        if p_logs.empty: 
+            st.info("💡 該個案尚無任何訪視或物資領取紀錄。")
+        else:
+            # 依日期排序並取前 5 筆
+            p_logs = p_logs.sort_values("發放日期", ascending=False).head(5)
+            
+            for idx, row in p_logs.iterrows():
+                # --- 卡片樣式設定 ---
+                is_pure_visit = (row['物資內容'] == "(僅訪視)")
+                border_color = "#9E9E9E" if is_pure_visit else "#8E9775"
+                bg_icon = "💬" if is_pure_visit else "🎁"
                 
-                # 1. 篩選出該個案的紀錄
-                p_logs = logs[logs['關懷戶姓名'] == target_name]
-                
-                if p_logs.empty: 
-                    st.info("💡 該個案尚無任何訪視或物資領取紀錄。")
+                if is_pure_visit:
+                    main_content = "純訪視關懷 (無物資)"
+                    badge_style = "background:#eee; color:#666;"
                 else:
-                    # 2. 🔥 關鍵邏輯：依日期降序排列(新的在上面) -> 只取前 5 筆
-                    p_logs = p_logs.sort_values("發放日期", ascending=False).head(5)
-                    
-                    # 3. 迴圈產生卡片
-                    for idx, row in p_logs.iterrows():
-                        # --- 樣式邏輯 ---
-                        # 判斷是「純訪視」還是「發物資」
-                        is_pure_visit = (row['物資內容'] == "(僅訪視)")
-                        
-                        # 設定顏色：純訪視=灰色(冷靜)，發物資=綠色(溫暖)
-                        border_color = "#9E9E9E" if is_pure_visit else "#8E9775"
-                        bg_icon = "💬" if is_pure_visit else "🎁"
-                        
-                        # 準備顯示文字
-                        if is_pure_visit:
-                            main_content = "純訪視關懷 (無物資)"
-                            badge_style = "background:#eee; color:#666;"
-                        else:
-                            # 顯示物資名稱與數量
-                            qty = row['發放數量']
-                            main_content = f"領取：{row['物資內容']}"
-                            badge_style = "background:#E8F5E9; color:#2E7D32; font-weight:bold;"
+                    qty = row['發放數量']
+                    main_content = f"領取：{row['物資內容']}"
+                    badge_style = "background:#E8F5E9; color:#2E7D32; font-weight:bold;"
 
-                        # 處理訪視備註 (如果是空值，顯示無紀錄)
-                        note_text = row['訪視紀錄'] if row['訪視紀錄'] and row['訪視紀錄'].strip() != "" else "(本次無詳細文字紀錄)"
+                note_text = row['訪視紀錄'] if row['訪視紀錄'] and row['訪視紀錄'].strip() != "" else "(本次無詳細文字紀錄)"
 
-                        # --- HTML 卡片渲染 ---
-                        st.markdown(f"""
-                        <div style="
-                            background-color: white;
-                            border-radius: 12px;
-                            border-left: 6px solid {border_color};
-                            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-                            padding: 15px;
-                            margin-bottom: 15px;
-                            transition: transform 0.2s;
-                        ">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px;">
-                                <span style="font-size: 1.1rem; font-weight: 900; color: #333;">
-                                    📅 {row['發放日期']}
-                                </span>
-                                <span style="font-size: 0.85rem; background-color: #f5f5f5; color: #555; padding: 4px 10px; border-radius: 20px;">
-                                    👮 執行志工：{row['志工']}
-                                </span>
-                            </div>
-
-                            <div style="margin-bottom: 12px;">
-                                <span style="font-size: 1rem; padding: 6px 12px; border-radius: 8px; display: inline-block; {badge_style}">
-                                    {bg_icon} {main_content} 
-                                    {f'<span style="background:white; padding:0 6px; border-radius:4px; margin-left:5px; font-size:0.9rem; border:1px solid #cfcfcf;">x {qty}</span>' if not is_pure_visit else ''}
-                                </span>
-                            </div>
-
-                            <div style="background-color: #FAFAFA; padding: 10px; border-radius: 8px; font-size: 0.95rem; color: #444; line-height: 1.5;">
-                                <div style="font-size: 0.8rem; color: #999; margin-bottom: 4px; font-weight: bold;">📝 訪視內容 / 備註：</div>
-                                {note_text}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                # --- 渲染 HTML 卡片 ---
+                st.markdown(f"""
+                <div style="
+                    background-color: white;
+                    border-radius: 12px;
+                    border-left: 6px solid {border_color};
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+                    padding: 15px;
+                    margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px;">
+                        <span style="font-size: 1.1rem; font-weight: 900; color: #333;">📅 {row['發放日期']}</span>
+                        <span style="font-size: 0.85rem; background-color: #f5f5f5; color: #555; padding: 4px 10px; border-radius: 20px;">👮 執行志工：{row['志工']}</span>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <span style="font-size: 1rem; padding: 6px 12px; border-radius: 8px; display: inline-block; {badge_style}">
+                            {bg_icon} {main_content} 
+                            {f'<span style="background:white; padding:0 6px; border-radius:4px; margin-left:5px; font-size:0.9rem; border:1px solid #cfcfcf;">x {qty}</span>' if not is_pure_visit else ''}
+                        </span>
+                    </div>
+                    <div style="background-color: #FAFAFA; padding: 10px; border-radius: 8px; font-size: 0.95rem; color: #444; line-height: 1.5;">
+                        <div style="font-size: 0.8rem; color: #999; margin-bottom: 4px; font-weight: bold;">📝 訪視內容 / 備註：</div>
+                        {note_text}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
     # --- Tab 2: 跨問卷交叉篩選 (完全改寫) ---
     with tab2:
