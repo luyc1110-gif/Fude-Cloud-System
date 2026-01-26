@@ -1071,9 +1071,6 @@ elif st.session_state.page == 'health':
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-        
-        with st.expander("📄 查看完整歷史表格 (點擊展開)"):
-            st.dataframe(h_df.sort_values("評估日期", ascending=False), use_container_width=True)
 
 # --- [分頁 3：物資] ---
 elif st.session_state.page == 'inventory':
@@ -1416,10 +1413,41 @@ elif st.session_state.page == 'visit':
             except Exception as e:
                 st.error(f"儲存失敗: {e}")
 
-    # 歷史紀錄顯示 (保留原功能)
+    # === 🔥 修改開始：訪視紀錄改為卡片 ===
     if not logs.empty:
-        st.markdown("#### 📝 最近訪視紀錄")
-        st.dataframe(logs.sort_values('發放日期', ascending=False).head(10), use_container_width=True)
+        st.markdown("#### 📝 最新訪視動態 (Top 3)")
+        
+        # 1. 排序並取前 3
+        recent_logs = logs.sort_values('發放日期', ascending=False).head(3)
+        
+        v_cols = st.columns(3)
+        for idx, (i, row) in enumerate(recent_logs.iterrows()):
+            if idx < 3:
+                with v_cols[idx]:
+                    # 判斷是物資還是純訪視，給不同顏色標籤
+                    is_only_visit = (row['物資內容'] == "(僅訪視)")
+                    tag_bg = "#9E9E9E" if is_only_visit else "#8E9775"
+                    item_text = "純訪視" if is_only_visit else f"{row['物資內容']}"
+                    
+                    st.markdown(f"""
+                    <div style="
+                        background: white; 
+                        border-radius: 12px; 
+                        padding: 15px; 
+                        border-right: 5px solid {tag_bg}; 
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <span style="font-weight:900; font-size:1.1rem; color:#333;">{row['關懷戶姓名']}</span>
+                            <span style="font-size:0.8rem; color:#888;">{row['發放日期']}</span>
+                        </div>
+                        <div style="background:{tag_bg}; color:white; font-size:0.8rem; padding:2px 8px; border-radius:4px; display:inline-block; margin-bottom:8px;">
+                            {item_text}
+                        </div>
+                        <div style="font-size:0.9rem; color:#555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {row['訪視紀錄'] if row['訪視紀錄'] else "(無備註)"}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
 # =========================================================
 # 🔥 Page: Stats (數據統計與詳細檔案卡片 - 升級版)
