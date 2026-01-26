@@ -609,6 +609,34 @@ elif st.session_state.page == 'members':
     st.markdown("## 📋 關懷戶名冊管理")
     df = load_data("care_members", COLS_MEM)
     
+    # === 🔥 修改開始：新增「最新 3 筆」卡片顯示區 ===
+    st.markdown("### 🆕 最新建檔關懷戶")
+    if not df.empty:
+        # 1. 取出最後 3 筆 (假設最新資料在最下面)，並反轉順序讓最新的排第一個
+        recent_mems = df.tail(3).iloc[::-1]
+        
+        cols = st.columns(3)
+        for idx, (i, row) in enumerate(recent_mems.iterrows()):
+            with cols[idx]:
+                # 使用簡單的卡片樣式
+                st.markdown(f"""
+                <div style="
+                    background: white; 
+                    border-radius: 12px; 
+                    padding: 15px; 
+                    border-left: 5px solid #8E9775; 
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                    text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: 900; color: #333;">{row['姓名']}</div>
+                    <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">
+                        {row.get('性別','')} / {calculate_age(row.get('生日',''))} 歲
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+    else:
+        st.info("尚無名冊資料")
+    st.markdown("---")
+    
     with st.expander("➕ 新增關懷戶 (展開填寫)", expanded=False):
         with st.form("add_care", clear_on_submit=True):
             c1, c2, c3, c4 = st.columns(4)
