@@ -370,9 +370,19 @@ if st.session_state.page == 'home':
     members = load_data_from_sheet("members")
     this_year = datetime.now().year
     
-    # --- 🔥 修改這裡：改用新的計算函式 ---
-    total_sec = calculate_coverage_hours_year(logs, this_year) 
-    # -----------------------------------
+    # --- 🔥 修正開始：先篩選年度，再呼叫通用函式 ---
+    if not logs.empty:
+        # 1. 建立時間欄位 (以利篩選年份)
+        logs['dt'] = pd.to_datetime(logs['日期'] + ' ' + logs['時間'], errors='coerce')
+        logs = logs.dropna(subset=['dt'])
+        
+        # 2. 篩選出今年的資料
+        year_logs = logs[logs['dt'].dt.year == this_year]
+        
+        # 3. 呼叫通用函式計算 (計算團隊重疊後時數)
+        total_sec = calculate_coverage_seconds(year_logs)
+    else:
+        total_sec = 0
 
     total_hours = int(total_sec // 3600)
     total_mins = int((total_sec % 3600) // 60)
