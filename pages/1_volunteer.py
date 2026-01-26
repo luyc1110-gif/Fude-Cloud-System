@@ -692,22 +692,22 @@ elif st.session_state.page == 'report':
                 target_act = st.selectbox("選擇活動", ["全部"] + all_acts)
                 view_df = filtered_logs if target_act == "全部" else filtered_logs[filtered_logs['活動內容'] == target_act]
                 
-                # --- 🔥 修改開始：分別計算「團隊時數」與「人次」 ---
-                
-                # 1. 計算團隊實際服務時數 (扣除重疊) -> 用於上方卡片
+                # 1. 計算團隊實際服務時數 (扣除重疊)
                 cov_seconds = calculate_coverage_seconds(view_df)
                 cov_h = int(cov_seconds // 3600)
                 cov_m = int((cov_seconds % 3600) // 60)
-                team_time_str = f"{cov_h}小時 {cov_m}分"
+                team_time_str = f"{cov_h}小時 {cov_m}分" # 🔥 這裡是定義 team_time_str
 
-                # 2. 計算總人次 (維持原邏輯，只要有簽退就算一次) -> 用於上方卡片
-                # 這裡我們只取 calc_stats_display 的第一個回傳值 (total_sessions)
-                tot_sess, _, _ = calc_stats_display(view_df)
+                # 2. 計算總人次
+                tot_sess, _, _ = calc_stats_display(view_df) # 🔥 這裡的舊變數被 _ 取代了
                 
                 # 🔥 1. 卡片式統計指標
                 m1, m2, m3 = st.columns(3)
                 with m1: st.markdown(f"""<div class="metric-box"><div class="metric-label">總人次</div><div class="metric-value">{tot_sess}</div></div>""", unsafe_allow_html=True)
-                with m2: st.markdown(f"""<div class="metric-box"><div class="metric-label">總時數</div><div class="metric-value">{tot_time_str}</div></div>""", unsafe_allow_html=True)
+                
+                # 🔥 修正點：這裡要用 team_time_str，且建議標籤改成「團隊服務時數」
+                with m2: st.markdown(f"""<div class="metric-box"><div class="metric-label">團隊服務時數</div><div class="metric-value">{team_time_str}</div></div>""", unsafe_allow_html=True)
+                
                 with m3: st.markdown(f"""<div class="metric-box"><div class="metric-label">參與志工數</div><div class="metric-value">{view_df['姓名'].nunique()}</div></div>""", unsafe_allow_html=True)
                 
                 csv = view_df.to_csv(index=False).encode('utf-8-sig')
