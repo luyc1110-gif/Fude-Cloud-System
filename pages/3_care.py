@@ -672,23 +672,6 @@ elif st.session_state.page == 'members':
                     }
                     if append_data("care_members", new, COLS_MEM):
                         st.success("✅ 已新增！"); time.sleep(1); st.rerun()
-    
-    st.markdown("### 📝 完整名冊 (需權限)")
-    if st.session_state.unlock_members:
-        if not df.empty:
-            df['歲數'] = df['生日'].apply(calculate_age)
-            ed = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="mem_ed")
-            if st.button("💾 儲存修改"): 
-                if save_data(ed, "care_members"): st.success("已更新")
-    else:
-        st.info("🔒 為保護個資，查看完整表格需輸入管理員密碼。")
-        c_pwd, c_btn = st.columns([2, 1])
-        with c_pwd: pwd_m = st.text_input("請輸入密碼", type="password", key="unlock_m_pwd")
-        with c_btn: 
-            if st.button("🔓 解鎖名冊"):
-                if pwd_m == st.secrets["admin_password"]:
-                    st.session_state.unlock_members = True; st.rerun()
-                else: st.error("❌ 密碼錯誤")
 
 # =========================================================
 # 🔥 Page: Health (分頁優化、即時計算、無預設值)
@@ -1055,10 +1038,42 @@ elif st.session_state.page == 'health':
                     if save_data(pd.concat([h_df, pd.DataFrame([row_data])], ignore_index=True), "care_health"): 
                         st.success("✅ 問卷儲存成功！"); st.rerun()
 
-    # 歷史紀錄
+    # === 🔥 修改開始：歷史紀錄改為卡片 ===
     if not h_df.empty:
-        st.markdown("### 📂 歷史問卷紀錄")
-        st.dataframe(h_df.sort_values("評估日期", ascending=False), use_container_width=True)
+        st.markdown("### 📂 最新評估紀錄 (僅顯示最新 3 筆)")
+        
+        # 1. 依照「評估日期」排序(新到舊) -> 取前 3 筆
+        recent_h = h_df.sort_values("評估日期", ascending=False).head(3)
+        
+        h_cols = st.columns(3)
+        for idx, (i, row) in enumerate(recent_h.iterrows()):
+            # 為了避免超出欄位數 (例如只有1筆資料)，加個判斷
+            if idx < 3:
+                with h_cols[idx]:
+                    st.markdown(f"""
+                    <div style="
+                        background: white; 
+                        border-radius: 12px; 
+                        padding: 15px; 
+                        border-top: 5px solid #4A4E69; 
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                        display: flex; flex-direction: column; align-items: center;">
+                        <div style="font-size: 0.85rem; color: #888; margin-bottom: 5px;">📅 {row['評估日期']}</div>
+                        <div style="font-size: 1.3rem; font-weight: 900; color: #333;">{row['姓名']}</div>
+                        <div style="
+                            margin-top: 10px; 
+                            background: #F8F9FA; 
+                            padding: 4px 12px; 
+                            border-radius: 15px; 
+                            font-size: 0.8rem; 
+                            color: #555;">
+                            BSRS: {row.get('BSRS_總分','-')} 分
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        with st.expander("📄 查看完整歷史表格 (點擊展開)"):
+            st.dataframe(h_df.sort_values("評估日期", ascending=False), use_container_width=True)
 
 # --- [分頁 3：物資] ---
 elif st.session_state.page == 'inventory':
