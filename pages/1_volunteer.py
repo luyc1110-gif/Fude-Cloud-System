@@ -255,27 +255,71 @@ def check_is_fully_retired(row):
     if not has_any: return False 
     return not is_active
 
-def calculate_hours_year(logs_df, year):
+def calculate_coverage_hours_year(logs_df, year):
+    """
+    計算「團隊服務涵蓋時數」 (扣除多人同時段重疊的時間)
+    演算法：取出所有人的 (簽到, 簽退) 時間段 -> 依時間排序 -> 合併重疊區間 -> 加總長度
+    """
     if logs_df.empty: return 0
+    
+    # 資料預處理
     logs_df['dt'] = pd.to_datetime(logs_df['日期'] + ' ' + logs_df['時間'], errors='coerce')
     logs_df = logs_df.dropna(subset=['dt'])
     year_logs = logs_df[logs_df['dt'].dt.year == year].copy()
+    
     if year_logs.empty: return 0
-    total_seconds = 0
+
+    # 1. 擷取所有志工的有效「服務時段」 (Start, End)
+    all_intervals = []
     year_logs = year_logs.sort_values(['姓名', 'dt'])
+    
+    # 針對每個人、每一天找出簽到退區間
     for (name, date_val), group in year_logs.groupby(['姓名', '日期']):
         actions = group['動作'].tolist()
         times = group['dt'].tolist()
+        
         i = 0
         while i < len(actions):
             if actions[i] == '簽到':
+                # 往後找最近的一次簽退
                 for j in range(i + 1, len(actions)):
                     if actions[j] == '簽退':
-                        total_seconds += (times[j] - times[i]).total_seconds()
-                        i = j
+                        start_t = times[i]
+                        end_t = times[j]
+                        if end_t > start_t: # 防呆：結束時間需大於開始時間
+                            all_intervals.append((start_t, end_t))
+                        i = j # 跳過這組，繼續找下一組
                         break
+                else:
+                    i += 1 # 只有簽到沒簽退，略過
+            else:
                 i += 1
-            else: i += 1
+                
+    if not all_intervals: return 0
+
+    # 2. 合併重疊時段 (Interval Merging Algorithm)
+    # 關鍵：先依「開始時間」排序
+    all_intervals.sort(key=lambda x: x[0])
+    
+    merged_intervals = []
+    if all_intervals:
+        curr_start, curr_end = all_intervals[0]
+        
+        for next_start, next_end in all_intervals[1:]:
+            if next_start < curr_end: 
+                # 發生重疊：延長目前的結束時間 (取兩者較晚結束者)
+                curr_end = max(curr_end, next_end)
+            else:
+                # 無重疊：將目前的區間存入，並將指標移到下一個區間
+                merged_intervals.append((curr_start, curr_end))
+                curr_start, curr_end = next_start, next_end
+        
+        # 把最後一個區間存入
+        merged_intervals.append((curr_start, curr_end))
+        
+    # 3. 計算合併後的總秒數
+    total_seconds = sum((end - start).total_seconds() for start, end in merged_intervals)
+    
     return total_seconds
 
 def get_present_volunteers(logs_df):
@@ -344,7 +388,11 @@ if st.session_state.page == 'home':
     logs = load_data_from_sheet("logs")
     members = load_data_from_sheet("members")
     this_year = datetime.now().year
-    total_sec = calculate_hours_year(logs, this_year)
+    
+    # --- 🔥 修改這裡：改用新的計算函式 ---
+    total_sec = calculate_coverage_hours_year(logs, this_year) 
+    # -----------------------------------
+
     total_hours = int(total_sec // 3600)
     total_mins = int((total_sec % 3600) // 60)
     
