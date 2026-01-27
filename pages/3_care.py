@@ -1569,31 +1569,86 @@ elif st.session_state.page == 'stats':
                 # 1. 基本資料卡片
                 # 🔥 修正重點：將 HTML 字串定義在變數中，並確保內容靠左對齊，避免 Markdown 誤判為程式碼區塊
                 card_html = f"""
-<div style="background-color: white; padding: 25px; border-radius: 15px; border-left: 8px solid {GREEN}; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px;">
-    <div style="display: flex; align-items: center; margin-bottom: 12px;">
-        <div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-right: 15px;">
-            {p_data['姓名']}
-        </div>
-        <div style="background: #F3F4F6; color: #4B5563; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">
-            {p_data['性別']} / {age}歲
-        </div>
-    </div>
-    
-    <div style="margin-bottom: 20px;">
-        {tags_html}
+<div style="
+  background:#fff;
+  border:1px solid #eee;
+  border-radius:16px;
+  padding:16px;
+  box-shadow:0 6px 18px rgba(0,0,0,.06);
+  max-width:720px;
+">
+
+  <!-- 標籤列 -->
+  <div style="margin-bottom: 14px; display:flex; gap:8px; flex-wrap:wrap;">
+    <span style="
+      background-color:#FFEBEE;
+      color:#C62828;
+      padding:4px 12px;
+      border-radius:999px;
+      font-size:0.85rem;
+      font-weight:800;
+      display:inline-flex;
+      align-items:center;
+      line-height:1.6;
+    ">低收</span>
+
+    <!-- 你如果之後還有其他標籤，直接複製這個 span 改色即可 -->
+    <!-- <span style="...">獨居</span> -->
+  </div>
+
+  <!-- 資訊列 -->
+  <div style="
+    display:grid;
+    grid-template-columns: 1fr 2fr;
+    gap:12px 16px;
+    border-top:1px solid #f0f0f0;
+    padding-top:14px;
+  ">
+    <!-- 電話 -->
+    <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+      <span style="font-size:1.15rem;">📞</span>
+      <a href="tel:0906108480" style="
+        color:#333;
+        text-decoration:none;
+        font-weight:800;
+        white-space:nowrap;
+      ">0906-108480</a>
+      <span style="color:#999; font-size:.85rem;">（點擊撥號）</span>
     </div>
 
-    <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; border-top: 1px solid #eee; padding-top: 15px;">
-        <div style="display: flex; align-items: center; color: #444; font-weight: bold;">
-            <span style="font-size: 1.2rem; margin-right: 8px;">📞</span> {p_data['電話']}
-        </div>
-        <div style="display: flex; align-items: center; color: #444;">
-            <span style="font-size: 1.2rem; margin-right: 8px; color: #D32F2F;">📍</span> {p_data['地址']}
-        </div>
+    <!-- 地址 -->
+    <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+      <span style="font-size:1.15rem; color:#D32F2F;">📍</span>
+      <a
+        href="https://www.google.com/maps/search/?api=1&query=%E6%A1%83%E5%9C%92%E5%B8%82%E5%85%AB%E5%BE%B7%E5%8D%80%E5%BB%BA%E5%BE%B7%E8%B7%AF101%E8%99%9F10%E6%A8%93%E4%B9%8B%E4%B8%80"
+        target="_blank"
+        rel="noopener noreferrer"
+        style="
+          color:#444;
+          text-decoration:none;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+          display:block;
+        "
+        title="桃園市八德區建德路101號10樓之一"
+      >桃園市八德區建德路101號10樓之一</a>
+      <span style="color:#999; font-size:.85rem; white-space:nowrap;">（開地圖）</span>
     </div>
+  </div>
+
+  <!-- RWD：窄螢幕自動變一欄 -->
+  <div style="height:0;"></div>
 </div>
-"""
-                st.markdown(card_html, unsafe_allow_html=True)
+
+<style>
+@media (max-width: 560px){
+  div[style*="grid-template-columns: 1fr 2fr"]{
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+
                 
                 # 2. 自動警示卡片邏輯 (Smart Alerts)
                 if not h_df.empty:
