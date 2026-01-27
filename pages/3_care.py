@@ -178,20 +178,26 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 }}
 .health-dashboard-card:hover {{ transform: translateY(-3px); }}
 
-/* 危險 (紅) */
+/* 1. 危險 (紅) - 高風險 */
 .h-card-danger {{
     background: linear-gradient(135deg, #FF5252 0%, #C62828 100%);
     border: 1px solid #B71C1C;
 }}
-/* 警告 (橘) */
+
+/* 2. 警告 (橘) - 中風險 */
 .h-card-warning {{
-    background: linear-gradient(135deg, #FFB74D 0%, #EF6C00 100%);
-    border: 1px solid #E65100;
+    background: linear-gradient(135deg, #FFB74D 0%, #E65100 100%);
+    border: 1px solid #EF6C00;
 }}
-/* 安全 (綠) */
-.h-card-safe {{
-    background: linear-gradient(135deg, #81C784 0%, #2E7D32 100%);
-    border: 1px solid #1B5E20;
+
+/* 3. [新增] 提醒 (金黃) - 輕微/預防性 */
+.h-card-notice {{
+    background: linear-gradient(135deg, #FDD835 0%, #F9A825 100%);
+    border: 1px solid #F57F17;
+    color: #333 !important; /* 黃色背景配深色字比較清楚，若想維持白色字可移除這行 */
+}}
+.h-card-notice .h-card-value, .h-card-notice .h-card-title, .h-card-notice .h-card-icon {{
+    color: #333 !important; /* 強制深色字 */
 }}
 
 .h-card-icon {{ font-size: 2.5rem; margin-right: 15px; opacity: 0.9; }}
@@ -1601,38 +1607,35 @@ elif st.session_state.page == 'stats':
                         
                         alerts = []
                         
-                        # --- 定義警示規則 (欄位名, 觸發值, 顯示標題, 圖示, 顏色等級) ---
-                        # 顏色等級: 'danger' (紅), 'warning' (橘)
+                        # ==========================================
+                        # 1. 通用規則 (簡單欄位檢查)
+                        # ==========================================
+                        # 移除原本的 BMI 規則，改由下方獨立邏輯處理
                         rules = [
-                            # BSRS-5
+                            # === 🔴 高風險 (Danger) ===
                             ("BSRS_6_自殺", lambda x: "分" in str(x) and str(x) != "0分", "自殺意念", "🚨", "danger"),
-                            ("BSRS_狀態", ["中度情緒困擾", "重度情緒困擾"], "情緒困擾", "⛈️", "danger"),
-                            
-                            # MNA
+                            ("BSRS_狀態", ["重度情緒困擾"], "重度情緒困擾", "⛈️", "danger"),
                             ("MNA_狀態", "營養不良", "營養不良", "📉", "danger"),
+                            
+                            # === 🟠 中風險 (Warning) ===
+                            ("BSRS_狀態", ["中度情緒困擾"], "中度情緒困擾", "🌧️", "warning"),
                             ("MNA_狀態", "有營養不良風險", "營養風險", "📉", "warning"),
-                            
-                            # ICOPE (您特別要求的洗牙與其他項目)
-                            ("ICOPE_7_曾洗牙", "否", "半年未洗牙", "🦷", "warning"),
                             ("ICOPE_2_跌倒風險", "是", "跌倒風險", "🤕", "warning"),
-                            ("ICOPE_5_視力困難", "是", "視力異常", "👓", "warning"),
-                            ("ICOPE_8_聽力困擾", "是", "聽力異常", "👂", "warning"),
-                            ("ICOPE_9_心情低落", "是", "心情低落", "☁️", "warning"),
                             ("ICOPE_1_記憶減退", "是", "記憶減退", "🧠", "warning"),
-                            
-                            # 身體數值
-                            ("BMI", lambda x: float(x) < 18.5 if x and str(x).replace('.','').isdigit() else False, "體重過輕", "⚖️", "warning"),
-                            
-                            # 膀胱
-                            ("膀胱_1_頻尿", ["會(中等)", "會(嚴重)"], "頻尿困擾", "🚽", "warning"),
+                            ("ICOPE_9_心情低落", "是", "心情低落", "☁️", "warning"),
+                            ("膀胱_1_頻尿", ["會(嚴重)"], "嚴重頻尿", "🚽", "warning"),
+
+                            # === 🟡 提醒/輕微 (Notice) ===
+                            ("ICOPE_7_曾洗牙", "否", "半年未洗牙", "🦷", "notice"),
+                            ("ICOPE_5_視力困難", "是", "視力異常", "👓", "notice"),
+                            ("ICOPE_8_聽力困擾", "是", "聽力異常", "👂", "notice"),
+                            ("膀胱_1_頻尿", ["會(中等)"], "中度頻尿", "🚽", "notice"),
                         ]
                         
-                        # 檢查規則
+                        # 執行通用規則迴圈
                         for col, trigger, title, icon, level in rules:
                             val = str(last_h.get(col, ''))
                             is_hit = False
-                            
-                            # 判斷邏輯：可能是函式、列表或直接比對字串
                             if callable(trigger):
                                 try: is_hit = trigger(val)
                                 except: is_hit = False
@@ -1644,16 +1647,62 @@ elif st.session_state.page == 'stats':
                             if is_hit:
                                 alerts.append({'icon': icon, 'title': title, 'val': val, 'type': level})
 
-                        # --- 卡片渲染 (自動排版) ---
+                        # ==========================================
+                        # 2. 複雜邏輯：BMI (針對 60 歲以上長者)
+                        # ==========================================
+                        try:
+                            # 優先使用名冊計算的 age (即時)，若無則用問卷填寫的 Q3_年齡
+                            check_age = age if age > 0 else float(last_h.get('Q3_年齡', 0))
+                            bmi_val = float(last_h.get('BMI', 0))
+                            
+                            if check_age >= 60 and bmi_val > 0:
+                                if bmi_val < 19:
+                                    alerts.append({'icon': '⚖️', 'title': '體重過輕', 'val': f"BMI {bmi_val}", 'type': 'danger'})
+                                elif 19 <= bmi_val < 21:
+                                    alerts.append({'icon': '⚖️', 'title': '體重偏輕', 'val': f"BMI {bmi_val}", 'type': 'warning'})
+                                elif 21 <= bmi_val < 23:
+                                    alerts.append({'icon': '⚖️', 'title': '注意體重', 'val': f"BMI {bmi_val}", 'type': 'notice'})
+                                # 23 以上不警示
+                        except:
+                            pass # 避免資料轉換錯誤導致當機
+
+                        # ==========================================
+                        # 3. 複雜邏輯：握力 (區分性別)
+                        # ==========================================
+                        try:
+                            # 判斷性別
+                            p_gender = last_h.get('Q1_性別', '')
+                            # 取左右手最大值 (慣用手概念)
+                            g_r = float(last_h.get('右手握力', 0) if last_h.get('右手握力') else 0)
+                            g_l = float(last_h.get('左手握力', 0) if last_h.get('左手握力') else 0)
+                            max_grip = max(g_r, g_l)
+                            
+                            is_low_grip = False
+                            if max_grip > 0: # 確保有數值才判斷
+                                if p_gender == '男' and max_grip < 26:
+                                    is_low_grip = True
+                                elif p_gender == '女' and max_grip < 18:
+                                    is_low_grip = True
+                            
+                            if is_low_grip:
+                                 alerts.append({'icon': '💪', 'title': '握力不足', 'val': f"{max_grip}kg", 'type': 'notice'})
+                        except:
+                            pass
+
+                        # ==========================================
+                        # 4. 渲染卡片 (依嚴重度排序)
+                        # ==========================================
                         if alerts:
-                            # 每行顯示 3 個卡片
+                            sort_map = {"danger": 1, "warning": 2, "notice": 3}
+                            alerts.sort(key=lambda k: sort_map.get(k['type'], 99))
+
                             cols_per_row = 3
                             for i in range(0, len(alerts), cols_per_row):
                                 row_alerts = alerts[i:i+cols_per_row]
                                 cols = st.columns(cols_per_row)
                                 for idx, alert in enumerate(row_alerts):
                                     with cols[idx]:
-                                        css_cls = "h-card-danger" if alert['type'] == 'danger' else "h-card-warning"
+                                        css_cls = f"h-card-{alert['type']}"
                                         st.markdown(f"""
                                         <div class="health-dashboard-card {css_cls}">
                                             <div class="h-card-icon">{alert['icon']}</div>
@@ -1664,6 +1713,7 @@ elif st.session_state.page == 'stats':
                                         </div>
                                         """, unsafe_allow_html=True)
                         else:
+                            # 顯示安全卡片
                             st.markdown("""
                             <div class="health-dashboard-card h-card-safe">
                                 <div class="h-card-icon">✅</div>
