@@ -1118,23 +1118,18 @@ elif st.session_state.page == 'health':
                     if save_data(pd.concat([h_df, pd.DataFrame([row_data])], ignore_index=True), "care_health"): 
                         st.success("✅ 問卷儲存成功！"); st.rerun()
 
-    # === 🔥 修改開始：確保依照「日期」排序顯示最新 3 筆 ===
+    # === 🔥 修改開始：直接抓取資料表「最下方」的 3 筆 ===
     if not h_df.empty:
         st.markdown("### 📂 最新評估紀錄 (僅顯示最新 3 筆)")
         
-        # 1. 建立一個臨時的 DataFrame 以免影響原始資料
-        temp_df = h_df.copy()
-        
-        # 2. 強制將「評估日期」轉為 datetime 格式 (處理字串排序錯誤的問題)
-        # errors='coerce' 會將無法辨識的日期變成 NaT，避免程式報錯
-        temp_df['_sort_date'] = pd.to_datetime(temp_df['評估日期'], errors='coerce')
-        
-        # 3. 依照轉換後的日期「由大到小 (新到舊)」排序，並取前 3 筆
-        recent_h = temp_df.sort_values('_sort_date', ascending=False).head(3)
+        # 邏輯修正：
+        # 1. .tail(3) -> 抓出最後面(最新加入)的 3 筆
+        # 2. .iloc[::-1] -> 上下顛倒，讓最下面那一筆(最新)排在第一個顯示
+        recent_h = h_df.tail(3).iloc[::-1]
         
         h_cols = st.columns(3)
         for idx, (i, row) in enumerate(recent_h.iterrows()):
-            # 為了避免超出欄位數 (例如只有1筆資料)，加個判斷
+            # 確保不會因為資料少於3筆而報錯
             if idx < 3:
                 with h_cols[idx]:
                     st.markdown(f"""
@@ -1159,7 +1154,6 @@ elif st.session_state.page == 'health':
                     </div>
                     """, unsafe_allow_html=True)
     # === 🔥 修改結束 ===
-
 # --- [分頁 3：物資] ---
 elif st.session_state.page == 'inventory':
     render_nav()
