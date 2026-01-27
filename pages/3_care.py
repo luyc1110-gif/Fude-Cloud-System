@@ -1569,6 +1569,7 @@ elif st.session_state.page == 'stats':
                 # 1. 基本資料卡片 (已嵌入 tags_html)
                 st.markdown(f"""
                 <div style="background-color: white; padding: 25px; border-radius: 15px; border-left: 8px solid {GREEN}; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px;">
+                    
                     <div style="display: flex; align-items: center; margin-bottom: 12px;">
                         <div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-right: 15px;">
                             {p_data['姓名']}
@@ -1577,7 +1578,6 @@ elif st.session_state.page == 'stats':
                             {p_data['性別']} / {age}歲
                         </div>
                     </div>
-                    
                     <div style="margin-bottom: 20px;">
                         {tags_html}
                     </div>
