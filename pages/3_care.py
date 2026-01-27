@@ -736,23 +736,23 @@ elif st.session_state.page == 'health':
                 # === 🔥 修改開始：動態疾病選項邏輯 ===
                 # 1. 定義系統預設的基本選項
             base_diseases = ["無", "糖尿病", "高血壓", "高血脂", "心臟病", "腎臟病", "肝炎", "關節炎", "骨質疏鬆", "氣喘", "癌症", "其他"]
-                history_diseases = set()
-                if not h_df.empty and 'Q12_過去疾病史' in h_df.columns:
-                    for record in h_df['Q12_過去疾病史'].dropna().astype(str):
-                        items = [x.strip() for x in record.split(',') if x.strip()]
-                        history_diseases.update(items)
+            history_diseases = set()
+            if not h_df.empty and 'Q12_過去疾病史' in h_df.columns:
+                for record in h_df['Q12_過去疾病史'].dropna().astype(str):
+                    items = [x.strip() for x in record.split(',') if x.strip()]
+                    history_diseases.update(items)
 
-                all_options = sorted(list(set(base_diseases) | history_diseases))
-                if "其他" in all_options: all_options.remove("其他")
-                all_options.append("其他")
+            all_options = sorted(list(set(base_diseases) | history_diseases))
+            if "其他" in all_options: all_options.remove("其他")
+            all_options.append("其他")
 
-                dis_hist = st.multiselect("12. 您過去是否有以下疾病？(可複選)", all_options)
+            dis_hist = st.multiselect("12. 您過去是否有以下疾病？(可複選)", all_options)
 
 # 初始化變數 (這行很重要，避免沒選其他時報錯)
-                other_disease_text = "" 
-                if "其他" in dis_hist:
+            other_disease_text = "" 
+            if "其他" in dis_hist:
     # 因為移除了 st.form，這裡會即時顯示
-                    other_disease_text = st.text_input("↳ 請輸入疾病名稱 (輸入後儲存，下次將自動變為選項)", placeholder="例如：痛風...")
+                other_disease_text = st.text_input("↳ 請輸入疾病名稱 (輸入後儲存，下次將自動變為選項)", placeholder="例如：痛風...")
                 # === 🔥 修改結束 ===
 
             st.markdown("---")
