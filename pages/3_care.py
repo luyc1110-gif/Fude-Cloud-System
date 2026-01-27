@@ -1527,16 +1527,66 @@ elif st.session_state.page == 'stats':
                 p_data = mems[mems['姓名'] == target_name].iloc[0]
                 age = calculate_age(p_data['生日'])
                 
-                # 1. 基本資料卡片
+                # --- 🔥 修改開始：將身分別字串轉為彩色標籤 HTML ---
+                def get_tag_html(tag_text):
+                    # 定義顏色對映 (背景色, 文字色)
+                    color_map = {
+                        "獨居": ("#FFF3E0", "#E65100"),    # 橘色系 (關注)
+                        "身障": ("#E3F2FD", "#1565C0"),    # 藍色系
+                        "低收": ("#FFEBEE", "#C62828"),    # 紅色系 (經濟)
+                        "中低收": ("#FFEBEE", "#C62828"),  # 紅色系
+                        "老人": ("#E8F5E9", "#2E7D32"),    # 綠色系
+                        "一般": ("#F5F5F5", "#616161"),    # 灰色系
+                    }
+                    
+                    # 預設樣式 (灰色)
+                    bg, txt = ("#F3F4F6", "#374151")
+                    
+                    # 模糊比對關鍵字
+                    for key, (c_bg, c_txt) in color_map.items():
+                        if key in tag_text:
+                            bg, txt = c_bg, c_txt
+                            break
+                    
+                    return f"""<span style="
+                        background-color: {bg}; 
+                        color: {txt}; 
+                        padding: 4px 12px; 
+                        border-radius: 15px; 
+                        font-size: 0.85rem; 
+                        font-weight: bold; 
+                        margin-right: 6px; 
+                        display: inline-block;
+                        margin-bottom: 4px;">{tag_text}</span>"""
+
+                # 處理標籤字串 (支援中文逗號與英文逗號)
+                raw_tags = str(p_data['身分別']).replace('，', ',').split(',')
+                tags_html = "".join([get_tag_html(t.strip()) for t in raw_tags if t.strip()])
+                # --- 🔥 修改結束 ---
+
+                # 1. 基本資料卡片 (已嵌入 tags_html)
                 st.markdown(f"""
-                <div style="background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid {GREEN}; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
-                    <div style="font-size: 1.5rem; font-weight: 900; color: #333; margin-bottom: 5px;">
-                        {p_data['姓名']} <span style='font-size:1rem; color:#666; background:#eee; padding:2px 8px; border-radius:10px;'>{p_data['性別']} / {age}歲</span>
+                <div style="background-color: white; padding: 25px; border-radius: 15px; border-left: 8px solid {GREEN}; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-right: 15px;">
+                            {p_data['姓名']}
+                        </div>
+                        <div style="background: #F3F4F6; color: #4B5563; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">
+                            {p_data['性別']} / {age}歲
+                        </div>
                     </div>
-                    <div style="color: {PRIMARY}; font-weight:bold; margin-bottom: 10px;">{p_data['身分別']}</div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; color:#555;">
-                        <div>📞 {p_data['電話']}</div>
-                        <div>📍 {p_data['地址']}</div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        {tags_html}
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; border-top: 1px solid #eee; padding-top: 15px;">
+                        <div style="display: flex; align-items: center; color: #444; font-weight: bold;">
+                            <span style="font-size: 1.2rem; margin-right: 8px;">📞</span> {p_data['電話']}
+                        </div>
+                        <div style="display: flex; align-items: center; color: #444;">
+                            <span style="font-size: 1.2rem; margin-right: 8px; color: #D32F2F;">📍</span> {p_data['地址']}
+                        </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
