@@ -1017,6 +1017,19 @@ elif st.session_state.page == 'health':
                 else:
                     # 組合資料 (處理 None 值為空字串以避免寫入錯誤)
                     def safe_str(val): return str(val) if val is not None else ""
+                # === 🔥 修改開始：處理疾病字串 ===
+            # 複製一份使用者選的清單
+                final_dis_list = list(dis_hist)
+
+                # 如果清單中有 "其他"，將其移除，並加入手動輸入的文字
+                if "其他" in final_dis_list:
+                    final_dis_list.remove("其他") # 移除 "其他" 這個選項
+                    if other_disease_text.strip(): # 如果有輸入文字
+                        final_dis_list.append(other_disease_text.strip()) # 加入 "痛風"
+
+                # 轉成逗號隔開的字串
+                final_dis_str = ",".join(final_dis_list)
+                # === 🔥 修改結束 ===
                     
                     row_data = {
                         "姓名": sel_n, "身分證字號": p_row['身分證字號'], "評估日期": str(eval_date),
