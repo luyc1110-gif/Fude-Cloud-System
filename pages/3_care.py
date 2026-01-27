@@ -1566,32 +1566,34 @@ elif st.session_state.page == 'stats':
                 tags_html = "".join([get_tag_html(t.strip()) for t in raw_tags if t.strip()])
                 # --- 🔥 修改結束 ---
 
-                # 1. 基本資料卡片 (已嵌入 tags_html)
-                st.markdown(f"""
-                <div style="background-color: white; padding: 25px; border-radius: 15px; border-left: 8px solid {GREEN}; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px;">
-                    
-                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                        <div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-right: 15px;">
-                            {p_data['姓名']}
-                        </div>
-                        <div style="background: #F3F4F6; color: #4B5563; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">
-                            {p_data['性別']} / {age}歲
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 20px;">
-                        {tags_html}
-                    </div>
+                # 1. 基本資料卡片
+                # 🔥 修正重點：將 HTML 字串定義在變數中，並確保內容靠左對齊，避免 Markdown 誤判為程式碼區塊
+                card_html = f"""
+<div style="background-color: white; padding: 25px; border-radius: 15px; border-left: 8px solid {GREEN}; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+        <div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-right: 15px;">
+            {p_data['姓名']}
+        </div>
+        <div style="background: #F3F4F6; color: #4B5563; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">
+            {p_data['性別']} / {age}歲
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+        {tags_html}
+    </div>
 
-                    <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; border-top: 1px solid #eee; padding-top: 15px;">
-                        <div style="display: flex; align-items: center; color: #444; font-weight: bold;">
-                            <span style="font-size: 1.2rem; margin-right: 8px;">📞</span> {p_data['電話']}
-                        </div>
-                        <div style="display: flex; align-items: center; color: #444;">
-                            <span style="font-size: 1.2rem; margin-right: 8px; color: #D32F2F;">📍</span> {p_data['地址']}
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+    <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; border-top: 1px solid #eee; padding-top: 15px;">
+        <div style="display: flex; align-items: center; color: #444; font-weight: bold;">
+            <span style="font-size: 1.2rem; margin-right: 8px;">📞</span> {p_data['電話']}
+        </div>
+        <div style="display: flex; align-items: center; color: #444;">
+            <span style="font-size: 1.2rem; margin-right: 8px; color: #D32F2F;">📍</span> {p_data['地址']}
+        </div>
+    </div>
+</div>
+"""
+                st.markdown(card_html, unsafe_allow_html=True)
                 
                 # 2. 自動警示卡片邏輯 (Smart Alerts)
                 if not h_df.empty:
