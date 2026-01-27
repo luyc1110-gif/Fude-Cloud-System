@@ -1001,7 +1001,7 @@ elif st.session_state.page == 'health':
 
             # --- 提交 ---
             st.markdown("---")
-            if st.form_submit_button("💾 儲存完整問卷資料", type="primary"):
+            if st.button("💾 儲存完整問卷資料", type="primary"):
                 # 簡單的防呆檢查
                 if not sel_n:
                     st.error("❌ 尚未選擇關懷戶！")
