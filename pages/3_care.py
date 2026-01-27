@@ -1531,9 +1531,9 @@ elif st.session_state.page == 'stats':
                 def get_tag_html(tag_text):
                     # 定義顏色對映 (背景色, 文字色)
                     color_map = {
-                        "獨居": ("#FFF3E0", "#E65100"),    # 橘色系 (關注)
+                        "獨居": ("#FFF3E0", "#E65100"),    # 橘色系 (重點關注)
                         "身障": ("#E3F2FD", "#1565C0"),    # 藍色系
-                        "低收": ("#FFEBEE", "#C62828"),    # 紅色系 (經濟)
+                        "低收": ("#FFEBEE", "#C62828"),    # 紅色系 (經濟弱勢)
                         "中低收": ("#FFEBEE", "#C62828"),  # 紅色系
                         "老人": ("#E8F5E9", "#2E7D32"),    # 綠色系
                         "一般": ("#F5F5F5", "#616161"),    # 灰色系
@@ -1542,12 +1542,13 @@ elif st.session_state.page == 'stats':
                     # 預設樣式 (灰色)
                     bg, txt = ("#F3F4F6", "#374151")
                     
-                    # 模糊比對關鍵字
+                    # 模糊比對關鍵字 (例如 "獨居有子女" 也會對應到 "獨居")
                     for key, (c_bg, c_txt) in color_map.items():
                         if key in tag_text:
                             bg, txt = c_bg, c_txt
                             break
                     
+                    # 回傳 HTML 標籤語法
                     return f"""<span style="
                         background-color: {bg}; 
                         color: {txt}; 
@@ -1559,8 +1560,9 @@ elif st.session_state.page == 'stats':
                         display: inline-block;
                         margin-bottom: 4px;">{tag_text}</span>"""
 
-                # 處理標籤字串 (支援中文逗號與英文逗號)
+                # 處理標籤字串 (支援中文逗號與英文逗號切割)
                 raw_tags = str(p_data['身分別']).replace('，', ',').split(',')
+                # 生成所有標籤的 HTML
                 tags_html = "".join([get_tag_html(t.strip()) for t in raw_tags if t.strip()])
                 # --- 🔥 修改結束 ---
 
