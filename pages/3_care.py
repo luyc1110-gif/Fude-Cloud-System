@@ -1018,6 +1018,20 @@ elif st.session_state.page == 'health':
                     # 組合資料 (處理 None 值為空字串以避免寫入錯誤)
                     def safe_str(val): return str(val) if val is not None else ""
                     
+                    # === 🔥 修正重點：先處理疾病字串邏輯，再放入字典 ===
+                    # 1. 複製使用者選的清單
+                    final_dis_list = list(dis_hist)
+
+                    # 2. 如果清單中有 "其他"，將其移除，並加入手動輸入的文字
+                    if "其他" in final_dis_list:
+                        final_dis_list.remove("其他") # 移除 "其他" 這個選項
+                        if other_disease_text.strip(): # 如果有輸入文字
+                            final_dis_list.append(other_disease_text.strip()) 
+
+                    # 3. 轉成逗號隔開的字串
+                    final_dis_str = ",".join(final_dis_list)
+                    # === 🔥 修正結束 ===
+
                     row_data = {
                         "姓名": sel_n, "身分證字號": p_row['身分證字號'], "評估日期": str(eval_date),
                         "收縮壓": safe_str(sys_p), "舒張壓": safe_str(dia_p), "心跳": safe_str(hr_p),
@@ -1026,17 +1040,11 @@ elif st.session_state.page == 'health':
                         "Q1_性別": p_info.get('gender',''), "Q2_出生年月日": str(p_info.get('dob','')), "Q3_年齡": str(p_info.get('age','')),
                         "Q4_教育程度": safe_str(edu), "Q5_婚姻狀況": safe_str(marry), "Q6_居住狀況": safe_str(live_st),
                         "Q7_居住樓層": safe_str(floor_final), "Q8_信仰": safe_str(relig), "Q9_工作狀態": safe_str(work),
-                        "Q10_經濟狀況": safe_str(econ), "Q11_主要照顧者": ",".join(caregiver), "Q12_過去疾病史": final_dis_list = list(dis_hist)
+                        "Q10_經濟狀況": safe_str(econ), "Q11_主要照顧者": ",".join(caregiver), 
+                        
+                        # ⬇️ 這裡直接使用上面算好的字串
+                        "Q12_過去疾病史": final_dis_str, 
 
-                # 如果清單中有 "其他"，將其移除，並加入手動輸入的文字
-                if "其他" in final_dis_list:
-                    final_dis_list.remove("其他") # 移除 "其他" 這個選項
-                    if other_disease_text.strip(): # 如果有輸入文字
-                        final_dis_list.append(other_disease_text.strip()) # 加入 "痛風"
-
-                # 轉成逗號隔開的字串
-                final_dis_str = ",".join(final_dis_list)
-                # === 🔥 修改結束 ===,
                         "使用行走輔具": aid_walk, "使用聽力輔具": aid_hear, "使用視力輔具": aid_eye, "半年內跌倒紀錄": safe_str(fall_rec),
                         "服用助眠藥": safe_str(med_sleep), "服用心血管藥物": safe_str(med_cv), "喝乳品習慣": safe_str(milk_habit),
                         "使用漏尿墊": safe_str(pad_use), "男性小便斷續": safe_str(male_urine),
