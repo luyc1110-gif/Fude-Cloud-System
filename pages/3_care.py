@@ -887,23 +887,48 @@ elif st.session_state.page == 'health':
                 st.caption("請完成所有題目以顯示總分...")
 
             # --- 四、MNA ---
+        # --- 四、MNA ---
         with t4:
             st.markdown("### 🍱 第四部分：MNA 營養評估")
-                
-                # 題目連動邏輯
+            
+            # === 🔥 修改開始：自動帶入但允許修改 ===
+            
+            # A題：食量
             st.write("**A. 過去三個月食量減少程度?**")
+            mna_a_opts = ["0:食量嚴重減少", "1:食量中度減少", "2:食量沒有改變"]
+            # 預設索引：如果 ICOPE 食慾(Q4)為否(正常)，預選第 3 個選項(索引2)；否則不預選
+            mna_a_idx = 2 if icope_eat_val == "否" else None
+            
+            mna_a = st.radio(
+                "A題 (請詳實評估)", 
+                mna_a_opts, 
+                index=mna_a_idx, 
+                horizontal=True  # 排版美觀可選
+            )
+            # 提示文字
             if icope_eat_val == "否":
-                mna_a = st.radio("A題 (系統依ICOPE自動帶入)", ["2:食量沒有改變"], index=0, disabled=True)
-                st.caption("✅ 因ICOPE回答食慾正常，故自動帶入滿分")
-            else:
-                mna_a = st.radio("A題 (請詳實評估)", ["0:食量嚴重減少", "1:食量中度減少", "2:食量沒有改變"], index=None)
+                st.caption("💡 系統依 ICOPE 自動建議「食量無改變」，如有誤請手動修正。")
 
+            st.markdown("---")
+
+            # B題：體重
             st.write("**B. 過去三個月體重下降情況?**")
+            mna_b_opts = ["0:下降大於3公斤", "1:不知道", "2:下降1-3公斤", "3:沒有下降"]
+            # 預設索引：如果 ICOPE 體重(Q3)為否(正常)，預選第 4 個選項(索引3)；否則不預選
+            mna_b_idx = 3 if icope_weight_val == "否" else None
+            
+            mna_b = st.radio(
+                "B題 (請詳實評估)", 
+                mna_b_opts, 
+                index=mna_b_idx, 
+                horizontal=True
+            )
             if icope_weight_val == "否":
-                mna_b = st.radio("B題 (系統依ICOPE自動帶入)", ["3:沒有下降"], index=0, disabled=True)
-                st.caption("✅ 因ICOPE回答體重無減輕，故自動帶入滿分")
-            else:
-                mna_b = st.radio("B題 (請詳實評估)", ["0:下降大於3公斤", "1:不知道", "2:下降1-3公斤", "3:沒有下降"], index=None)
+                st.caption("💡 系統依 ICOPE 自動建議「體重無下降」，如有誤請手動修正。")
+            
+            # === 🔥 修改結束 ===
+
+            st.markdown("---")
 
             mna_c = st.radio("C. 活動能力?", ["0:需長期臥床或坐輪椅", "1:可下床但不能外出", "2:可以外出"], index=None)
             mna_d = st.radio("D. 過去3個月內有無受到心理創傷或急性疾病?", ["0:有", "2:沒有"], index=None)
