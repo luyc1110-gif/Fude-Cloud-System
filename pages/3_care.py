@@ -695,318 +695,309 @@ elif st.session_state.page == 'health':
             
             st.info(f"✅ 系統已自動帶入個案基本資料：{p_info['gender']}性 / {p_info['age']}歲 / {p_info['dob']} / 推測住 {p_info['floor']}")
 
-        with st.form("h_form_full"):
-            eval_date = st.date_input("填表日期", value=date.today())
+        eval_date = st.date_input("填表日期", value=date.today())
 
-            # 使用 Tabs，並加上 Emoji 增加辨識度
-            t1, t2, t3, t4, t5, t6, t7 = st.tabs([
-                "🟢一、基本&身體", "🔵二、ICOPE", "🟡三、BSRS-5", "🟠四、MNA", "🔴五、WHO-5", "🟣六、膀胱", "⚪七、WHOQOL"
-            ])
+        # 使用 Tabs，並加上 Emoji 增加辨識度
+        t1, t2, t3, t4, t5, t6, t7 = st.tabs([
+            "🟢一、基本&身體", "🔵二、ICOPE", "🟡三、BSRS-5", "🟠四、MNA", "🔴五、WHO-5", "🟣六、膀胱", "⚪七、WHOQOL"
+        ])
 
-            # 初始化跨分頁變數 (避免未填寫時報錯)
-            icope_eat_val = None
-            icope_weight_val = None
-            bmi_val = 0.0
+        # 初始化跨分頁變數 (避免未填寫時報錯)
+        icope_eat_val = None
+        icope_weight_val = None
+        bmi_val = 0.0
 
-            # --- 一、前測問卷及身體狀況 ---
-            with t1:
-                st.markdown("### 📝 第一部分：基本資料與身體狀況")
+        # --- 一、前測問卷及身體狀況 ---
+        with t1:
+            st.markdown("### 📝 第一部分：基本資料與身體狀況")
                 
-                # Q1~Q3 已自動帶入
-                st.caption("1.性別, 2.生日, 3.年齡 已自動帶入")
+            # Q1~Q3 已自動帶入
+            st.caption("1.性別, 2.生日, 3.年齡 已自動帶入")
 
-                c1, c2, c3 = st.columns(3)
-                edu = ui_card_radio("4. 您的教育程度是？", ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"], key="q4_edu", index=None)
-                marry = ui_card_radio("5. 您的婚姻狀況是？", ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"], key="q5_marry", index=None)
+            c1, c2, c3 = st.columns(3)
+            edu = ui_card_radio("4. 您的教育程度是？", ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"], key="q4_edu", index=None)
+            marry = ui_card_radio("5. 您的婚姻狀況是？", ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"], key="q5_marry", index=None)
                 
-                if p_info.get('floor', '無法推斷') == '無法推斷':
-                    floor_final = ui_card_radio("7. 您目前住幾樓？", ["一樓", "二樓以上無電梯", "二樓以上有電梯"], key="q7_floor", index=None)
-                else:
-                    floor_final = p_info['floor']
-                    c3.success(f"7. 住幾樓：{floor_final} (已帶入)")
+            if p_info.get('floor', '無法推斷') == '無法推斷':
+                floor_final = ui_card_radio("7. 您目前住幾樓？", ["一樓", "二樓以上無電梯", "二樓以上有電梯"], key="q7_floor", index=None)
+            else:
+                floor_final = p_info['floor']
+                c3.success(f"7. 住幾樓：{floor_final} (已帶入)")
                     
-                c4, c5 = st.columns(2)
-                live_st = ui_card_radio("6. 您目前居住狀況是？", ["獨居", "榮家", "僅與配偶居", "與家人居(含配偶)", "與家人居(不含配偶)", "與親友居", "機構", "其他"], key="q6_live", index=None)
-                relig = ui_card_radio("8. 您的信仰是？", ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"], key="q8_relig", index=None)
+            c4, c5 = st.columns(2)
+            live_st = ui_card_radio("6. 您目前居住狀況是？", ["獨居", "榮家", "僅與配偶居", "與家人居(含配偶)", "與家人居(不含配偶)", "與親友居", "機構", "其他"], key="q6_live", index=None)
+            relig = ui_card_radio("8. 您的信仰是？", ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"], key="q8_relig", index=None)
                 
-                c6, c7, c8 = st.columns(3)
-                work = ui_card_radio("9. 您目前是否有工作？", ["退休", "家管", "目前有工作", "待業中"], key="q9_work", index=None)
-                econ = ui_card_radio("10. 您的經濟狀況是？", ["富裕", "小康", "貧窮", "其他"], key="q10_econ", index=None)
-                caregiver = c8.multiselect("11. 誰是主要照顧您的人？(可複選)", ["自己", "配偶", "子女", "看護", "其他"])
+            c6, c7, c8 = st.columns(3)
+            work = ui_card_radio("9. 您目前是否有工作？", ["退休", "家管", "目前有工作", "待業中"], key="q9_work", index=None)
+            econ = ui_card_radio("10. 您的經濟狀況是？", ["富裕", "小康", "貧窮", "其他"], key="q10_econ", index=None)
+            caregiver = c8.multiselect("11. 誰是主要照顧您的人？(可複選)", ["自己", "配偶", "子女", "看護", "其他"])
                 
                 # === 🔥 修改開始：動態疾病選項邏輯 ===
                 # 1. 定義系統預設的基本選項
-                base_diseases = ["無", "糖尿病", "高血壓", "高血脂", "心臟病", "腎臟病", "肝炎", "關節炎", "骨質疏鬆", "氣喘", "癌症", "其他"]
-
-                # 2. 從歷史資料 (h_df) 撈取曾經輸入過的自定義疾病
-                #    邏輯：讀取 'Q12_過去疾病史' 欄位 -> 用逗號切分 -> 取出不重複的項目
+            base_diseases = ["無", "糖尿病", "高血壓", "高血脂", "心臟病", "腎臟病", "肝炎", "關節炎", "骨質疏鬆", "氣喘", "癌症", "其他"]
                 history_diseases = set()
                 if not h_df.empty and 'Q12_過去疾病史' in h_df.columns:
                     for record in h_df['Q12_過去疾病史'].dropna().astype(str):
-                        # 分割字串 (例如 "高血壓,痛風") 並去除前後空白
                         items = [x.strip() for x in record.split(',') if x.strip()]
                         history_diseases.update(items)
 
-                # 3. 合併「預設」與「歷史」選項，並確保不重複
                 all_options = sorted(list(set(base_diseases) | history_diseases))
-
-                # 確保 "其他" 選項存在，並且建議放在最後面 (選用)
-                if "其他" in all_options: 
-                    all_options.remove("其他")
+                if "其他" in all_options: all_options.remove("其他")
                 all_options.append("其他")
 
-                # 4. 顯示多選單
                 dis_hist = st.multiselect("12. 您過去是否有以下疾病？(可複選)", all_options)
 
-                # 5. 如果使用者選了「其他」，顯示輸入框
-                other_disease_text = ""
+# 初始化變數 (這行很重要，避免沒選其他時報錯)
+                other_disease_text = "" 
                 if "其他" in dis_hist:
-                    other_disease_text = st.text_input("↳ 請輸入疾病名稱 (輸入後儲存，下次將自動變為選項)", placeholder="例如：痛風、白內障...")
+    # 因為移除了 st.form，這裡會即時顯示
+                    other_disease_text = st.text_input("↳ 請輸入疾病名稱 (輸入後儲存，下次將自動變為選項)", placeholder="例如：痛風...")
                 # === 🔥 修改結束 ===
 
-                st.markdown("---")
-                st.markdown("#### 🩺 身體狀況量測")
+            st.markdown("---")
+            st.markdown("#### 🩺 身體狀況量測")
                 
                 # 排版優化：使用 Container 區分不同類型量測
-                with st.container():
-                    st.markdown("**A. 生命徵象**")
-                    bp1, bp2, hr = st.columns(3)
-                    sys_p = bp1.number_input("血壓(收縮壓)", min_value=0, step=1, value=None)
-                    dia_p = bp2.number_input("血壓(舒張壓)", min_value=0, step=1, value=None)
-                    hr_p = hr.number_input("心跳數", min_value=0, step=1, value=None)
+            with st.container():
+                st.markdown("**A. 生命徵象**")
+                bp1, bp2, hr = st.columns(3)
+                sys_p = bp1.number_input("血壓(收縮壓)", min_value=0, step=1, value=None)
+                dia_p = bp2.number_input("血壓(舒張壓)", min_value=0, step=1, value=None)
+                hr_p = hr.number_input("心跳數", min_value=0, step=1, value=None)
 
-                with st.container():
-                    st.markdown("**B. 體位測量 (即時計算BMI)**")
-                    h1, w1, b_res = st.columns(3)
-                    h_v = h1.number_input("身高(cm)", min_value=0.0, step=0.1, value=None)
-                    w_v = w1.number_input("體重(kg)", min_value=0.0, step=0.1, value=None)
+            with st.container():
+                st.markdown("**B. 體位測量 (即時計算BMI)**")
+                h1, w1, b_res = st.columns(3)
+                h_v = h1.number_input("身高(cm)", min_value=0.0, step=0.1, value=None)
+                w_v = w1.number_input("體重(kg)", min_value=0.0, step=0.1, value=None)
                     
-                    if h_v and w_v and h_v > 0:
-                        bmi_val = round(w_v/((h_v/100)**2), 1)
-                        b_res.metric("BMI", bmi_val)
-                    else:
-                        b_res.info("輸入身高體重後顯示")
+                if h_v and w_v and h_v > 0:
+                    bmi_val = round(w_v/((h_v/100)**2), 1)
+                    b_res.metric("BMI", bmi_val)
+                else:
+                    b_res.info("輸入身高體重後顯示")
 
-                with st.container():
-                    st.markdown("**C. 握力與輔具**")
-                    g1, g2 = st.columns(2)
-                    grip_r = g1.number_input("右手握力(kg)", step=0.1, value=None)
-                    grip_l = g2.number_input("左手握力(kg)", step=0.1, value=None)
+            with st.container():
+                st.markdown("**C. 握力與輔具**")
+                g1, g2 = st.columns(2)
+                grip_r = g1.number_input("右手握力(kg)", step=0.1, value=None)
+                grip_l = g2.number_input("左手握力(kg)", step=0.1, value=None)
                     
-                    st.caption("請勾選目前使用的輔具：")
-                    aa1, aa2, aa3, aa4 = st.columns(4)
-                    aid_walk = aa1.checkbox("7. 使用行走輔具")
-                    aid_hear = aa2.checkbox("8. 使用聽力輔具")
-                    aid_eye = aa3.checkbox("9. 使用視力輔具(眼鏡)")
-                    fall_rec = aa4.radio("10. 最近半年有無跌倒？", ["有", "沒有"], index=None)
+                st.caption("請勾選目前使用的輔具：")
+                aa1, aa2, aa3, aa4 = st.columns(4)
+                aid_walk = aa1.checkbox("7. 使用行走輔具")
+                aid_hear = aa2.checkbox("8. 使用聽力輔具")
+                aid_eye = aa3.checkbox("9. 使用視力輔具(眼鏡)")
+                fall_rec = aa4.radio("10. 最近半年有無跌倒？", ["有", "沒有"], index=None)
 
-                with st.container():
-                    st.markdown("**D. 其他習慣**")
-                    d1, d2, d3 = st.columns(3)
-                    med_sleep = ui_card_radio("11. 服用助眠藥?", ["有", "沒有"], index=None)
-                    med_cv = ui_card_radio("12. 服用心血管藥?", ["有", "沒有"], index=None)
-                    milk_habit = ui_card_radio("13. 喝乳品習慣?", ["有", "沒有"], index=None)
+            with st.container():
+                st.markdown("**D. 其他習慣**")
+                d1, d2, d3 = st.columns(3)
+                med_sleep = ui_card_radio("11. 服用助眠藥?", ["有", "沒有"], index=None)
+                med_cv = ui_card_radio("12. 服用心血管藥?", ["有", "沒有"], index=None)
+                milk_habit = ui_card_radio("13. 喝乳品習慣?", ["有", "沒有"], index=None)
 
                     # 性別邏輯題
-                    if p_info.get('gender') == '女':
-                        pad_use = ui_card_radio("14. (女性) 使用漏尿墊/護墊?", ["有", "沒有"], index=None)
-                        male_urine = "不適用"
-                    elif p_info.get('gender') == '男':
-                        male_urine = ui_card_radio("15. (男性) 小便斷續不連貫?", ["有", "沒有"], index=None)
-                        pad_use = "不適用"
-                    else:
-                        pad_use = "未填"
-                        male_urine = "未填"
+                if p_info.get('gender') == '女':
+                    pad_use = ui_card_radio("14. (女性) 使用漏尿墊/護墊?", ["有", "沒有"], index=None)
+                    male_urine = "不適用"
+                elif p_info.get('gender') == '男':
+                    male_urine = ui_card_radio("15. (男性) 小便斷續不連貫?", ["有", "沒有"], index=None)
+                    pad_use = "不適用"
+                else:
+                    pad_use = "未填"
+                    male_urine = "未填"
 
             # --- 二、ICOPE ---
-            with t2:
-                st.markdown("### 🧠 第二部分：高齡功能 ICOPE")
+        with t2:
+            st.markdown("### 🧠 第二部分：高齡功能 ICOPE")
+            
+            c_i1, c_i2 = st.columns(2)
+            icope_mem = ui_card_radio("1. 最近一年是否有記憶明顯減退?", ["否", "是"], key="ic_1", index=None)
+            icope_fall = ui_card_radio("2. 過去一年曾跌倒/擔心跌倒/需扶東西才能從椅子站起?", ["否", "是"], key="ic_2", index=None)
+            
+            st.markdown("---")
+            c_i3, c_i4 = st.columns(2)
+            icope_weight_val = ui_card_radio("3. 過去三個月體重減輕>3kg?", ["否", "是"], key="ic_3", index=None)
+            icope_eat_val = ui_card_radio("4. 過去三個月「曾經」食慾不好?", ["否", "是"], key="ic_4", index=None)
                 
-                c_i1, c_i2 = st.columns(2)
-                icope_mem = ui_card_radio("1. 最近一年是否有記憶明顯減退?", ["否", "是"], key="ic_1", index=None)
-                icope_fall = ui_card_radio("2. 過去一年曾跌倒/擔心跌倒/需扶東西才能從椅子站起?", ["否", "是"], key="ic_2", index=None)
-                
-                st.markdown("---")
-                c_i3, c_i4 = st.columns(2)
-                icope_weight_val = ui_card_radio("3. 過去三個月體重減輕>3kg?", ["否", "是"], key="ic_3", index=None)
-                icope_eat_val = ui_card_radio("4. 過去三個月「曾經」食慾不好?", ["否", "是"], key="ic_4", index=None)
-                
-                st.markdown("---")
-                c_i5, c_i6, c_i7 = st.columns(3)
-                icope_eye = ui_card_radio("5. 看遠近/閱讀有困難?", ["否", "是"], key="ic_5", index=None)
-                icope_opt = ui_card_radio("6. 過去一年「曾」接受眼睛檢查?", ["否", "是"], key="ic_6", index=None)
-                icope_teeth = ui_card_radio("7. 過去六個月「曾」到牙科洗牙?", ["否", "是"], key="ic_7", index=None)
+            st.markdown("---")
+            c_i5, c_i6, c_i7 = st.columns(3)
+            icope_eye = ui_card_radio("5. 看遠近/閱讀有困難?", ["否", "是"], key="ic_5", index=None)
+            icope_opt = ui_card_radio("6. 過去一年「曾」接受眼睛檢查?", ["否", "是"], key="ic_6", index=None)
+            icope_teeth = ui_card_radio("7. 過去六個月「曾」到牙科洗牙?", ["否", "是"], key="ic_7", index=None)
 
-                st.markdown("---")
-                st.write("8. 聽力狀況 (若無勾選則視為正常)")
-                hear_opts = st.multiselect("請選擇符合的情況：", ["電話交談時聽不清或因為沒聽到鈴聲而漏接", "看電視或聽收音機時被說音量開太大聲", "與對方交談需對方提高音量或重說", "因聽力問題而不想聚會"])
-                icope_hear_res = "是" if len(hear_opts) > 0 else "否"
+            st.markdown("---")
+            st.write("8. 聽力狀況 (若無勾選則視為正常)")
+            hear_opts = st.multiselect("請選擇符合的情況：", ["電話交談時聽不清或因為沒聽到鈴聲而漏接", "看電視或聽收音機時被說音量開太大聲", "與對方交談需對方提高音量或重說", "因聽力問題而不想聚會"])
+            icope_hear_res = "是" if len(hear_opts) > 0 else "否"
                 
-                st.markdown("---")
-                c_i8, c_i9 = st.columns(2)
-                icope_mood = ui_card_radio("9. 過去兩週常心情不好/覺得沒希望?", ["否", "是"], key="ic_9", index=None)
-                icope_soc = ui_card_radio("10. 過去兩週減少活動/朋友來往?", ["否", "是"], key="ic_10", index=None)
+            st.markdown("---")
+            c_i8, c_i9 = st.columns(2)
+            icope_mood = ui_card_radio("9. 過去兩週常心情不好/覺得沒希望?", ["否", "是"], key="ic_9", index=None)
+            icope_soc = ui_card_radio("10. 過去兩週減少活動/朋友來往?", ["否", "是"], key="ic_10", index=None)
 
             # --- 三、BSRS-5 (使用滑桿卡片) ---
-            with t3:
-                st.markdown("### 🌡️ BSRS-5 心情溫度計")
-                st.info("請滑動滑桿選擇程度 (0~4分)")
+        with t3:
+            st.markdown("### 🌡️ BSRS-5 心情溫度計")
+            st.info("請滑動滑桿選擇程度 (0~4分)")
                 
                 # 🔥 定義程度文字 (可自行修改)
-                scale_anno = {0: "完全沒有", 1: "輕微", 2: "中等程度", 3: "厲害", 4: "非常厲害"}
+            scale_anno = {0: "完全沒有", 1: "輕微", 2: "中等程度", 3: "厲害", 4: "非常厲害"}
 
-                b1 = ui_card_slider("1. 睡眠困難（難以入睡、易醒或早醒）", 0, 4, key="bs_1", annotations=scale_anno)
-                b2 = ui_card_slider("2. 感覺緊張不安", 0, 4, key="bs_2", annotations=scale_anno)
-                b3 = ui_card_slider("3. 覺得容易動怒", 0, 4, key="bs_3", annotations=scale_anno)
-                b4 = ui_card_slider("4. 感覺憂鬱、心情低落", 0, 4, key="bs_4", annotations=scale_anno)
-                b5 = ui_card_slider("5. 覺得比不上別人", 0, 4, key="bs_5", annotations=scale_anno)
+            b1 = ui_card_slider("1. 睡眠困難（難以入睡、易醒或早醒）", 0, 4, key="bs_1", annotations=scale_anno)
+            b2 = ui_card_slider("2. 感覺緊張不安", 0, 4, key="bs_2", annotations=scale_anno)
+            b3 = ui_card_slider("3. 覺得容易動怒", 0, 4, key="bs_3", annotations=scale_anno)
+            b4 = ui_card_slider("4. 感覺憂鬱、心情低落", 0, 4, key="bs_4", annotations=scale_anno)
+            b5 = ui_card_slider("5. 覺得比不上別人", 0, 4, key="bs_5", annotations=scale_anno)
                 
-                st.markdown("---")
-                b6 = ui_card_slider("6. 有自殺的想法 (獨立計分)", 0, 4, key="bs_6", annotations=scale_anno)
+            st.markdown("---")
+            b6 = ui_card_slider("6. 有自殺的想法 (獨立計分)", 0, 4, key="bs_6", annotations=scale_anno)
 
                 # 即時計算分數
-                if None not in [b1, b2, b3, b4, b5]:
-                    bsrs_total = b1+b2+b3+b4+b5
-                    if bsrs_total >= 15: bsrs_stat = "重度情緒困擾"
-                    elif bsrs_total >= 10: bsrs_stat = "中度情緒困擾"
-                    elif bsrs_total >= 6: bsrs_stat = "輕度情緒困擾"
-                    else: bsrs_stat = "正常"
-                    st.success(f"📊 當前總分：{bsrs_total} 分 ({bsrs_stat})")
-                else:
-                    bsrs_total = 0
-                    bsrs_stat = "填寫中"
-                    st.caption("請完成所有題目以顯示總分...")
+            if None not in [b1, b2, b3, b4, b5]:
+                bsrs_total = b1+b2+b3+b4+b5
+                if bsrs_total >= 15: bsrs_stat = "重度情緒困擾"
+                elif bsrs_total >= 10: bsrs_stat = "中度情緒困擾"
+                elif bsrs_total >= 6: bsrs_stat = "輕度情緒困擾"
+                else: bsrs_stat = "正常"
+                st.success(f"📊 當前總分：{bsrs_total} 分 ({bsrs_stat})")
+            else:
+                bsrs_total = 0
+                bsrs_stat = "填寫中"
+                st.caption("請完成所有題目以顯示總分...")
 
             # --- 四、MNA ---
-            with t4:
-                st.markdown("### 🍱 第四部分：MNA 營養評估")
+        with t4:
+            st.markdown("### 🍱 第四部分：MNA 營養評估")
                 
                 # 題目連動邏輯
-                st.write("**A. 過去三個月食量減少程度?**")
-                if icope_eat_val == "否":
-                    mna_a = st.radio("A題 (系統依ICOPE自動帶入)", ["2:食量沒有改變"], index=0, disabled=True)
-                    st.caption("✅ 因ICOPE回答食慾正常，故自動帶入滿分")
-                else:
-                    mna_a = st.radio("A題 (請詳實評估)", ["0:食量嚴重減少", "1:食量中度減少", "2:食量沒有改變"], index=None)
+            st.write("**A. 過去三個月食量減少程度?**")
+            if icope_eat_val == "否":
+                mna_a = st.radio("A題 (系統依ICOPE自動帶入)", ["2:食量沒有改變"], index=0, disabled=True)
+                st.caption("✅ 因ICOPE回答食慾正常，故自動帶入滿分")
+            else:
+                mna_a = st.radio("A題 (請詳實評估)", ["0:食量嚴重減少", "1:食量中度減少", "2:食量沒有改變"], index=None)
 
-                st.write("**B. 過去三個月體重下降情況?**")
-                if icope_weight_val == "否":
-                    mna_b = st.radio("B題 (系統依ICOPE自動帶入)", ["3:沒有下降"], index=0, disabled=True)
-                    st.caption("✅ 因ICOPE回答體重無減輕，故自動帶入滿分")
-                else:
-                    mna_b = st.radio("B題 (請詳實評估)", ["0:下降大於3公斤", "1:不知道", "2:下降1-3公斤", "3:沒有下降"], index=None)
+            st.write("**B. 過去三個月體重下降情況?**")
+            if icope_weight_val == "否":
+                mna_b = st.radio("B題 (系統依ICOPE自動帶入)", ["3:沒有下降"], index=0, disabled=True)
+                st.caption("✅ 因ICOPE回答體重無減輕，故自動帶入滿分")
+            else:
+                mna_b = st.radio("B題 (請詳實評估)", ["0:下降大於3公斤", "1:不知道", "2:下降1-3公斤", "3:沒有下降"], index=None)
 
-                mna_c = st.radio("C. 活動能力?", ["0:需長期臥床或坐輪椅", "1:可下床但不能外出", "2:可以外出"], index=None)
-                mna_d = st.radio("D. 過去3個月內有無受到心理創傷或急性疾病?", ["0:有", "2:沒有"], index=None)
-                mna_e = st.radio("E. 精神心理問題?", ["0:嚴重失智或憂鬱", "1:輕度失智", "2:沒有問題"], index=None)
+            mna_c = st.radio("C. 活動能力?", ["0:需長期臥床或坐輪椅", "1:可下床但不能外出", "2:可以外出"], index=None)
+            mna_d = st.radio("D. 過去3個月內有無受到心理創傷或急性疾病?", ["0:有", "2:沒有"], index=None)
+            mna_e = st.radio("E. 精神心理問題?", ["0:嚴重失智或憂鬱", "1:輕度失智", "2:沒有問題"], index=None)
                 
                 # BMI 分數自動計算
-                mna_bmi_score = 0
-                if bmi_val > 0:
-                    if bmi_val < 19: mna_bmi_score = 0
-                    elif 19 <= bmi_val < 21: mna_bmi_score = 1
-                    elif 21 <= bmi_val < 23: mna_bmi_score = 2
-                    else: mna_bmi_score = 3
-                    st.info(f"F. BMI ({bmi_val}) 自動得分：{mna_bmi_score} 分")
-                else:
-                    st.warning("⚠️ 請先在第一部分輸入身高體重")
+            mna_bmi_score = 0
+            if bmi_val > 0:
+                if bmi_val < 19: mna_bmi_score = 0
+                elif 19 <= bmi_val < 21: mna_bmi_score = 1
+                elif 21 <= bmi_val < 23: mna_bmi_score = 2
+                else: mna_bmi_score = 3
+                st.info(f"F. BMI ({bmi_val}) 自動得分：{mna_bmi_score} 分")
+            else:
+                st.warning("⚠️ 請先在第一部分輸入身高體重")
 
                 # MNA 總分
-                if (mna_a and mna_b and mna_c and mna_d and mna_e and bmi_val > 0):
-                    try:
-                        ms = int(mna_a.split(':')[0]) + int(mna_b.split(':')[0]) + int(mna_c.split(':')[0]) + \
-                             int(mna_d.split(':')[0]) + int(mna_e.split(':')[0]) + mna_bmi_score
-                        m_stat = "正常營養狀況" if ms >= 12 else ("有營養不良風險" if ms >= 8 else "營養不良")
-                        st.success(f"📊 MNA 總分: {ms} ({m_stat})")
-                    except: ms = 0; m_stat = "計算錯誤"
-                else:
-                    ms = 0; m_stat = "填寫中"
-                    st.caption("完成所有題目後顯示結果...")
+            if (mna_a and mna_b and mna_c and mna_d and mna_e and bmi_val > 0):
+                try:
+                    ms = int(mna_a.split(':')[0]) + int(mna_b.split(':')[0]) + int(mna_c.split(':')[0]) + \
+                         int(mna_d.split(':')[0]) + int(mna_e.split(':')[0]) + mna_bmi_score
+                    m_stat = "正常營養狀況" if ms >= 12 else ("有營養不良風險" if ms >= 8 else "營養不良")
+                    st.success(f"📊 MNA 總分: {ms} ({m_stat})")
+                except: ms = 0; m_stat = "計算錯誤"
+            else:
+                ms = 0; m_stat = "填寫中"
+                st.caption("完成所有題目後顯示結果...")
 
             # --- 五、WHO-5 ---
-            with t5:
-                st.markdown("### 😊 第五部分：WHO-5 幸福指標")
-                st.caption("請選出過去兩週最接近您的感受 (0:從來沒有 ~ 5:全部的時間)")
+        with t5:
+            st.markdown("### 😊 第五部分：WHO-5 幸福指標")
+            st.caption("請選出過去兩週最接近您的感受 (0:從來沒有 ~ 5:全部的時間)")
                 
-                who_opts = [0, 1, 2, 3, 4, 5]
-                w1 = st.radio("1. 我感到情緒開朗且精神不錯", who_opts, index=None, horizontal=True)
-                w2 = st.radio("2. 我感到心情平靜和放鬆", who_opts, index=None, horizontal=True)
-                w3 = st.radio("3. 我感到有活力且精力充沛", who_opts, index=None, horizontal=True)
-                w4 = st.radio("4. 我醒來感到神清氣爽並有充分休息", who_opts, index=None, horizontal=True)
-                w5 = st.radio("5. 我的日常生活中充滿讓我感興趣的事物", who_opts, index=None, horizontal=True)
+            who_opts = [0, 1, 2, 3, 4, 5]
+            w1 = st.radio("1. 我感到情緒開朗且精神不錯", who_opts, index=None, horizontal=True)
+            w2 = st.radio("2. 我感到心情平靜和放鬆", who_opts, index=None, horizontal=True)
+            w3 = st.radio("3. 我感到有活力且精力充沛", who_opts, index=None, horizontal=True)
+            w4 = st.radio("4. 我醒來感到神清氣爽並有充分休息", who_opts, index=None, horizontal=True)
+            w5 = st.radio("5. 我的日常生活中充滿讓我感興趣的事物", who_opts, index=None, horizontal=True)
 
-                if None not in [w1, w2, w3, w4, w5]:
-                    who_total = (w1+w2+w3+w4+w5) * 4
-                    st.success(f"📊 幸福指數: {who_total} 分")
-                else:
-                    who_total = 0
+            if None not in [w1, w2, w3, w4, w5]:
+                who_total = (w1+w2+w3+w4+w5) * 4
+                st.success(f"📊 幸福指數: {who_total} 分")
+            else:
+                who_total = 0
 
             # --- 六、膀胱 ---
-            with t6:
-                st.markdown("### 🚽 第六部分：膀胱症狀與生活品質")
-                
-                st.markdown("**I. 膀胱症狀及嚴重度 (0:不會 ~ 3:嚴重困擾)**")
-                b_opts = ["不會", "會(輕微)", "會(中等)", "會(嚴重)"]
-                bq1 = st.radio("1. 是否需要常常上廁所小便？", b_opts, index=None, horizontal=True)
-                bq2 = st.radio("2. 尿急時，是否會來不及到廁所就尿出來？", b_opts, index=None, horizontal=True)
-                bq3 = st.radio("3. 活動或用力時(如咳嗽/跑跳)，是否會漏尿？", b_opts, index=None, horizontal=True)
-                bq4 = st.radio("4. 是否有漏尿量為少量(幾滴)的尿失禁？", b_opts, index=None, horizontal=True)
-                bq5 = st.radio("5. 是否會解尿困難？", b_opts, index=None, horizontal=True)
-                bq6 = st.radio("6. 是否感覺到下腹部、外陰部或陰道疼痛？", b_opts, index=None, horizontal=True)
+        with t6:
+            st.markdown("### 🚽 第六部分：膀胱症狀與生活品質")
+            
+            st.markdown("**I. 膀胱症狀及嚴重度 (0:不會 ~ 3:嚴重困擾)**")
+            b_opts = ["不會", "會(輕微)", "會(中等)", "會(嚴重)"]
+            bq1 = st.radio("1. 是否需要常常上廁所小便？", b_opts, index=None, horizontal=True)
+            bq2 = st.radio("2. 尿急時，是否會來不及到廁所就尿出來？", b_opts, index=None, horizontal=True)
+            bq3 = st.radio("3. 活動或用力時(如咳嗽/跑跳)，是否會漏尿？", b_opts, index=None, horizontal=True)
+            bq4 = st.radio("4. 是否有漏尿量為少量(幾滴)的尿失禁？", b_opts, index=None, horizontal=True)
+            bq5 = st.radio("5. 是否會解尿困難？", b_opts, index=None, horizontal=True)
+            bq6 = st.radio("6. 是否感覺到下腹部、外陰部或陰道疼痛？", b_opts, index=None, horizontal=True)
 
-                st.markdown("---")
-                st.markdown("**II. IIQ-7 生活品質影響 (沒有 ~ 嚴重影響)**")
-                i_opts = ["沒有影響", "輕微影響", "中等影響", "嚴重影響"]
-                iq1 = st.radio("1. 影響做家事？", i_opts, index=None, horizontal=True)
-                iq2 = st.radio("2. 影響健身活動？", i_opts, index=None, horizontal=True)
-                iq3 = st.radio("3. 影響外出休閒娛樂？", i_opts, index=None, horizontal=True)
-                iq4 = st.radio("4. 影響開車或搭車外出？", i_opts, index=None, horizontal=True)
-                iq5 = st.radio("5. 影響社交活動？", i_opts, index=None, horizontal=True)
-                iq6 = st.radio("6. 影響情緒健康？", i_opts, index=None, horizontal=True)
-                iq7 = st.radio("7. 帶來挫折感？", i_opts, index=None, horizontal=True)
+            st.markdown("---")
+            st.markdown("**II. IIQ-7 生活品質影響 (沒有 ~ 嚴重影響)**")
+            i_opts = ["沒有影響", "輕微影響", "中等影響", "嚴重影響"]
+            iq1 = st.radio("1. 影響做家事？", i_opts, index=None, horizontal=True)
+            iq2 = st.radio("2. 影響健身活動？", i_opts, index=None, horizontal=True)
+            iq3 = st.radio("3. 影響外出休閒娛樂？", i_opts, index=None, horizontal=True)
+            iq4 = st.radio("4. 影響開車或搭車外出？", i_opts, index=None, horizontal=True)
+            iq5 = st.radio("5. 影響社交活動？", i_opts, index=None, horizontal=True)
+            iq6 = st.radio("6. 影響情緒健康？", i_opts, index=None, horizontal=True)
+            iq7 = st.radio("7. 帶來挫折感？", i_opts, index=None, horizontal=True)
 
             # --- 七、WHOQOL ---
-            with t7:
-                st.markdown("### 🌏 第七部分：WHOQOL-BREF")
-                st.info("我們想知道您對生活品質的感受 (過去兩週)")
+        with t7:
+            st.markdown("### 🌏 第七部分：WHOQOL-BREF")
+            st.info("我們想知道您對生活品質的感受 (過去兩週)")
 
-                qol_ans = {}
-                qol_ans['Q1'] = st.selectbox("1. 整體來說，您如何評價您的生活品質？", ["1:極不好", "2:不好", "3:中等程度好", "4:好", "5:極好"], index=None)
-                qol_ans['Q2'] = st.selectbox("2. 整體來說，您滿意自己的健康嗎？", ["1:極不滿意", "2:不滿意", "3:中等程度滿意", "4:滿意", "5:極滿意"], index=None)
+            qol_ans = {}
+            qol_ans['Q1'] = st.selectbox("1. 整體來說，您如何評價您的生活品質？", ["1:極不好", "2:不好", "3:中等程度好", "4:好", "5:極好"], index=None)
+            qol_ans['Q2'] = st.selectbox("2. 整體來說，您滿意自己的健康嗎？", ["1:極不滿意", "2:不滿意", "3:中等程度滿意", "4:滿意", "5:極滿意"], index=None)
                 
-                st.markdown("---")
+            st.markdown("---")
                 # 使用列表生成題目，讓程式碼簡潔
-                q_list = [
-                    (3, "您覺得身體疼痛會妨礙您處理需要做的事情嗎?", ["5:完全沒有", "4:有一點", "3:中等", "2:很妨礙", "1:極妨礙"]),
-                    (4, "您需要靠醫療的幫助應付日常生活嗎?", ["5:完全沒有", "4:有一點", "3:中等", "2:很需要", "1:極需要"]),
-                    (5, "您享受生活嗎?", ["1:完全沒有", "2:有一點", "3:中等", "4:很享受", "5:極享受"]),
-                    (6, "您覺得自己的生命有意義嗎?", ["1:完全沒有", "2:有一點", "3:中等", "4:很有", "5:極有"]),
-                    (7, "您集中精神(含思考、學習、記憶)的能力有多好?", ["1:完全不好", "2:有一點", "3:中等", "4:很好", "5:極好"]),
-                    (8, "在日常生活中，您感到安全嗎?", ["1:完全不", "2:有一點", "3:中等", "4:很安全", "5:極安全"]),
-                    (9, "您所處的環境健康嗎?", ["1:完全不", "2:有一點", "3:中等", "4:很健康", "5:極健康"]),
-                    (10, "您每天的生活有足夠的精力嗎?", ["1:完全不足", "2:少許", "3:中等", "4:很足夠", "5:完全足夠"]),
-                    (11, "您能接受自己的外表嗎?", ["1:完全不", "2:少許", "3:中等", "4:很能夠", "5:完全能夠"]),
-                    (12, "您有足夠的金錢應付所需嗎?", ["1:完全不足", "2:少許", "3:中等", "4:很足夠", "5:完全足夠"]),
-                    (13, "您能方便得到每日生活所需的資訊嗎?", ["1:完全不", "2:少許", "3:中等", "4:很方便", "5:完全方便"]),
-                    (14, "您有機會從事休閒活動嗎?", ["1:完全沒有", "2:少許", "3:中等", "4:很有", "5:完全有"]),
-                    (15, "您四處行動的能力好嗎?", ["1:完全不好", "2:有一點", "3:中等", "4:很好", "5:極好"]),
-                    (16, "您滿意自己的睡眠狀況嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
-                    (17, "您對自己從事日常活動的能力滿意嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
-                    (18, "您滿意自己的工作能力嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
-                    (19, "您對自己滿意嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
-                    (20, "您滿意自己的人際關係嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
-                    (21, "您滿意自己的性生活嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
-                    (22, "您滿意朋友給您的支持嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
-                    (23, "您滿意自己住所的狀況嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
-                    (24, "您對醫療保健服務的方便程度滿意嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
-                    (25, "您滿意所使用的交通運輸方式嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
-                    (26, "您常有負面的感受嗎(擔心/焦慮)?", ["5:從來沒有", "4:不常有", "3:一半一半", "2:很常有", "1:一直都有"]),
-                    (27, "您覺得自己有面子或被尊重嗎?", ["1:完全沒有", "2:有一點", "3:中等", "4:很有", "5:極有"]),
-                    (28, "您想吃的食物通常都能吃到嗎?", ["1:從來沒有", "2:不常有", "3:一半一半", "4:很常有", "5:一直都有"]),
-                ]
+            q_list = [
+                (3, "您覺得身體疼痛會妨礙您處理需要做的事情嗎?", ["5:完全沒有", "4:有一點", "3:中等", "2:很妨礙", "1:極妨礙"]),
+                (4, "您需要靠醫療的幫助應付日常生活嗎?", ["5:完全沒有", "4:有一點", "3:中等", "2:很需要", "1:極需要"]),
+                (5, "您享受生活嗎?", ["1:完全沒有", "2:有一點", "3:中等", "4:很享受", "5:極享受"]),
+                (6, "您覺得自己的生命有意義嗎?", ["1:完全沒有", "2:有一點", "3:中等", "4:很有", "5:極有"]),
+                (7, "您集中精神(含思考、學習、記憶)的能力有多好?", ["1:完全不好", "2:有一點", "3:中等", "4:很好", "5:極好"]),
+                (8, "在日常生活中，您感到安全嗎?", ["1:完全不", "2:有一點", "3:中等", "4:很安全", "5:極安全"]),
+                (9, "您所處的環境健康嗎?", ["1:完全不", "2:有一點", "3:中等", "4:很健康", "5:極健康"]),
+                (10, "您每天的生活有足夠的精力嗎?", ["1:完全不足", "2:少許", "3:中等", "4:很足夠", "5:完全足夠"]),
+                (11, "您能接受自己的外表嗎?", ["1:完全不", "2:少許", "3:中等", "4:很能夠", "5:完全能夠"]),
+                (12, "您有足夠的金錢應付所需嗎?", ["1:完全不足", "2:少許", "3:中等", "4:很足夠", "5:完全足夠"]),
+                (13, "您能方便得到每日生活所需的資訊嗎?", ["1:完全不", "2:少許", "3:中等", "4:很方便", "5:完全方便"]),
+                (14, "您有機會從事休閒活動嗎?", ["1:完全沒有", "2:少許", "3:中等", "4:很有", "5:完全有"]),
+                (15, "您四處行動的能力好嗎?", ["1:完全不好", "2:有一點", "3:中等", "4:很好", "5:極好"]),
+                (16, "您滿意自己的睡眠狀況嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
+                (17, "您對自己從事日常活動的能力滿意嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
+                (18, "您滿意自己的工作能力嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
+                (19, "您對自己滿意嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
+                (20, "您滿意自己的人際關係嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
+                (21, "您滿意自己的性生活嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
+                (22, "您滿意朋友給您的支持嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
+                (23, "您滿意自己住所的狀況嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
+                (24, "您對醫療保健服務的方便程度滿意嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
+                (25, "您滿意所使用的交通運輸方式嗎?", ["1:極不滿意", "2:不滿意", "3:中等", "4:滿意", "5:極滿意"]),
+                (26, "您常有負面的感受嗎(擔心/焦慮)?", ["5:從來沒有", "4:不常有", "3:一半一半", "2:很常有", "1:一直都有"]),
+                (27, "您覺得自己有面子或被尊重嗎?", ["1:完全沒有", "2:有一點", "3:中等", "4:很有", "5:極有"]),
+                (28, "您想吃的食物通常都能吃到嗎?", ["1:從來沒有", "2:不常有", "3:一半一半", "4:很常有", "5:一直都有"]),
+            ]
                 
-                for idx, txt, opts in q_list:
-                    qol_ans[f'Q{idx}'] = st.radio(f"{idx}. {txt}", opts, index=None, horizontal=True)
+            for idx, txt, opts in q_list:
+                qol_ans[f'Q{idx}'] = st.radio(f"{idx}. {txt}", opts, index=None, horizontal=True)
 
             # --- 提交 ---
             st.markdown("---")
