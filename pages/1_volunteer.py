@@ -318,6 +318,91 @@ def get_present_volunteers(logs_df):
     return present[['姓名', '時間', '活動內容']]
 
 # =========================================================
+# 🔄 同步功能：將志工時數同步到 App_Users (無照片/手機登入版)
+# =========================================================
+def sync_to_app_users():
+    try:
+        # 1. 讀取原始資料
+        members = load_data_from_sheet("members")
+        logs = load_data_from_sheet("logs")
+        
+        if members.empty:
+            st.warning("名冊空白，無法同步")
+            return
+
+        # 2. 準備要寫入的資料
+        # 我們先讀取 App_Users 目前的資料，為了保留「點數」不被覆蓋
+        client = get_google_sheet_client()
+        try:
+            sh = client.open_by_key(SHEET_ID)
+            ws = sh.worksheet("App_Users")
+        except:
+            st.error("找不到 'App_Users' 分頁，請先在 Google Sheet 建立！")
+            return
+
+        current_app_data = ws.get_all_records()
+        df_app = pd.DataFrame(current_app_data)
+        
+        # 轉成字典方便查詢：Key=手機, Value={環保點數:x, 樂活點數:y}
+        points_map = {}
+        if not df_app.empty and '手機' in df_app.columns:
+            # 強制轉字串，避免格式問題
+            df_app['手機'] = df_app['手機'].astype(str).str.replace(".0", "", regex=False)
+            for _, row in df_app.iterrows():
+                phone_key = str(row['手機']).strip()
+                points_map[phone_key] = {
+                    '環保': row.get('環保點數', 0),
+                    '樂活': row.get('樂活點數', 0)
+                }
+
+        # 3. 重新計算所有人的時數與等級
+        final_rows = []
+        progress_bar = st.progress(0)
+        
+        for idx, row in members.iterrows():
+            name = row['姓名']
+            pid = row['身分證字號']
+            raw_phone = str(row['電話']).strip()
+            
+            # 清理電話號碼 (移除 - 和空白)
+            phone = raw_phone.replace("-", "").replace(" ", "")
+            if not phone: continue # 沒電話就跳過
+            
+            # 計算時數
+            person_logs = logs[logs['身分證字號'] == pid] if '身分證字號' in logs.columns else logs[logs['姓名'] == name]
+            total_sec = calculate_coverage_seconds(person_logs)
+            total_hours = round(total_sec / 3600, 1)
+            
+            # 判斷等級
+            badge = "🌱 新手志工"
+            if total_hours >= 100: badge = "🥇 金牌志工"
+            elif total_hours >= 50: badge = "🥈 銀牌志工"
+            elif total_hours >= 20: badge = "🥉 銅牌志工"
+            
+            # 密碼 (身分證後4碼)
+            pwd = pid[-4:] if len(pid) >= 4 else "0000"
+            
+            # 取回舊點數 (如果有的話)
+            saved_points = points_map.get(phone, {'環保': 0, '樂活': 0})
+            
+            final_rows.append([
+                phone, pwd, name, 
+                saved_points['環保'], saved_points['樂活'], 
+                total_hours, badge
+            ])
+            progress_bar.progress((idx + 1) / len(members))
+
+        # 4. 寫回 Google Sheet (全量覆蓋，但保留了點數)
+        ws.clear()
+        ws.append_row(["手機", "密碼", "姓名", "環保點數", "樂活點數", "志工時數", "志工等級"])
+        ws.append_rows(final_rows)
+        
+        st.success(f"✅ 同步完成！已更新 {len(final_rows)} 筆資料到 App。")
+        
+    except Exception as e:
+        st.error(f"同步失敗：{e}")
+
+# =========================================================
 # 3) Navigation
 # =========================================================
 if 'page' not in st.session_state: st.session_state.page = 'home'
