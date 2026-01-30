@@ -1549,39 +1549,41 @@ elif st.session_state.page == 'stats':
     # 修改：從 2 個分頁變成 3 個分頁
     tab1, tab2, tab3 = st.tabs(["👤 個案詳細檔案 (含警示)", "🔍 題項交叉篩選", "📈 整體物資統計"])
 
-    # --- Tab 1: 詳細檔案 (自動生成警示卡片) ---
-    # --- Tab 1: 詳細檔案 (含警示與關係圖) ---
+    # --- Tab 1: 詳細檔案 (含雙向關係與警示) ---
     with tab1:
         if mems.empty: st.info("無資料")
         else:
-            all_names = mems['姓名'].unique().tolist()
-            target_name = st.selectbox("請選擇關懷戶", all_names)
+            # 建立選單用的名單 (顯示: 姓名 + ID末四碼以防重複)
+            # 也可以改成顯示地址，看你習慣怎麼認人
+            all_options = mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-4:]})", axis=1).tolist()
             
-            if target_name:
-                # 取得該個案資料列的索引 (為了稍後存檔用)
-                p_idx = mems[mems['姓名'] == target_name].index[0]
-                p_data = mems.loc[p_idx]
-                age = calculate_age(p_data['生日'])
+            # 選擇主要查看對象
+            sel_label = st.selectbox("請選擇關懷戶", all_options)
+            
+            if sel_label:
+                # 1. 解析出選到的這個人是誰
+                # 從 "徐阿雲 (1234)" 找出姓名與 ID
+                target_name = sel_label.split(' (')[0]
                 
-                # =========================================================
-                # 🔥 新增功能：編輯人際關係 (方便你補資料)
-                # =========================================================
-                curr_rel = str(p_data.get('人際關係', ''))
-                with st.expander(f"⚙️ 編輯 {target_name} 的人際關係", expanded=False):
-                    st.caption("格式範例：徐XX:朋友,陳XX:反感 (用逗號分隔，冒號前是人名，後是關係)")
-                    new_rel = st.text_input("輸入關係字串", value=curr_rel, key="rel_edit")
-                    if st.button("💾 更新關係"):
-                        mems.at[p_idx, '人際關係'] = new_rel
-                        save_data(mems, "care_members")
-                        st.success("更新成功！")
-                        time.sleep(0.5)
-                        st.rerun()
+                # 取得該個案資料列
+                # 這裡改用 filter 比較安全，避免名字一樣抓錯人
+                p_row = mems[mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-4:]})", axis=1) == sel_label].iloc[0]
+                p_idx = p_row.name # 取得原始資料表的 index 方便寫入
+                
+                # 取得關鍵變數
+                my_id = str(p_row['身分證字號']).strip()
+                my_name = p_row['姓名']
+                age = calculate_age(p_row['生日'])
+                
+                # 2. 建立 ID 查找字典 (加速後面的顯示與搜尋)
+                # 格式: {'A123456789': '張聰富'}
+                id_to_name = mems.set_index('身分證字號')['姓名'].to_dict()
 
                 # =========================================================
-                # 🔥 視覺呈現：左邊卡片，右邊關係氣泡
+                # 🔥 區塊一：左側卡片 & 右側關係氣泡
                 # =========================================================
                 
-                # 1. 產生標籤 HTML (原本的邏輯)
+                # ... (標籤生成函數 get_tag_html 維持不變，省略以節省篇幅) ...
                 def get_tag_html(tag_text):
                     color_map = {
                         "獨居": ("#FFF3E0", "#E65100"), "身障": ("#E3F2FD", "#1565C0"),
@@ -1595,56 +1597,182 @@ elif st.session_state.page == 'stats':
                             break
                     return f"""<span style="background-color:{bg};color:{txt};padding:4px 12px;border-radius:15px;font-size:0.85rem;font-weight:bold;margin-right:6px;display:inline-block;margin-bottom:4px;">{tag_text}</span>"""
 
-                raw_tags = str(p_data['身分別']).replace('，', ',').split(',')
+                raw_tags = str(p_row['身分別']).replace('，', ',').split(',')
                 tags_html = "".join([get_tag_html(t.strip()) for t in raw_tags if t.strip()])
 
-                # 2. 切分版面：左邊 75% 放卡片，右邊 25% 放關係圖
+                # 切分版面
                 c_card, c_rel = st.columns([3, 1])
 
                 with c_card:
-                    # 卡片 HTML (維持原本樣式)
+                    # 卡片 HTML
                     card_html = f"""
                     <div style="background-color: white; padding: 25px; border-radius: 15px; border-left: 8px solid {GREEN}; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px;">
                         <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                            <div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-right: 15px;">{p_data['姓名']}</div>
-                            <div style="background: #F3F4F6; color: #4B5563; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">{p_data['性別']} / {age}歲</div>
+                            <div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-right: 15px;">{my_name}</div>
+                            <div style="background: #F3F4F6; color: #4B5563; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">{p_row['性別']} / {age}歲</div>
                         </div>
                         <div style="margin-bottom: 20px;">{tags_html}</div>
                         <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; border-top: 1px solid #eee; padding-top: 15px;">
-                            <div style="display: flex; align-items: center; color: #444; font-weight: bold;"><span style="font-size: 1.2rem; margin-right: 8px;">📞</span> {p_data['電話']}</div>
-                            <div style="display: flex; align-items: center; color: #444;"><span style="font-size: 1.2rem; margin-right: 8px; color: #D32F2F;">📍</span> {p_data['地址']}</div>
+                            <div style="display: flex; align-items: center; color: #444; font-weight: bold;"><span style="font-size: 1.2rem; margin-right: 8px;">📞</span> {p_row['電話']}</div>
+                            <div style="display: flex; align-items: center; color: #444;"><span style="font-size: 1.2rem; margin-right: 8px; color: #D32F2F;">📍</span> {p_row['地址']}</div>
                         </div>
                     </div>
                     """
                     st.markdown(card_html, unsafe_allow_html=True)
 
                 with c_rel:
-                    # 3. 處理關係氣泡
-                    st.markdown(f"**🔗 人際網絡**")
-                    if curr_rel:
-                        # 解析字串 "A:朋友, B:反感"
-                        rels = [r.strip() for r in curr_rel.split(',') if r.strip()]
-                        for r in rels:
-                            if ":" in r:
-                                r_name, r_type = r.split(":", 1)
-                                
-                                # 依據關係給定不同顏色樣式
-                                if "反感" in r_type or "不合" in r_type:
-                                    r_style = "border:1px solid #D32F2F; background:#FFEBEE; color:#D32F2F;"
-                                elif "朋友" in r_type or "友好" in r_type:
-                                    r_style = "border:1px solid #2E7D32; background:#E8F5E9; color:#2E7D32;"
-                                else:
-                                    r_style = "border:1px solid #999; background:#FFF; color:#333;"
-                                
-                                # 渲染氣泡
-                                st.markdown(f"""
-                                <div style="{r_style} border-radius: 20px; padding: 5px 12px; margin-bottom: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                    <div style="font-weight:900; font-size:1rem;">{r_name}</div>
-                                    <div style="font-size:0.8rem; opacity:0.8;">{r_type}</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                    else:
+                    st.markdown("#### 🔗 人際網絡")
+                    
+                    # === 核心邏輯：雙向關係計算 ===
+                    all_rels = []
+                    
+                    # 1. [主動關係]：我設定了誰？ (字串格式可能是 "ID:關係" 或 "姓名:關係")
+                    raw_str = str(p_row.get('人際關係', ''))
+                    if raw_str:
+                        for item in raw_str.split(','):
+                            if ':' in item:
+                                r_key, r_type = item.split(':', 1)
+                                r_key = r_key.strip()
+                                # 判斷 key 是 ID 還是 姓名 (相容舊資料)
+                                # 如果 key 在 ID字典裡，代表存的是 ID -> 轉成姓名
+                                final_name = id_to_name.get(r_key, r_key) 
+                                all_rels.append((final_name, r_type, "我標記"))
+
+                    # 2. [被動關係]：誰設定了我？ (只針對存 ID 的有效)
+                    # 搜尋名冊中，"人際關係" 欄位包含 "我的ID" 的人
+                    related_rows = mems[
+                        (mems['人際關係'].astype(str).str.contains(my_id, regex=False)) & 
+                        (mems['身分證字號'] != my_id)
+                    ]
+                    
+                    for _, other_row in related_rows.iterrows():
+                        # 對方設定字串: "C999:朋友, A123:反感" (A123=我)
+                        other_items = str(other_row['人際關係']).split(',')
+                        for item in other_items:
+                            if ':' in item:
+                                t_id, t_type = item.split(':', 1)
+                                if t_id.strip() == my_id: # 找到提到我的那一段
+                                    all_rels.append((other_row['姓名'], t_type, "對方標記"))
+
+                    # === 渲染氣泡 ===
+                    if not all_rels:
                         st.caption("尚無紀錄")
+                    else:
+                        # 去除重複 (如果雙方互設，顯示一次即可)
+                        seen = set()
+                        unique_rels = []
+                        for r in all_rels:
+                            key = f"{r[0]}-{r[1]}" # 姓名-關係
+                            if key not in seen:
+                                unique_rels.append(r)
+                                seen.add(key)
+
+                        # 分組
+                        bad_kws = ['反感', '不合', '仇人', '衝突', '吵架', '債務']
+                        bad_list = [r for r in unique_rels if any(k in r[1] for k in bad_kws)]
+                        good_list = [r for r in unique_rels if r not in bad_list]
+
+                        # 氣泡 HTML 生成器
+                        def render_bubbles(rel_list):
+                            html = "<div style='display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;'>"
+                            for name, r_type, source in rel_list:
+                                is_bad = any(k in r_type for k in bad_kws)
+                                # 配色設定
+                                bg = "#FFEBEE" if is_bad else "#E8F5E9"
+                                border = "#EF9A9A" if is_bad else "#A5D6A7"
+                                text_c = "#C62828" if is_bad else "#2E7D32"
+                                icon = "⚡" if is_bad else "🤝"
+                                
+                                # 來源標記 (若是對方設定的，加個小圖示)
+                                src_html = ""
+                                if source == "對方標記":
+                                    src_html = f"<span style='font-size:0.7rem; opacity:0.6; margin-left:3px;' title='由{name}的檔案自動連結'>🔗</span>"
+
+                                html += f"""
+                                <div style="background:{bg}; color:{text_c}; border:1px solid {border}; padding:4px 10px; border-radius:20px; font-size:0.9rem; font-weight:bold; display:flex; align-items:center;">
+                                    <span style="margin-right:4px;">{icon}</span> {name} 
+                                    <span style="font-size:0.75rem; opacity:0.8; margin-left:4px;">({r_type})</span>
+                                    {src_html}
+                                </div>
+                                """
+                            html += "</div>"
+                            return html
+
+                        if bad_list:
+                            st.markdown("<small style='color:#999'>⚠️ 需注意關係</small>", unsafe_allow_html=True)
+                            st.markdown(render_bubbles(bad_list), unsafe_allow_html=True)
+                        if good_list:
+                            st.markdown("<small style='color:#999'>❤️ 連結網絡</small>", unsafe_allow_html=True)
+                            st.markdown(render_bubbles(good_list), unsafe_allow_html=True)
+
+                # =========================================================
+                # 🔥 區塊二：新增/編輯介面 (選單式)
+                # =========================================================
+                st.markdown("---")
+                with st.expander(f"⚙️ 編輯 {my_name} 的人際關係", expanded=False):
+                    
+                    # 兩種模式：選名冊內的人 / 手動輸入
+                    tab_link, tab_manual = st.tabs(["🔗 連結名冊成員 (推薦)", "✍️ 手動輸入非成員"])
+                    
+                    # --- 模式 A: 連結名冊 (存 ID) ---
+                    with tab_link:
+                        # 排除自己
+                        other_df = mems[mems['身分證字號'] != my_id].copy()
+                        # 製作好讀的標籤: "張聰富 (72歲 / 中正路)" -> 讓你認人用
+                        other_df['label'] = other_df.apply(
+                            lambda x: f"{x['姓名']} ({calculate_age(x['生日'])}歲 / {str(x['地址'])[:6]}..)", axis=1
+                        )
+                        # 建立 標籤 -> ID 的對照表
+                        label_map = other_df.set_index('label')['身分證字號'].to_dict()
+                        
+                        c1, c2, c3 = st.columns([2, 1, 1])
+                        sel_target = c1.selectbox("選擇對象", options=other_df['label'].tolist(), key="link_p")
+                        sel_type = c2.selectbox("關係", ["朋友", "親戚", "鄰居", "反感", "不合", "債務", "其他"], key="link_t")
+                        
+                        if c3.button("➕ 新增連結", key="btn_link"):
+                            target_id = label_map[sel_target] # 找出 ID
+                            new_entry = f"{target_id}:{sel_type}"
+                            
+                            # 讀取並更新
+                            old_str = str(p_row.get('人際關係', ''))
+                            if target_id in old_str:
+                                st.error("❌ 已有此人紀錄，請先刪除舊的再新增")
+                            else:
+                                new_val = f"{old_str},{new_entry}" if old_str else new_entry
+                                new_val = ",".join([x for x in new_val.split(',') if x.strip()]) # 清理
+                                mems.at[p_idx, '人際關係'] = new_val
+                                save_data(mems, "care_members")
+                                st.success(f"已連結：{sel_target.split(' (')[0]}")
+                                time.sleep(0.5); st.rerun()
+
+                    # --- 模式 B: 手動輸入 (存姓名) ---
+                    with tab_manual:
+                        st.caption("適用於：該對象不在系統名冊內 (如外地親友)")
+                        cm1, cm2 = st.columns([2, 1])
+                        man_name = cm1.text_input("對方姓名", placeholder="例如: 遠房表哥")
+                        man_type = cm2.text_input("關係", placeholder="例如: 很少往來")
+                        
+                        if st.button("➕ 新增手動紀錄", key="btn_manual"):
+                            if man_name and man_type:
+                                new_entry = f"{man_name}:{man_type}"
+                                old_str = str(p_row.get('人際關係', ''))
+                                new_val = f"{old_str},{new_entry}" if old_str else new_entry
+                                new_val = ",".join([x for x in new_val.split(',') if x.strip()])
+                                mems.at[p_idx, '人際關係'] = new_val
+                                save_data(mems, "care_members")
+                                st.rerun()
+                    
+                    # --- 顯示原始資料 (刪除用) ---
+                    st.write("")
+                    st.caption("🗑️ 管理現有紀錄 (刪除請直接修改下方文字)")
+                    curr_val = str(p_row.get('人際關係', ''))
+                    new_edit = st.text_area("資料字串 (ID勿動)", value=curr_val)
+                    if st.button("💾 更新修改"):
+                        mems.at[p_idx, '人際關係'] = new_edit
+                        save_data(mems, "care_members")
+                        st.rerun()
+                
+                # ... (原有的健康警示邏輯區塊，可接續在後) ...
 
                 
                 # 2. 自動警示卡片邏輯 (Smart Alerts)
