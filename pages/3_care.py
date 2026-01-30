@@ -1661,28 +1661,44 @@ elif st.session_state.page == 'stats':
                         bad_list = [r for r in unique_rels if any(k in r[1] for k in bad_kws)]
                         good_list = [r for r in unique_rels if r not in bad_list]
 
-                        # 氣泡 HTML 生成器 (修正這裡的引號與縮排)
+                        # 優化後的氣泡生成器 (解決縮排導致的 </div> 顯示錯誤)
                         def render_bubbles(rel_list):
+                            # 外層容器 (Flex佈局)
                             html = "<div style='display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;'>"
+                            
                             for name, r_type, source in rel_list:
                                 is_bad = any(k in r_type for k in bad_kws)
+                                
+                                # 樣式變數
                                 bg = "#FFEBEE" if is_bad else "#E8F5E9"
                                 border = "#EF9A9A" if is_bad else "#A5D6A7"
                                 text_c = "#C62828" if is_bad else "#2E7D32"
                                 icon = "⚡" if is_bad else "🤝"
                                 
+                                # 來源圖示
                                 src_html = ""
                                 if source == "對方標記":
                                     src_html = f"<span style='font-size:0.7rem; opacity:0.6; margin-left:3px;' title='由{name}的檔案自動連結'>🔗</span>"
 
-                                # 注意：這裡的 HTML 標籤必須包在 f""" ... """ 裡面
-                                html += f"""
-                                <div style="background:{bg}; color:{text_c}; border:1px solid {border}; padding:4px 10px; border-radius:20px; font-size:0.9rem; font-weight:bold; display:flex; align-items:center;">
-                                    <span style="margin-right:4px;">{icon}</span> {name} 
-                                    <span style="font-size:0.75rem; opacity:0.8; margin-left:4px;">({r_type})</span>
-                                    {src_html}
-                                </div>
-                                """
+                                # 🔥 修正重點：
+                                # 1. 將 CSS 獨立出來，並加上 white-space: nowrap (防止文字被擠壓換行)
+                                # 2. 將 HTML 改為單行字串 (防止 Markdown 誤判縮排為程式碼)
+                                style_str = (
+                                    f"background:{bg}; color:{text_c}; border:1px solid {border}; "
+                                    f"padding:4px 10px; border-radius:20px; font-size:0.9rem; "
+                                    f"font-weight:bold; display:flex; align-items:center; "
+                                    f"white-space: nowrap;"  # <--- 關鍵：強制不換行
+                                )
+                                
+                                # 組合 HTML (單行模式)
+                                html += (
+                                    f'<div style="{style_str}">'
+                                    f'<span style="margin-right:4px;">{icon}</span> {name} '
+                                    f'<span style="font-size:0.75rem; opacity:0.8; margin-left:4px;">({r_type})</span>'
+                                    f'{src_html}'
+                                    f'</div>'
+                                )
+
                             html += "</div>"
                             return html
 
