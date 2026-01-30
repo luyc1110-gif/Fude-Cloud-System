@@ -323,7 +323,7 @@ div[data-testid="stSlider"] {{
 # 2) 資料邏輯 (更新欄位定義)
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
-COLS_MEM = ["姓名", "身分證字號", "性別", "生日", "地址", "電話", "緊急聯絡人", "緊急聯絡人電話", "身分別", "18歲以下子女", "成人數量", "65歲以上長者", "拒絕物資"] 
+COLS_MEM = ["姓名", "身分證字號", "性別", "生日", "地址", "電話", "緊急聯絡人", "緊急聯絡人電話", "身分別", "18歲以下子女", "成人數量", "65歲以上長者", "拒絕物資", "人際關係"] 
 
 # 更新資料定義：包含 Word 檔所有題項
 # =========================================================
@@ -1559,6 +1559,21 @@ elif st.session_state.page == 'stats':
             if target_name:
                 p_data = mems[mems['姓名'] == target_name].iloc[0]
                 age = calculate_age(p_data['生日'])
+
+                # =========================================================
+                # 🔥 新增功能：編輯人際關係 (方便你補資料)
+                # =========================================================
+                curr_rel = str(p_data.get('人際關係', ''))
+                with st.expander(f"⚙️ 編輯 {target_name} 的人際關係", expanded=False):
+                    st.caption("格式範例：徐XX:朋友,陳XX:反感 (用逗號分隔，冒號前是人名，後是關係)")
+                    new_rel = st.text_input("輸入關係字串", value=curr_rel, key="rel_edit")
+                    if st.button("💾 更新關係"):
+                        mems.at[p_idx, '人際關係'] = new_rel
+                        save_data(mems, "care_members")
+                        st.success("更新成功！")
+                        time.sleep(0.5)
+                        st.rerun()
+
                 
                 # 1. 產生彩色標籤 HTML (這段維持不變)
                 def get_tag_html(tag_text):
@@ -1580,7 +1595,11 @@ elif st.session_state.page == 'stats':
                 raw_tags = str(p_data['身分別']).replace('，', ',').split(',')
                 tags_html = "".join([get_tag_html(t.strip()) for t in raw_tags if t.strip()])
 
-                # --- 🔥 修正重點：HTML 內容全部靠左，不要縮排 ---
+                # 2. 切分版面：左邊 75% 放卡片，右邊 25% 放關係圖
+                c_card, c_rel = st.columns([3, 1])
+                
+                with c_card:
+                    # 卡片 HTML (維持原本樣式)
                 card_html = f"""
 <div style="background-color: white; padding: 25px; border-radius: 15px; border-left: 8px solid {GREEN}; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px;">
 <div style="display: flex; align-items: center; margin-bottom: 12px;">
@@ -1594,6 +1613,34 @@ elif st.session_state.page == 'stats':
 </div>
 </div>
 """
+                with c_rel:
+                    # 3. 處理關係氣泡
+                    st.markdown(f"**🔗 人際網絡**")
+                    if curr_rel:
+                        # 解析字串 "A:朋友, B:反感"
+                        rels = [r.strip() for r in curr_rel.split(',') if r.strip()]
+                        for r in rels:
+                            if ":" in r:
+                                r_name, r_type = r.split(":", 1)
+                                
+                                # 依據關係給定不同顏色樣式
+                                if "反感" in r_type or "不合" in r_type:
+                                    r_style = "border:1px solid #D32F2F; background:#FFEBEE; color:#D32F2F;"
+                                elif "朋友" in r_type or "友好" in r_type:
+                                    r_style = "border:1px solid #2E7D32; background:#E8F5E9; color:#2E7D32;"
+                                else:
+                                    r_style = "border:1px solid #999; background:#FFF; color:#333;"
+                                
+                                # 渲染氣泡
+                                st.markdown(f"""
+                                <div style="{r_style} border-radius: 20px; padding: 5px 12px; margin-bottom: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                    <div style="font-weight:900; font-size:1rem;">{r_name}</div>
+                                    <div style="font-size:0.8rem; opacity:0.8;">{r_type}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                    else:
+                        st.caption("尚無紀錄")
+                        
                 # 顯示卡片
                 st.markdown(card_html, unsafe_allow_html=True)
 
