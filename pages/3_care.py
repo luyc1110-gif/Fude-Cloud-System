@@ -1550,6 +1550,7 @@ elif st.session_state.page == 'stats':
     tab1, tab2, tab3 = st.tabs(["👤 個案詳細檔案 (含警示)", "🔍 題項交叉篩選", "📈 整體物資統計"])
 
     # --- Tab 1: 詳細檔案 (自動生成警示卡片) ---
+    # --- Tab 1: 詳細檔案 (含警示與關係圖) ---
     with tab1:
         if mems.empty: st.info("無資料")
         else:
@@ -1557,9 +1558,11 @@ elif st.session_state.page == 'stats':
             target_name = st.selectbox("請選擇關懷戶", all_names)
             
             if target_name:
-                p_data = mems[mems['姓名'] == target_name].iloc[0]
+                # 取得該個案資料列的索引 (為了稍後存檔用)
+                p_idx = mems[mems['姓名'] == target_name].index[0]
+                p_data = mems.loc[p_idx]
                 age = calculate_age(p_data['生日'])
-
+                
                 # =========================================================
                 # 🔥 新增功能：編輯人際關係 (方便你補資料)
                 # =========================================================
@@ -1574,16 +1577,16 @@ elif st.session_state.page == 'stats':
                         time.sleep(0.5)
                         st.rerun()
 
+                # =========================================================
+                # 🔥 視覺呈現：左邊卡片，右邊關係氣泡
+                # =========================================================
                 
-                # 1. 產生彩色標籤 HTML (這段維持不變)
+                # 1. 產生標籤 HTML (原本的邏輯)
                 def get_tag_html(tag_text):
                     color_map = {
-                        "獨居": ("#FFF3E0", "#E65100"),
-                        "身障": ("#E3F2FD", "#1565C0"),
-                        "低收": ("#FFEBEE", "#C62828"),
-                        "中低收": ("#FFEBEE", "#C62828"),
-                        "老人": ("#E8F5E9", "#2E7D32"),
-                        "一般": ("#F5F5F5", "#616161"),
+                        "獨居": ("#FFF3E0", "#E65100"), "身障": ("#E3F2FD", "#1565C0"),
+                        "低收": ("#FFEBEE", "#C62828"), "中低收": ("#FFEBEE", "#C62828"),
+                        "老人": ("#E8F5E9", "#2E7D32"), "一般": ("#F5F5F5", "#616161"),
                     }
                     bg, txt = ("#F3F4F6", "#374151")
                     for key, (c_bg, c_txt) in color_map.items():
@@ -1597,22 +1600,24 @@ elif st.session_state.page == 'stats':
 
                 # 2. 切分版面：左邊 75% 放卡片，右邊 25% 放關係圖
                 c_card, c_rel = st.columns([3, 1])
-                
+
                 with c_card:
                     # 卡片 HTML (維持原本樣式)
-                card_html = f"""
-<div style="background-color: white; padding: 25px; border-radius: 15px; border-left: 8px solid {GREEN}; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px;">
-<div style="display: flex; align-items: center; margin-bottom: 12px;">
-<div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-right: 15px;">{p_data['姓名']}</div>
-<div style="background: #F3F4F6; color: #4B5563; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">{p_data['性別']} / {age}歲</div>
-</div>
-<div style="margin-bottom: 20px;">{tags_html}</div>
-<div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; border-top: 1px solid #eee; padding-top: 15px;">
-<div style="display: flex; align-items: center; color: #444; font-weight: bold;"><span style="font-size: 1.2rem; margin-right: 8px;">📞</span> {p_data['電話']}</div>
-<div style="display: flex; align-items: center; color: #444;"><span style="font-size: 1.2rem; margin-right: 8px; color: #D32F2F;">📍</span> {p_data['地址']}</div>
-</div>
-</div>
-"""
+                    card_html = f"""
+                    <div style="background-color: white; padding: 25px; border-radius: 15px; border-left: 8px solid {GREEN}; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                            <div style="font-size: 1.8rem; font-weight: 900; color: #333; margin-right: 15px;">{p_data['姓名']}</div>
+                            <div style="background: #F3F4F6; color: #4B5563; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">{p_data['性別']} / {age}歲</div>
+                        </div>
+                        <div style="margin-bottom: 20px;">{tags_html}</div>
+                        <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; border-top: 1px solid #eee; padding-top: 15px;">
+                            <div style="display: flex; align-items: center; color: #444; font-weight: bold;"><span style="font-size: 1.2rem; margin-right: 8px;">📞</span> {p_data['電話']}</div>
+                            <div style="display: flex; align-items: center; color: #444;"><span style="font-size: 1.2rem; margin-right: 8px; color: #D32F2F;">📍</span> {p_data['地址']}</div>
+                        </div>
+                    </div>
+                    """
+                    st.markdown(card_html, unsafe_allow_html=True)
+
                 with c_rel:
                     # 3. 處理關係氣泡
                     st.markdown(f"**🔗 人際網絡**")
