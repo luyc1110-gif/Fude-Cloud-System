@@ -1710,10 +1710,10 @@ elif st.session_state.page == 'stats':
                             st.markdown(render_bubbles(good_list), unsafe_allow_html=True)
 
                 # =========================================================
-                # 🔥 區塊二：新增/編輯介面 (選單式)
+                # 🔥 區塊二：新增介面 (隱藏原始資料串)
                 # =========================================================
                 st.markdown("---")
-                with st.expander(f"⚙️ 編輯 {my_name} 的人際關係", expanded=False):
+                with st.expander(f"⚙️ 新增 {my_name} 的人際關係", expanded=False):
                     
                     tab_link, tab_manual = st.tabs(["🔗 連結名冊成員 (推薦)", "✍️ 手動輸入非成員"])
                     
@@ -1727,13 +1727,17 @@ elif st.session_state.page == 'stats':
                         
                         c1, c2, c3 = st.columns([2, 1, 1])
                         sel_target = c1.selectbox("選擇對象", options=other_df['label'].tolist(), key="link_p")
-                        sel_type = c2.selectbox("關係", ["朋友", "親戚", "不合", "其他"], key="link_t")
+                        sel_type = c2.selectbox("關係", ["朋友", "親戚", "鄰居", "反感", "不合", "債務", "其他"], key="link_t")
                         
-                        if c3.button("➕ 新增連結", key="btn_link"):
+                        # 排版空行
+                        c3.write("") 
+                        c3.write("")
+                        if c3.button("➕ 新增", key="btn_link"):
                             target_id = label_map[sel_target]
                             new_entry = f"{target_id}:{sel_type}"
                             
                             old_str = str(p_row.get('人際關係', ''))
+                            # 簡單防呆：ID已存在就不給加
                             if target_id in old_str:
                                 st.error("❌ 已有此人紀錄")
                             else:
@@ -1747,11 +1751,13 @@ elif st.session_state.page == 'stats':
                     # --- 模式 B: 手動輸入 ---
                     with tab_manual:
                         st.caption("適用於：該對象不在系統名冊內 (如外地親友)")
-                        cm1, cm2 = st.columns([2, 1])
+                        cm1, cm2, cm3 = st.columns([2, 1, 1])
                         man_name = cm1.text_input("對方姓名", placeholder="例如: 遠房表哥")
                         man_type = cm2.text_input("關係", placeholder="例如: 很少往來")
                         
-                        if st.button("➕ 新增手動紀錄", key="btn_manual"):
+                        cm3.write("")
+                        cm3.write("")
+                        if cm3.button("➕ 新增", key="btn_manual"):
                             if man_name and man_type:
                                 new_entry = f"{man_name}:{man_type}"
                                 old_str = str(p_row.get('人際關係', ''))
@@ -1760,15 +1766,6 @@ elif st.session_state.page == 'stats':
                                 mems.at[p_idx, '人際關係'] = new_val
                                 save_data(mems, "care_members")
                                 st.rerun()
-                    
-                    st.write("")
-                    st.caption("🗑️ 管理現有紀錄 (刪除請直接修改下方文字)")
-                    curr_val = str(p_row.get('人際關係', ''))
-                    new_edit = st.text_area("資料字串 (ID勿動)", value=curr_val)
-                    if st.button("💾 更新修改"):
-                        mems.at[p_idx, '人際關係'] = new_edit
-                        save_data(mems, "care_members")
-                        st.rerun()
                 
                 # ... (原有的健康警示邏輯區塊，可接續在後) ...
 
