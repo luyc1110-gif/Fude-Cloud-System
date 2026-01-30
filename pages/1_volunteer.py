@@ -731,6 +731,9 @@ elif st.session_state.page == 'report':
     render_nav()
     st.markdown("## 📊 數據分析與報表")
     logs = load_data_from_sheet("logs")
+
+    if st.button("🔄 同步資料到 App"):
+    sync_to_app_users()
     
     # 搜尋與篩選區塊
     st.markdown('<div style="background:white; padding:20px; border-radius:15px; border:1px solid #ddd; margin-bottom:20px;">', unsafe_allow_html=True)
