@@ -1657,7 +1657,7 @@ elif st.session_state.page == 'stats':
                                 unique_rels.append(r)
                                 seen.add(key)
 
-                        bad_kws = ['反感', '不合', '仇人', '衝突', '吵架', '債務']
+                        bad_kws = ['不合']
                         bad_list = [r for r in unique_rels if any(k in r[1] for k in bad_kws)]
                         good_list = [r for r in unique_rels if r not in bad_list]
 
@@ -1727,7 +1727,7 @@ elif st.session_state.page == 'stats':
                         
                         c1, c2, c3 = st.columns([2, 1, 1])
                         sel_target = c1.selectbox("選擇對象", options=other_df['label'].tolist(), key="link_p")
-                        sel_type = c2.selectbox("關係", ["朋友", "親戚", "鄰居", "反感", "不合", "債務", "其他"], key="link_t")
+                        sel_type = c2.selectbox("關係", ["朋友", "親戚", "不合", "其他"], key="link_t")
                         
                         if c3.button("➕ 新增連結", key="btn_link"):
                             target_id = label_map[sel_target]
