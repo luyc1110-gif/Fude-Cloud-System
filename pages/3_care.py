@@ -1645,9 +1645,6 @@ elif st.session_state.page == 'stats':
                                 """, unsafe_allow_html=True)
                     else:
                         st.caption("尚無紀錄")
-                        
-                # 顯示卡片
-                st.markdown(card_html, unsafe_allow_html=True)
 
                 
                 # 2. 自動警示卡片邏輯 (Smart Alerts)
