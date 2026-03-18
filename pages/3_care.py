@@ -86,7 +86,7 @@ div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
 div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
     background-color: #FFFFFF !important; border-radius: 10px; padding: 5px;
 }}
-div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
+div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input, .stTextArea textarea {{
     background-color: #F8F9FA !important; color: #000000 !important;
     border: 2px solid #E0E0E0 !important; border-radius: 12px !important; font-weight: 700 !important;
 }}
@@ -1471,7 +1471,7 @@ elif st.session_state.page == 'visit':
         st.error("🚨 請注意：您選擇了個案不宜的物資！")
         for w in warning_msgs: st.write(w)
     
-    if st.button("✅ 確認提交紀錄", type="primary", use_container_width=True):
+    if st.button("✅ 確認提交紀錄", type="primary"):
         if not target_p:
             st.error("❌ 請選擇關懷戶")
         else:
