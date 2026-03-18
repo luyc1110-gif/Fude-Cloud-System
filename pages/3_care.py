@@ -1736,20 +1736,20 @@ elif st.session_state.page == 'stats':
                             if not sel_target:
                                 st.error("❌ 請先選擇對象")
                             else:
-                            target_id = label_map[sel_target]
-                            new_entry = f"{target_id}:{sel_type}"
+                                target_id = label_map[sel_target]
+                                new_entry = f"{target_id}:{sel_type}"
                             
-                            old_str = str(p_row.get('人際關係', ''))
+                                old_str = str(p_row.get('人際關係', ''))
                             # 簡單防呆：ID已存在就不給加
-                            if target_id in old_str:
-                                st.error("❌ 已有此人紀錄")
-                            else:
-                                new_val = f"{old_str},{new_entry}" if old_str else new_entry
-                                new_val = ",".join([x for x in new_val.split(',') if x.strip()])
-                                mems.at[p_idx, '人際關係'] = new_val
-                                save_data(mems, "care_members")
-                                st.success(f"已連結：{sel_target.split(' (')[0]}")
-                                time.sleep(0.5); st.rerun()
+                                if target_id in old_str:
+                                    st.error("❌ 已有此人紀錄")
+                                else:
+                                    new_val = f"{old_str},{new_entry}" if old_str else new_entry
+                                    new_val = ",".join([x for x in new_val.split(',') if x.strip()])
+                                    mems.at[p_idx, '人際關係'] = new_val
+                                    save_data(mems, "care_members")
+                                    st.success(f"已連結：{sel_target.split(' (')[0]}")
+                                    time.sleep(0.5); st.rerun()
 
                     # --- 模式 B: 手動輸入 ---
                     with tab_manual:
