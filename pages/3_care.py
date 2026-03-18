@@ -1557,7 +1557,7 @@ elif st.session_state.page == 'stats':
             all_options = mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-4:]})", axis=1).tolist()
             
             # 選擇主要查看對象
-            sel_label = st.selectbox("請選擇關懷戶", all_options)
+            sel_label = st.selectbox("請選擇關懷戶", all_options, index=None, placeholder="請點擊此處輸入或選擇姓名...")
             
             if sel_label:
                 # 1. 解析出選到的這個人是誰
@@ -1726,13 +1726,16 @@ elif st.session_state.page == 'stats':
                         label_map = other_df.set_index('label')['身分證字號'].to_dict()
                         
                         c1, c2, c3 = st.columns([2, 1, 1])
-                        sel_target = c1.selectbox("選擇對象", options=other_df['label'].tolist(), key="link_p")
+                        sel_target = c1.selectbox("選擇對象", options=other_df['label'].tolist(), index=None, placeholder="請點擊此處輸入或選擇姓名...", key="link_p")
                         sel_type = c2.selectbox("關係", ["朋友", "親戚", "鄰居", "反感", "不合", "債務", "其他"], key="link_t")
                         
                         # 排版空行
                         c3.write("") 
                         c3.write("")
                         if c3.button("➕ 新增", key="btn_link"):
+                            if not sel_target:
+                                st.error("❌ 請先選擇對象")
+                            else:
                             target_id = label_map[sel_target]
                             new_entry = f"{target_id}:{sel_type}"
                             
