@@ -1367,7 +1367,7 @@ elif st.session_state.page == 'visit':
         sel_tag = st.selectbox("🌪️ 依身分別篩選", ["(全部顯示)"] + sorted(list(all_tags)))
     with c_person:
         filtered_mems = mems if sel_tag == "(全部顯示)" else mems[mems['身分別'].str.contains(sel_tag, na=False)]
-        target_p = st.selectbox("👤 選擇關懷戶", filtered_mems['姓名'].tolist() if not filtered_mems.empty else [])
+        target_p = st.selectbox("👤 選擇關懷戶", filtered_mems['姓名'].tolist() if not filtered_mems.empty else [], index=None, placeholder="請點擊此處輸入或選擇姓名...")
 
     # 編輯拒絕清單
     current_refuse = ""
