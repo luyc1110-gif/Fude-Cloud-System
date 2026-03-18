@@ -83,9 +83,18 @@ section[data-testid="stSidebar"] button:hover {{
 div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
     background-color: #FFFFFF !important; border-radius: 10px; padding: 5px;
 }}
-div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
+div[data-testid="stDataFrame"], div[data-testid="stTable"] {
+    background-color: #FFFFFF !important; border-radius: 10px; padding: 5px;
+}}
+div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {
     background-color: #F8F9FA !important; color: #000000 !important;
     border: 2px solid #E0E0E0 !important; border-radius: 12px !important; font-weight: 700 !important;
+}}
+
+/* 確保下拉選單打字時文字可見 */
+div[data-baseweb="select"] input {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
 }}
 div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{
     background-color: #FFFFFF !important; color: #000000 !important;
