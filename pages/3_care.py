@@ -2051,11 +2051,28 @@ elif st.session_state.page == 'stats':
                 # 增加「數值年齡」欄位方便篩選
                 full_data['數值年齡'] = full_data['生日'].apply(calculate_age) 
 
-            # 2. 準備篩選欄位：問卷題項 + 年齡 + 身分別
-            filter_cols = [c for c in COLS_HEALTH if c not in ['姓名', '身分證字號', '評估日期']] + ['數值年齡', '身分別']
+            # 2. 定義題項分類
+            category_map = {
+                "📝 基本資料與身體狀況": ["數值年齡", "身分別", "Q1_性別", "收縮壓", "舒張壓", "心跳", "身高", "體重", "BMI", "右手握力", "左手握力", "Q4_教育程度", "Q5_婚姻狀況", "Q6_居住狀況", "Q7_居住樓層", "Q8_信仰", "Q9_工作狀態", "Q10_經濟狀況", "Q11_主要照顧者", "Q12_過去疾病史", "使用行走輔具", "使用聽力輔具", "使用視力輔具", "半年內跌倒紀錄", "服用助眠藥", "服用心血管藥物", "喝乳品習慣", "使用漏尿墊", "男性小便斷續"],
+                "🧠 ICOPE (高齡功能)": [c for c in COLS_HEALTH if c.startswith("ICOPE")],
+                "🌡️ BSRS-5 (心情溫度計)": [c for c in COLS_HEALTH if c.startswith("BSRS")],
+                "🍱 MNA (營養評估)": [c for c in COLS_HEALTH if c.startswith("MNA")],
+                "😊 WHO-5 (幸福指標)": [c for c in COLS_HEALTH if c.startswith("WHO5")],
+                "🚽 膀胱與 IIQ-7": [c for c in COLS_HEALTH if c.startswith("膀胱") or c.startswith("IIQ7")],
+                "🌏 WHOQOL (生活品質)": [c for c in COLS_HEALTH if c.startswith("QOL")]
+            }
+
+            # 3. 兩階段選擇 UI (支援跨問卷交叉選取)
+            c_cat, c_item = st.columns([1, 2])
+            with c_cat:
+                sel_categories = st.multiselect("Step 1. 選擇問卷類別 (可複選)", list(category_map.keys()), default=["📝 基本資料與身體狀況"])
             
-            # 3. 使用者選擇要篩選哪些項目
-            selected_criteria = st.multiselect("1. 請先選擇篩選條件 (例如: 數值年齡, ICOPE_2_跌倒風險)", filter_cols)
+            available_cols = []
+            for cat in sel_categories:
+                available_cols.extend(category_map[cat])
+
+            with c_item:
+                selected_criteria = st.multiselect("Step 2. 選擇具體篩選題項", available_cols, placeholder="請選擇...")
             
             # 4. 動態生成篩選器
             filters = {}
