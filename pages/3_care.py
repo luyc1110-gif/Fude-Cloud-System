@@ -1559,7 +1559,24 @@ elif st.session_state.page == 'stats':
             # 選擇主要查看對象
             sel_label = st.selectbox("請選擇關懷戶", all_options, index=None, placeholder="請點擊此處輸入或選擇姓名...")
             
-            if sel_label:
+            target_name = None # 初始化變數，避免未選擇時產生 NameError
+            
+            if not sel_label:
+                # 尚未選擇任何個案時的提示與建議畫面
+                st.info("💡 請在上方點擊輸入姓名，以載入個案詳細資料。")
+                st.markdown("""
+                <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-top: 10px;">
+                    <h4 style="color: #4A4E69; margin-bottom: 15px;">🔍 透過此頁面，您可以查看該個案的：</h4>
+                    <ul style="line-height: 1.8; color: #555;">
+                        <li><b>👤 基本資料與聯絡方式</b>（含弱勢身分標籤）</li>
+                        <li><b>🔗 人際網絡圖</b>（自動鉤稽雙向關係與警示）</li>
+                        <li><b>🩺 智慧健康警示卡片</b>（依據最新評估自動標示高低風險）</li>
+                        <li><b>📈 健康數據趨勢圖</b>（追蹤 BMI、血壓、情緒溫度計等歷次變化）</li>
+                        <li><b>📝 近期訪視紀錄</b>（快速檢視前五次物資領取與訪視摘要）</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
                 # 1. 解析出選到的這個人是誰
                 target_name = sel_label.split(' (')[0]
                 
