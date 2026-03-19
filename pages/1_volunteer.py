@@ -668,11 +668,11 @@ elif st.session_state.page == 'checkin':
             
             st.markdown("### 🛠️ 補登操作")
             
-            # --- 1. 安全的狀態管理 (避免畫面崩潰) ---
-            if 'manual_ms' not in st.session_state:
-                st.session_state.manual_ms = []
-
-            # 2. 分類篩選
+            # --- 1. 初始化系統綁定的 Key ---
+            if 'ms_vols_tab2' not in st.session_state:
+                st.session_state.ms_vols_tab2 = []
+                
+            # --- 2. 篩選分類 ---
             cat_filter_tab2 = st.selectbox("📌 篩選志工分類", ["全部", "環保志工", "祥和志工", "關懷據點週二志工", "關懷據點週三志工"], key="cat_filter_tab2")
             
             if cat_filter_tab2 != "全部":
@@ -682,31 +682,33 @@ elif st.session_state.page == 'checkin':
                 
             available_names_tab2 = sorted(filtered_m_tab2['姓名'].tolist())
             
-            # 3. 🔥 關鍵防呆：把「已經在暫存區的人名」強制加進選項中，避免系統切換組別時找不到人而當機
-            final_options_tab2 = sorted(list(set(available_names_tab2 + st.session_state.manual_ms)))
+            # --- 3. 組合選項：讓選項名單永遠包含「已選的人」，避免系統找不到人 ---
+            final_opts = sorted(list(set(available_names_tab2 + st.session_state.ms_vols_tab2)))
             
-            # 4. 表單細節 (加入獨立 key 避免互相干擾)
             c1, c2, c3, c4 = st.columns(4)
             d_date = c1.date_input("日期", value=date.today(), key="d_date_tab2")
             d_time = c2.time_input("時間", value=get_tw_time().time(), key="d_time_tab2")
             d_action = c3.selectbox("動作", ["簽到", "簽退"], key="d_action_tab2")
             d_act = c4.selectbox("活動", DEFAULT_ACTIVITIES, key="d_act_tab2")
             
-            # 5. 志工選單 (拿掉 default 與 on_change，純靠 key 記憶)
-            names = st.multiselect(
+            # --- 4. 🔥 最純粹的多選單 (拔除 default，只留 key，絕不手動干預) ---
+            st.multiselect(
                 "👤 選擇志工 (可單選或多選)", 
-                options=final_options_tab2,
+                options=final_opts,
                 placeholder="請點此選擇要補登的志工...",
-                key="manual_ms"
+                key="ms_vols_tab2"  # 👈 系統會自動把結果存進 st.session_state.ms_vols_tab2
             )
             
             st.write("") # 空行排版
             if st.button("✅ 確認補登", type="primary"):
-                if not names:
+                # 直接從系統的 key 拿取名單
+                selected_names = st.session_state.ms_vols_tab2
+                
+                if not selected_names:
                     st.error("❌ 請至少選擇一位志工！")
                 else:
                     new_rows = []
-                    for n in names:
+                    for n in selected_names:
                         row = active_m[active_m['姓名'] == n].iloc[0]
                         new_rows.append({
                             '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
@@ -716,9 +718,9 @@ elif st.session_state.page == 'checkin':
                         })
                     
                     if batch_append_data("logs", new_rows, LOG_COLS):
-                        st.success(f"✅ 已成功補登 {len(names)} 筆資料！")
-                        # 送出後安全清空選擇
-                        st.session_state.manual_ms = [] 
+                        st.success(f"✅ 已成功補登 {len(selected_names)} 筆資料！")
+                        # 送出成功後，安全清空系統暫存區
+                        st.session_state.ms_vols_tab2 = []
                         time.sleep(1)
                         st.rerun()
 
