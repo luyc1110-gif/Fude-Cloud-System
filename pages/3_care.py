@@ -2100,12 +2100,18 @@ elif st.session_state.page == 'stats':
                             c_op, c_v1, c_v2 = st.columns([1, 1, 1])
                             op = c_op.selectbox(f"設定【{col}】條件", ["大於等於", "小於等於", "介於", "等於"], key=f"op_{col}")
                             
+                            # 自動判斷是否需要小數點
+                            is_float = col in ['BMI', '身高', '體重', '右手握力', '左手握力']
+                            def_v = 0.0 if is_float else 0
+                            def_max = 100.0 if is_float else 100
+                            step_v = 0.1 if is_float else 1
+
                             if op == "介於":
-                                v1 = c_v1.number_input("最小值", key=f"min_{col}", value=0.0)
-                                v2 = c_v2.number_input("最大值", key=f"max_{col}", value=100.0)
+                                v1 = c_v1.number_input("最小值", key=f"min_{col}", value=def_v, step=step_v)
+                                v2 = c_v2.number_input("最大值", key=f"max_{col}", value=def_max, step=step_v)
                                 filters[col] = ("between", v1, v2)
                             else:
-                                v = c_v1.number_input("輸入數值", key=f"val_{col}", value=0.0)
+                                v = c_v1.number_input("輸入數值", key=f"val_{col}", value=def_v, step=step_v)
                                 filters[col] = (op, v)
                                 
                         else:
@@ -2140,12 +2146,38 @@ elif st.session_state.page == 'stats':
                     elif cond_type == "等於":
                         result_df = result_df[result_df[col] == condition[1]]
             
-            # 7. 顯示結果
+            # 7. 顯示結果 (改為卡片式)
             if selected_all_items:
                 st.markdown(f"#### 🎯 篩選結果：共 {len(result_df)} 人符合條件")
-                # 確保不重複顯示欄位
-                cols_to_show = ['姓名', '評估日期'] + list(dict.fromkeys(selected_all_items)) + ['電話']
-                st.dataframe(result_df[cols_to_show], use_container_width=True)
+                
+                if not result_df.empty:
+                    # 去除重複選取的欄位
+                    unique_selected_items = list(dict.fromkeys(selected_all_items))
+                    
+                    # 以 3 欄式排列卡片
+                    cols = st.columns(3)
+                    for idx, (_, row) in enumerate(result_df.iterrows()):
+                        with cols[idx % 3]:
+                            # 組合卡片內的題項明細
+                            details_html = ""
+                            for c in unique_selected_items:
+                                val = row.get(c, '無資料')
+                                details_html += f"<div style='font-size:0.85rem; color:#555; margin-bottom:4px;'><b>{c}:</b> {val}</div>"
+                            
+                            st.markdown(f"""
+                            <div style="background: white; border-radius: 12px; padding: 15px; border-top: 5px solid #8E9775; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; height: 100%;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                    <div style="font-size: 1.2rem; font-weight: 900; color: #333;">{row['姓名']}</div>
+                                    <div style="font-size: 0.8rem; background: #F3F4F6; padding: 2px 8px; border-radius: 10px; color: #666;">{row.get('評估日期', '無日期')}</div>
+                                </div>
+                                <div style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">📞 {row.get('電話', '無紀錄')}</div>
+                                <div style="background: #F8F9FA; padding: 10px; border-radius: 8px; border: 1px solid #eee;">
+                                    {details_html}
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ 沒有符合條件的個案。")
             else:
                 st.info("💡 請在上方選擇題目後，即可顯示設定條件與篩選結果。")
 
