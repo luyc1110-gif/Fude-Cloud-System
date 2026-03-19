@@ -606,34 +606,38 @@ elif st.session_state.page == 'checkin':
         if not df_m.empty:
             active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)]
             name_list = sorted(active_m['姓名'].tolist()) # Sort names for dropdown
-            with st.form("manual_entry"):
+            
+            # 加入 clear_on_submit=True 確保每次送出後表單重置，避免時間狀態錯亂
+            with st.form("manual_entry", clear_on_submit=True):
                 st.markdown("### 🛠️ 補登操作")
-                entry_mode = st.radio("模式", ["單筆補登", "整批補登"], horizontal=True)
+                
                 c1, c2, c3, c4 = st.columns(4)
                 d_date = c1.date_input("日期", value=date.today())
                 d_time = c2.time_input("時間", value=get_tw_time().time())
                 d_action = c3.selectbox("動作", ["簽到", "簽退"])
                 d_act = c4.selectbox("活動", DEFAULT_ACTIVITIES)
-                names = []
-                if entry_mode == "單筆補登":
-                    n = st.selectbox("選擇志工", name_list)
-                    names = [n]
-                else: names = st.multiselect("選擇多位志工", name_list)
+                
+                # 直接使用多選，移除單筆/整批的切換
+                names = st.multiselect("👤 選擇志工 (可單選或多選)", name_list, placeholder="請點此選擇要補登的志工...")
+                
                 if st.form_submit_button("確認補登"):
-                    # 準備資料 List
-                    new_rows = []
-                    for n in names:
-                        row = df_m[df_m['姓名'] == n].iloc[0]
-                        new_rows.append({
-                            '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
-                            '志工分類': row['志工分類'], '動作': d_action, 
-                            '時間': d_time.strftime("%H:%M:%S"), '日期': d_date.strftime("%Y-%m-%d"), 
-                            '活動內容': d_act
-                        })
-                    
-                    # --- 🔥 修改重點：一次寫入多筆 ---
-                    if batch_append_data("logs", new_rows, LOG_COLS):
-                        st.success(f"已補登 {len(names)} 筆資料")
+                    if not names:
+                        st.error("❌ 請至少選擇一位志工！")
+                    else:
+                        # 準備資料 List
+                        new_rows = []
+                        for n in names:
+                            row = df_m[df_m['姓名'] == n].iloc[0]
+                            new_rows.append({
+                                '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
+                                '志工分類': row['志工分類'], '動作': d_action, 
+                                '時間': d_time.strftime("%H:%M:%S"), '日期': d_date.strftime("%Y-%m-%d"), 
+                                '活動內容': d_act
+                            })
+                        
+                        # 一次寫入多筆
+                        if batch_append_data("logs", new_rows, LOG_COLS):
+                            st.success(f"✅ 已成功補登 {len(names)} 筆資料！")
     with tab3:
         logs = load_data_from_sheet("logs")
         if not logs.empty:
