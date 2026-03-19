@@ -2037,18 +2037,16 @@ elif st.session_state.page == 'stats':
     # --- Tab 2: 跨問卷交叉篩選 (完全改寫) ---
     with tab2:
         st.markdown("### 🔍 跨題項/跨名冊 交叉篩選")
-        st.caption("💡 可同時篩選「名冊資料(如年齡)」與「健康問卷(如跌倒風險)」")
+        st.caption("💡 可自由新增不同問卷，並針對數值設定大於、小於或區間條件。")
 
         if h_df.empty:
             st.warning("尚無健康資料")
         else:
-            # 1. 資料合併：將 健康問卷(h_df) 與 名冊(mems) 接在一起
+            # 1. 資料合併
             full_data = h_df.copy()
             if not mems.empty:
-                # 只取名冊的關鍵欄位
                 mems_mini = mems[['姓名', '電話', '地址', '身分別', '生日']]
                 full_data = full_data.merge(mems_mini, on='姓名', how='left')
-                # 增加「數值年齡」欄位方便篩選
                 full_data['數值年齡'] = full_data['生日'].apply(calculate_age) 
 
             # 2. 定義題項分類
@@ -2061,67 +2059,95 @@ elif st.session_state.page == 'stats':
                 "🚽 膀胱與 IIQ-7": [c for c in COLS_HEALTH if c.startswith("膀胱") or c.startswith("IIQ7")],
                 "🌏 WHOQOL (生活品質)": [c for c in COLS_HEALTH if c.startswith("QOL")]
             }
-
-            # 3. 兩階段選擇 UI (支援跨問卷交叉選取)
-            c_cat, c_item = st.columns([1, 2])
-            with c_cat:
-                sel_categories = st.multiselect("Step 1. 選擇問卷類別 (可複選)", list(category_map.keys()), default=["📝 基本資料與身體狀況"])
             
-            available_cols = []
-            for cat in sel_categories:
-                available_cols.extend(category_map[cat])
+            # 定義哪些欄位是數值 (用於判斷要顯示大於/小於還是多選單)
+            num_cols = ['數值年齡', 'BMI', '收縮壓', '舒張壓', '心跳', '身高', '體重', '右手握力', '左手握力', 'BSRS_總分', 'WHO5_總分', 'MNA_篩檢分數', 'MNA_F_BMI']
 
-            with c_item:
-                selected_criteria = st.multiselect("Step 2. 選擇具體篩選題項", available_cols, placeholder="請選擇...")
+            # 3. 初始化篩選群組數量
+            if 'filter_group_count' not in st.session_state:
+                st.session_state.filter_group_count = 1
+
+            # 頂部控制按鈕
+            c_btn1, c_btn2, _ = st.columns([1, 1, 4])
+            if c_btn1.button("➕ 新增問卷分類"):
+                st.session_state.filter_group_count += 1; st.rerun()
+            if c_btn2.button("🗑️ 重置所有條件"):
+                st.session_state.filter_group_count = 1; st.rerun()
+
+            st.markdown("---")
             
-            # 4. 動態生成篩選器
+            # 收集使用者選中的所有題目
+            selected_all_items = []
+            
+            # 4. 產生 N 個篩選群組 (依據使用者按新增的次數)
+            for i in range(st.session_state.filter_group_count):
+                with st.container(border=True):
+                    c_cat, c_item = st.columns([1, 2])
+                    cat = c_cat.selectbox(f"📋 選擇問卷類別 (第 {i+1} 組)", list(category_map.keys()), key=f"cat_sel_{i}")
+                    items = c_item.multiselect(f"選擇「{cat}」中的題項", category_map[cat], key=f"item_sel_{i}", placeholder="請點此選擇題目...")
+                    if items:
+                        selected_all_items.extend(items)
+
+            # 5. 動態生成篩選條件設定區塊
             filters = {}
-            if selected_criteria:
-                st.markdown("---")
-                st.write("##### 2. 設定條件細節：")
-                # 自動排版：每行放3個篩選器
-                c_filters = st.columns(3)
-                
-                for idx, col in enumerate(selected_criteria):
-                    with c_filters[idx % 3]:
-                        # A. 針對數值欄位 (如年齡, BMI) -> 顯示滑桿範圍
-                        if col in ['數值年齡', 'BMI', '收縮壓', '體重', 'BSRS_總分']:
-                            try:
-                                min_v = float(full_data[col].min())
-                                max_v = float(full_data[col].max())
-                                filters[col] = st.slider(f"{col} 範圍", min_v, max_v, (min_v, max_v), key=f"f_{col}")
-                            except:
-                                st.warning(f"{col} 無法轉數值")
-                        
-                        # B. 針對文字/選項欄位 -> 顯示多選單
+            if selected_all_items:
+                st.markdown("##### ⚙️ 設定條件細節：")
+                # 使用者每選一題，就產生一個對應的設定框
+                for col in selected_all_items:
+                    with st.container(border=True):
+                        if col in num_cols:
+                            # 【數值型態】的條件介面
+                            c_op, c_v1, c_v2 = st.columns([1, 1, 1])
+                            op = c_op.selectbox(f"設定【{col}】條件", ["大於等於", "小於等於", "介於", "等於"], key=f"op_{col}")
+                            
+                            if op == "介於":
+                                v1 = c_v1.number_input("最小值", key=f"min_{col}", value=0.0)
+                                v2 = c_v2.number_input("最大值", key=f"max_{col}", value=100.0)
+                                filters[col] = ("between", v1, v2)
+                            else:
+                                v = c_v1.number_input("輸入數值", key=f"val_{col}", value=0.0)
+                                filters[col] = (op, v)
+                                
                         else:
-                            # 找出所有可能的答案 (排序)
-                            unique_opts = sorted(full_data[col].astype(str).unique().tolist())
-                            filters[col] = st.multiselect(f"{col} 包含", unique_opts, key=f"f_{col}")
+                            # 【文字/選項型態】的條件介面
+                            unique_opts = sorted([str(x) for x in full_data[col].unique() if str(x) != 'nan' and str(x) != ''])
+                            selected_opts = st.multiselect(f"設定【{col}】包含", unique_opts, key=f"f_{col}")
+                            if selected_opts:
+                                filters[col] = ("in", selected_opts)
 
-            # 5. 執行篩選
-            if filters:
-                result_df = full_data.copy()
-                for col, condition in filters.items():
-                    # 區分範圍篩選(Tuple) 與 選項篩選(List)
-                    if isinstance(condition, tuple): # 範圍
-                        result_df[col] = pd.to_numeric(result_df[col], errors='coerce').fillna(0)
-                        result_df = result_df[(result_df[col] >= condition[0]) & (result_df[col] <= condition[1])]
-                    
-                    elif isinstance(condition, list) and condition: # 選項
-                        if col == '身分別':
-                            # 特殊處理：身分別是 "低收,老人" 這種字串，需用包含邏輯
-                            # 只要包含使用者選的任一身分即可
-                            mask = result_df[col].astype(str).apply(lambda x: any(tag in x for tag in condition))
-                            result_df = result_df[mask]
-                        else:
-                            # 一般題目：精確比對
-                            result_df = result_df[result_df[col].astype(str).isin(condition)]
+            # 6. 執行篩選邏輯
+            result_df = full_data.copy()
+            for col, condition in filters.items():
+                cond_type = condition[0]
                 
-                st.markdown(f"#### 🎯 篩選結果：共 {len(result_df)} 人")
-                # 顯示結果 (包含姓名、日期、篩選的欄位、電話)
-                cols_to_show = ['姓名', '評估日期'] + list(filters.keys()) + ['電話']
+                if cond_type == "in":
+                    # 處理文字/多選
+                    selected_opts = condition[1]
+                    if col == '身分別':
+                        mask = result_df[col].astype(str).apply(lambda x: any(tag in x for tag in selected_opts))
+                        result_df = result_df[mask]
+                    else:
+                        result_df = result_df[result_df[col].astype(str).isin(selected_opts)]
+                else:
+                    # 處理數值
+                    result_df[col] = pd.to_numeric(result_df[col], errors='coerce').fillna(0)
+                    if cond_type == "between":
+                        result_df = result_df[(result_df[col] >= condition[1]) & (result_df[col] <= condition[2])]
+                    elif cond_type == "大於等於":
+                        result_df = result_df[result_df[col] >= condition[1]]
+                    elif cond_type == "小於等於":
+                        result_df = result_df[result_df[col] <= condition[1]]
+                    elif cond_type == "等於":
+                        result_df = result_df[result_df[col] == condition[1]]
+            
+            # 7. 顯示結果
+            if selected_all_items:
+                st.markdown(f"#### 🎯 篩選結果：共 {len(result_df)} 人符合條件")
+                # 確保不重複顯示欄位
+                cols_to_show = ['姓名', '評估日期'] + list(dict.fromkeys(selected_all_items)) + ['電話']
                 st.dataframe(result_df[cols_to_show], use_container_width=True)
+            else:
+                st.info("💡 請在上方選擇題目後，即可顯示設定條件與篩選結果。")
 
     # --- Tab 3: 物資統計 (原有的) ---
     with tab3:
