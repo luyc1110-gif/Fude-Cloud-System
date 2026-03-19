@@ -552,7 +552,6 @@ elif st.session_state.page == 'checkin':
                 group_filter = c_f2.selectbox("分組篩選 (環保)", ["全部", "第一組", "第二組", "第三組", "第四組"])
 
             available_names = []
-            default_selections = []
             
             if not active_m.empty:
                 # 依分類篩選
@@ -563,13 +562,14 @@ elif st.session_state.page == 'checkin':
 
                 available_names = sorted(filtered_m['姓名'].tolist())
                 
-                # 如果有選環保志工的特定組別，自動帶入預設名單
+                # 如果有選環保志工的特定組別，則「縮小可選範圍」至該組名單
                 if cat_filter == "環保志工" and group_filter != "全部":
                     group_names = env_groups.get(group_filter, [])
-                    # 確保名單上的人真的在有效志工資料庫內
-                    default_selections = [n for n in group_names if n in available_names]
+                    # 重新篩選：只保留存在於該組別的人
+                    available_names = [n for n in available_names if n in group_names]
 
-            selected_names = st.multiselect("👤 選擇打卡志工 (可打字搜尋、複選)", available_names, default=default_selections, placeholder="請點擊輸入或選擇姓名...")
+            # 移除 default 參數，讓下拉選單預設為空，由使用者手動從清單中挑選出勤者
+            selected_names = st.multiselect("👤 選擇打卡志工 (可打字搜尋、複選)", available_names, placeholder="請點擊輸入或選擇姓名...")
 
             if st.button("✅ 確認打卡 (自動判斷簽到/退)", type="primary"):
                 if not selected_names:
