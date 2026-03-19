@@ -668,7 +668,7 @@ elif st.session_state.page == 'checkin':
             
             st.markdown("### 🛠️ 補登操作")
             
-            # --- 新增：將分類篩選放在 form 外面，才能即時連動更新下方名單 ---
+            # --- 1. 分類篩選 ---
             cat_filter_tab2 = st.selectbox("📌 篩選志工分類", ["全部", "環保志工", "祥和志工", "關懷據點週二志工", "關懷據點週三志工"], key="cat_filter_tab2")
             
             if cat_filter_tab2 != "全部":
@@ -676,36 +676,57 @@ elif st.session_state.page == 'checkin':
             else:
                 filtered_m_tab2 = active_m
                 
-            name_list = sorted(filtered_m_tab2['姓名'].tolist())
+            available_names_tab2 = sorted(filtered_m_tab2['姓名'].tolist())
             
-            with st.form("manual_entry"):
-                c1, c2, c3, c4 = st.columns(4)
-                d_date = c1.date_input("日期", value=date.today())
-                d_time = c2.time_input("時間", value=get_tw_time().time())
-                d_action = c3.selectbox("動作", ["簽到", "簽退"])
-                d_act = c4.selectbox("活動", DEFAULT_ACTIVITIES)
-                
-                # 名單會根據上方的篩選結果即時變動
-                names = st.multiselect("👤 選擇志工 (可單選或多選)", name_list, placeholder="請點此選擇要補登的志工...")
-                
-                if st.form_submit_button("確認補登"):
-                    if not names:
-                        st.error("❌ 請至少選擇一位志工！")
-                    else:
-                        # 準備資料 List
-                        new_rows = []
-                        for n in names:
-                            row = active_m[active_m['姓名'] == n].iloc[0]
-                            new_rows.append({
-                                '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
-                                '志工分類': row['志工分類'], '動作': d_action, 
-                                '時間': d_time.strftime("%H:%M:%S"), '日期': d_date.strftime("%Y-%m-%d"), 
-                                '活動內容': d_act
-                            })
+            # --- 2. 新增：利用 session_state 記住跨組別的選擇 (解除表單限制) ---
+            if 'temp_vols_tab2' not in st.session_state:
+                st.session_state.temp_vols_tab2 = []
+
+            def update_vols_tab2():
+                # 當下拉選單有變動時，馬上存進暫存區
+                st.session_state.temp_vols_tab2 = st.session_state.manual_ms
+
+            # 將「目前已經勾選的人」也加入到當前的候選名單中
+            final_options_tab2 = sorted(list(set(available_names_tab2 + st.session_state.temp_vols_tab2)))
+            
+            # --- 3. 補登細節設定 ---
+            c1, c2, c3, c4 = st.columns(4)
+            d_date = c1.date_input("日期", value=date.today())
+            d_time = c2.time_input("時間", value=get_tw_time().time())
+            d_action = c3.selectbox("動作", ["簽到", "簽退"])
+            d_act = c4.selectbox("活動", DEFAULT_ACTIVITIES)
+            
+            # --- 4. 志工選單 ---
+            names = st.multiselect(
+                "👤 選擇志工 (可單選或多選)", 
+                options=final_options_tab2,
+                default=st.session_state.temp_vols_tab2,
+                placeholder="請點此選擇要補登的志工...",
+                key="manual_ms",
+                on_change=update_vols_tab2
+            )
+            
+            st.write("") # 空行排版
+            if st.button("✅ 確認補登", type="primary"):
+                if not names:
+                    st.error("❌ 請至少選擇一位志工！")
+                else:
+                    # 準備資料 List
+                    new_rows = []
+                    for n in names:
+                        row = active_m[active_m['姓名'] == n].iloc[0]
+                        new_rows.append({
+                            '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
+                            '志工分類': row['志工分類'], '動作': d_action, 
+                            '時間': d_time.strftime("%H:%M:%S"), '日期': d_date.strftime("%Y-%m-%d"), 
+                            '活動內容': d_act
+                        })
+                    
+                    # 一次寫入多筆
+                    if batch_append_data("logs", new_rows, LOG_COLS):
+                        st.success(f"✅ 已成功補登 {len(names)} 筆資料！")
                         
-                        # 一次寫入多筆
-                        if batch_append_data("logs", new_rows, LOG_COLS):
-                            st.success(f"✅ 已成功補登 {len(names)} 筆資料！")
+                        # 打卡成功後，清空暫存區，讓下一批人可以乾
 
 elif st.session_state.page == 'members':
     render_nav()
