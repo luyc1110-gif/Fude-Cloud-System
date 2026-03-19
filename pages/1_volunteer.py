@@ -665,19 +665,27 @@ elif st.session_state.page == 'checkin':
         df_m = load_data_from_sheet("members")
         if not df_m.empty:
             active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)]
-            name_list = sorted(active_m['姓名'].tolist()) # Sort names for dropdown
             
-            # 加入 clear_on_submit=True 確保每次送出後表單重置，避免時間狀態錯亂
-            with st.form("manual_entry"):
-                st.markdown("### 🛠️ 補登操作")
+            st.markdown("### 🛠️ 補登操作")
+            
+            # --- 新增：將分類篩選放在 form 外面，才能即時連動更新下方名單 ---
+            cat_filter_tab2 = st.selectbox("📌 篩選志工分類", ["全部", "環保志工", "祥和志工", "關懷據點週二志工", "關懷據點週三志工"], key="cat_filter_tab2")
+            
+            if cat_filter_tab2 != "全部":
+                filtered_m_tab2 = active_m[active_m['志工分類'].astype(str).str.contains(cat_filter_tab2, na=False)]
+            else:
+                filtered_m_tab2 = active_m
                 
+            name_list = sorted(filtered_m_tab2['姓名'].tolist())
+            
+            with st.form("manual_entry"):
                 c1, c2, c3, c4 = st.columns(4)
                 d_date = c1.date_input("日期", value=date.today())
                 d_time = c2.time_input("時間", value=get_tw_time().time())
                 d_action = c3.selectbox("動作", ["簽到", "簽退"])
                 d_act = c4.selectbox("活動", DEFAULT_ACTIVITIES)
                 
-                # 直接使用多選，移除單筆/整批的切換
+                # 名單會根據上方的篩選結果即時變動
                 names = st.multiselect("👤 選擇志工 (可單選或多選)", name_list, placeholder="請點此選擇要補登的志工...")
                 
                 if st.form_submit_button("確認補登"):
@@ -687,7 +695,7 @@ elif st.session_state.page == 'checkin':
                         # 準備資料 List
                         new_rows = []
                         for n in names:
-                            row = df_m[df_m['姓名'] == n].iloc[0]
+                            row = active_m[active_m['姓名'] == n].iloc[0]
                             new_rows.append({
                                 '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
                                 '志工分類': row['志工分類'], '動作': d_action, 
