@@ -2092,9 +2092,28 @@ elif st.session_state.page == 'stats':
             filters = {}
             if selected_all_items:
                 st.markdown("##### ⚙️ 設定條件細節：")
+                
+                # --- 新增：數值意義提示字典 ---
+                hint_dict = {
+                    "BSRS": "💡 【分數意義】0: 完全沒有, 1: 輕微, 2: 中等, 3: 厲害, 4: 非常厲害。(分數「越高」代表越困擾)",
+                    "WHO5": "💡 【分數意義】0: 從來沒有 ~ 5: 全部的時間。(總分最高100分，分數「越高」代表越幸福)",
+                    "MNA": "💡 【分數意義】分數「越低」代表營養狀況越差 (總分 <12 為風險, <8 為不良)。",
+                    "握力": "💡 【參考標準】男性小於 26kg、女性小於 18kg 視為握力不足。",
+                    "BMI": "💡 【參考標準】< 18.5 過輕, 18.5~24 正常, 24~27 過重, ≥ 27 肥胖。",
+                    "膀胱": "💡 【嚴重程度】依照選項字面意義選擇 (例如：「會(嚴重)」)。",
+                    "IIQ7": "💡 【影響程度】依照選項字面意義選擇 (沒有影響 ~ 嚴重影響)。",
+                    "QOL": "💡 【分數意義】1~5 分，依照選項字面意義選擇 (通常 5 為極好/極滿意)。"
+                }
+
                 # 使用者每選一題，就產生一個對應的設定框
                 for col in selected_all_items:
                     with st.container(border=True):
+                        # --- 顯示對應的提示文字 ---
+                        for key, hint_text in hint_dict.items():
+                            if key in col:
+                                st.markdown(f"<div style='background-color:#E1F5FE; color:#0277BD; padding:6px 10px; border-radius:8px; font-size:0.85rem; font-weight:bold; margin-bottom:10px;'>{hint_text}</div>", unsafe_allow_html=True)
+                                break
+                                
                         if col in num_cols:
                             # 【數值型態】的條件介面
                             c_op, c_v1, c_v2 = st.columns([1, 1, 1])
