@@ -2212,7 +2212,11 @@ elif st.session_state.page == 'stats':
                     st.markdown("<div style='font-size: 1.2rem; font-weight: 700; color: #4A4E69; margin-bottom: 10px;'>🏆 愛心捐贈芳名錄</div>", unsafe_allow_html=True)
                     donor_stat = inv.groupby('捐贈者')['qty'].sum().reset_index().sort_values('qty', ascending=False)
                     fig_donor = px.pie(donor_stat, values='qty', names='捐贈者', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-                    # 加入 font=dict(color='#333333') 強制字體為深灰/黑色
+                    
+                    # 加上這行：強制標籤在內部，太小的區塊會自動隱藏數字
+                    fig_donor.update_traces(textposition='inside')
+                    
+                    # 強制設定為白底與深色字
                     fig_donor.update_layout(paper_bgcolor='white', plot_bgcolor='white', font=dict(color='#333333'), margin=dict(t=10, b=10, l=10, r=10))
                     st.plotly_chart(fig_donor, use_container_width=True, theme=None)
                     
