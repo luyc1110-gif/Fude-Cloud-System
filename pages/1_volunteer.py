@@ -551,6 +551,14 @@ elif st.session_state.page == 'checkin':
             if cat_filter == "環保志工":
                 group_filter = c_f2.selectbox("分組篩選 (環保)", ["全部", "第一組", "第二組", "第三組", "第四組"])
 
+            # --- 新增：利用 session_state 記住跨組別的選擇 ---
+            if 'temp_vols' not in st.session_state:
+                st.session_state.temp_vols = []
+
+            def update_vols():
+                # 當下拉選單有勾選變動時，馬上把名單存進暫存區
+                st.session_state.temp_vols = st.session_state.checkin_ms
+
             available_names = []
             
             if not active_m.empty:
@@ -568,8 +576,18 @@ elif st.session_state.page == 'checkin':
                     # 重新篩選：只保留存在於該組別的人
                     available_names = [n for n in available_names if n in group_names]
 
-            # 移除 default 參數，讓下拉選單預設為空，由使用者手動從清單中挑選出勤者
-            selected_names = st.multiselect("👤 選擇打卡志工 (可打字搜尋、複選)", available_names, placeholder="請點擊輸入或選擇姓名...")
+            # 🔥 關鍵修復：將「目前已經勾選的人」也加入到當前的候選名單中
+            # 這樣切換到別組時，上一組選過的人才不會被系統自動洗掉
+            final_options = sorted(list(set(available_names + st.session_state.temp_vols)))
+
+            selected_names = st.multiselect(
+                "👤 選擇打卡志工 (可打字搜尋、複選)", 
+                options=final_options, 
+                default=st.session_state.temp_vols,
+                placeholder="請點擊輸入或選擇姓名...",
+                key="checkin_ms",
+                on_change=update_vols
+            )
 
             if st.button("✅ 確認打卡 (自動判斷簽到/退)", type="primary"):
                 if not selected_names:
@@ -608,6 +626,10 @@ elif st.session_state.page == 'checkin':
                         
                     if batch_append_data("logs", new_rows, LOG_COLS):
                         st.success(f"✅ 已成功處理 {len(selected_names)} 人的打卡紀錄！")
+                        
+                        # 🔥 打卡成功後，清空暫存區，讓下一批人可以乾淨地重新選
+                        st.session_state.temp_vols = [] 
+                        
                         time.sleep(1)
                         st.rerun()
 
