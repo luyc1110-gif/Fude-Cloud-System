@@ -114,6 +114,12 @@ div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTim
 div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{ background-color: #FFFFFF !important; color: #000 !important; }}
 li[role="option"]:hover {{ background-color: #F3E5F5 !important; }}
 
+/* 🔥 確保時間選擇器裡面的文字絕對是黑色的 */
+div[data-testid="stTimeInput"] * {{
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+}}
+
 /* 按鈕樣式 */
 div[data-testid="stFormSubmitButton"] > button, div[data-testid="stDownloadButton"] > button {{
     background-color: {PRIMARY} !important; color: #FFFFFF !important; border: none !important; border-radius: 12px !important; padding: 10px 20px !important; font-weight: 900 !important;
