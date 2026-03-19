@@ -662,7 +662,7 @@ elif st.session_state.page == 'checkin':
             name_list = sorted(active_m['姓名'].tolist()) # Sort names for dropdown
             
             # 加入 clear_on_submit=True 確保每次送出後表單重置，避免時間狀態錯亂
-            with st.form("manual_entry", clear_on_submit=True):
+            with st.form("manual_entry"):
                 st.markdown("### 🛠️ 補登操作")
                 
                 c1, c2, c3, c4 = st.columns(4)
