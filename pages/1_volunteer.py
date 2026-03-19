@@ -514,7 +514,7 @@ elif st.session_state.page == 'checkin':
     if 'input_pid' not in st.session_state: st.session_state.input_pid = ""
     if 'scan_cooldowns' not in st.session_state: st.session_state['scan_cooldowns'] = {}
     
-    tab1, tab2, tab3 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業", "✏️ 紀錄修改"])
+    tab1, tab2 = st.tabs(["⚡️ 現場打卡", "🛠️ 補登作業"])
     with tab1:
         col_scan, col_status = st.columns([1.5, 1])
 
