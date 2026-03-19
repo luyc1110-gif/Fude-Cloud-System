@@ -2212,18 +2212,16 @@ elif st.session_state.page == 'stats':
                     st.markdown("<div style='font-size: 1.2rem; font-weight: 700; color: #4A4E69; margin-bottom: 10px;'>🏆 愛心捐贈芳名錄</div>", unsafe_allow_html=True)
                     donor_stat = inv.groupby('捐贈者')['qty'].sum().reset_index().sort_values('qty', ascending=False)
                     fig_donor = px.pie(donor_stat, values='qty', names='捐贈者', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-                    # 強制設定為白底，取消 Streamlit 預設的暗色主題干擾
-                    fig_donor.update_layout(paper_bgcolor='white', plot_bgcolor='white', margin=dict(t=10, b=10, l=10, r=10))
+                    # 加入 font=dict(color='#333333') 強制字體為深灰/黑色
+                    fig_donor.update_layout(paper_bgcolor='white', plot_bgcolor='white', font=dict(color='#333333'), margin=dict(t=10, b=10, l=10, r=10))
                     st.plotly_chart(fig_donor, use_container_width=True, theme=None)
                     
             with c2:
                 with st.container(border=True):
                     st.markdown("<div style='font-size: 1.2rem; font-weight: 700; color: #4A4E69; margin-bottom: 10px;'>📦 物資種類結構</div>", unsafe_allow_html=True)
                     fig_sun = px.sunburst(inv, path=['物資類型', '物資內容'], values='qty', color='物資類型', color_discrete_sequence=px.colors.qualitative.Set3)
-                    # 強制設定為白底，取消 Streamlit 預設的暗色主題干擾
-                    fig_sun.update_layout(paper_bgcolor='white', plot_bgcolor='white', margin=dict(t=10, b=10, l=10, r=10))
+                    # 加入 font=dict(color='#333333') 強制字體為深灰/黑色
+                    fig_sun.update_layout(paper_bgcolor='white', plot_bgcolor='white', font=dict(color='#333333'), margin=dict(t=10, b=10, l=10, r=10))
                     st.plotly_chart(fig_sun, use_container_width=True, theme=None)
-            
-            # (已移除下方的 st.dataframe 原理資料表)
         else:
             st.info("目前尚無庫存資料")
