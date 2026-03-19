@@ -520,7 +520,7 @@ elif st.session_state.page == 'checkin':
 
         with col_scan:
             st.markdown('<div style="background:#F8F9FA; padding:20px; border-radius:20px; border:1px solid #eee; margin-bottom:20px;">', unsafe_allow_html=True)
-            st.markdown("#### ⚡️ 掃描簽到/退")
+            st.markdown("#### ⚡️ 批次/個人 簽到退")
             
             c_act, c_note = st.columns([1, 2])
             with c_act: raw_act = st.selectbox("📌 選擇活動", DEFAULT_ACTIVITIES)
@@ -529,56 +529,88 @@ elif st.session_state.page == 'checkin':
                 if raw_act in ["專案活動", "教育訓練"]: note = st.text_input("📝 請輸入活動名稱 (必填)", placeholder="例如：社區大掃除")
                 else: st.write("") 
 
-            def process_scan():
-                pid = st.session_state.input_pid.strip().upper()
-                if not pid: return
-                final_act = raw_act
-                if raw_act in ["專案活動", "教育訓練"]:
-                    if not note.strip(): st.error("⚠️ 請填寫「活動名稱」才能打卡！"); return
-                    final_act = f"{raw_act}：{note}"
+            st.markdown("---")
+            
+            # 讀取名單
+            load_data_from_sheet.clear()
+            df_m = load_data_from_sheet("members")
+            active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)] if not df_m.empty else pd.DataFrame()
+            
+            # 定義環保志工分組
+            env_groups = {
+                "第一組": ["涂玉梅", "羅愛梅", "楊素鳳", "張天德", "邱煥原", "張瑞群", "郭惠美", "林素玲", "范銀英", "石美花", "呂春煌", "解美菊", "陳張牡丹", "黃美燕", "黃麗卿", "林瑞琴"],
+                "第二組": ["簡玉娥", "李月鳳", "邱淑珠", "蔡寶雲", "邱黃秀", "李玉梅"],
+                "第三組": ["黃李昭", "張李惷", "邱鄭冬吟", "吳王秀琴", "沈秀枝", "賴美麗"],
+                "第四組": ["呂宜政", "黃秋霞", "彭金玉", "呂玉華", "莊榮川", "劉采稱", "林月娉", "張秭榆", "陳天助", "王甄與", "陳俊維", "郭坤山", "陳清哲", "彭瑞鑑", "陳素惠", "趙再添", "黃敬恩", "吳玟玲"]
+            }
+
+            c_f1, c_f2 = st.columns(2)
+            cat_filter = c_f1.selectbox("分類篩選", ["全部", "環保志工", "祥和志工", "關懷據點"])
+            
+            group_filter = "全部"
+            if cat_filter == "環保志工":
+                group_filter = c_f2.selectbox("分組篩選 (環保)", ["全部", "第一組", "第二組", "第三組", "第四組"])
+
+            available_names = []
+            default_selections = []
+            
+            if not active_m.empty:
+                # 依分類篩選
+                if cat_filter != "全部":
+                    filtered_m = active_m[active_m['志工分類'].astype(str).str.contains(cat_filter, na=False)]
+                else:
+                    filtered_m = active_m
+
+                available_names = sorted(filtered_m['姓名'].tolist())
                 
-                now = get_tw_time()
-                last = st.session_state['scan_cooldowns'].get(pid)
-                if last and (now - last).total_seconds() < 1: 
-                    st.warning(f"⏳ 刷卡過快"); st.session_state.input_pid = ""; return
-                
-                load_data_from_sheet.clear()
-                df_m = load_data_from_sheet("members")
-                df_l = load_data_from_sheet("logs")
-                
-                if df_m.empty: st.error("❌ 無法讀取名單"); return
-                person = df_m[df_m['身分證字號'] == pid]
-                
-                if not person.empty:
-                    row = person.iloc[0]
-                    name = row['姓名']
-                    if check_is_fully_retired(row): 
-                        st.error(f"❌ {name} 已退出，無法打卡。")
-                    else:
-                        today = now.strftime("%Y-%m-%d")
-                        # 這裡原本會讀 logs 判斷簽到/簽退，這部分必須保留讀取，但寫入要改
+                # 如果有選環保志工的特定組別，自動帶入預設名單
+                if cat_filter == "環保志工" and group_filter != "全部":
+                    group_names = env_groups.get(group_filter, [])
+                    # 確保名單上的人真的在有效志工資料庫內
+                    default_selections = [n for n in group_names if n in available_names]
+
+            selected_names = st.multiselect("👤 選擇打卡志工 (可打字搜尋、複選)", available_names, default=default_selections, placeholder="請點擊輸入或選擇姓名...")
+
+            if st.button("✅ 確認打卡 (自動判斷簽到/退)", type="primary"):
+                if not selected_names:
+                    st.error("❌ 請至少選擇一位志工")
+                else:
+                    final_act = raw_act
+                    if raw_act in ["專案活動", "教育訓練"]:
+                        if not note.strip(): 
+                            st.error("⚠️ 請填寫「活動名稱」才能打卡！")
+                            st.stop()
+                        final_act = f"{raw_act}：{note}"
+                    
+                    now = get_tw_time()
+                    today = now.strftime("%Y-%m-%d")
+                    time_str = now.strftime("%H:%M:%S")
+                    
+                    df_l = load_data_from_sheet("logs")
+                    new_rows = []
+                    
+                    for name in selected_names:
+                        row = active_m[active_m['姓名'] == name].iloc[0]
+                        pid = row['身分證字號']
+                        
+                        # 判斷簽到或簽退
                         t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
                         action = "簽到"
-                        if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": action = "簽退"
+                        if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": 
+                            action = "簽退"
                         
-                        # --- 🔥 修改重點：改用 append_data ---
-                        new_log_dict = {
+                        new_rows.append({
                             '姓名': name, '身分證字號': pid, '電話': row['電話'], 
                             '志工分類': row['志工分類'], '動作': action, 
-                            '時間': now.strftime("%H:%M:%S"), '日期': today, 
+                            '時間': time_str, '日期': today, 
                             '活動內容': final_act
-                        }
+                        })
                         
-                        # 直接追加，不重寫整張表
-                        if append_data("logs", new_log_dict, LOG_COLS):
-                            st.session_state['scan_cooldowns'][pid] = now
-                            if action == "簽到": st.toast(f"👋 歡迎 {name} 簽到成功！", icon="✅")
-                            else: st.toast(f"🏠 辛苦了 {name} 簽退成功！", icon="✅")
-                else: st.error("❌ 查無此人")
-                
-                st.session_state.input_pid = ""
+                    if batch_append_data("logs", new_rows, LOG_COLS):
+                        st.success(f"✅ 已成功處理 {len(selected_names)} 人的打卡紀錄！")
+                        time.sleep(1)
+                        st.rerun()
 
-            st.text_input("請輸入身分證 (Enter)", key="input_pid", on_change=process_scan, placeholder="掃描或輸入後按 Enter")
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_status:
