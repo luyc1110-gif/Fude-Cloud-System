@@ -638,11 +638,6 @@ elif st.session_state.page == 'checkin':
                         # 一次寫入多筆
                         if batch_append_data("logs", new_rows, LOG_COLS):
                             st.success(f"✅ 已成功補登 {len(names)} 筆資料！")
-    with tab3:
-        logs = load_data_from_sheet("logs")
-        if not logs.empty:
-            edited = st.data_editor(logs, num_rows="dynamic", use_container_width=True)
-            if st.button("💾 儲存修改"): save_data_to_sheet(edited, "logs"); st.success("已更新")
 
 elif st.session_state.page == 'members':
     render_nav()
