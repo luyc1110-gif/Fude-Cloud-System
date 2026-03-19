@@ -185,22 +185,27 @@ def get_google_sheet_client():
 # 🔥 優化 A：讀取加速 (get_all_values)
 @st.cache_data(ttl=60)
 def load_data_from_sheet(sheet_name):
+    target_cols = MEM_COLS if sheet_name == 'members' else LOG_COLS
     try:
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         data = sheet.get_all_values()
-        
-        target_cols = MEM_COLS if sheet_name == 'members' else LOG_COLS
-        if not data: return pd.DataFrame(columns=target_cols)
-        
+
+        if not data:
+            return pd.DataFrame(columns=target_cols)
+
         headers = data.pop(0)
         df = pd.DataFrame(data, columns=headers)
-        
-        # 補齊可能缺少的欄位
-        for c in target_cols: 
-            if c not in df.columns: df[c] = ""
+
+        for c in target_cols:
+            if c not in df.columns:
+                df[c] = ""
+
         return df
-    except: return pd.DataFrame()
+
+    except Exception as e:
+        st.error(f"讀取 {sheet_name} 失敗：{e}")
+        return pd.DataFrame(columns=target_cols)
 
 # 維持原版 save (僅用於修改資料/DataEditor)
 def save_data_to_sheet(df, sheet_name):
@@ -538,7 +543,6 @@ elif st.session_state.page == 'checkin':
             st.markdown("---")
             
             # 讀取名單
-            load_data_from_sheet.clear()
             df_m = load_data_from_sheet("members")
             active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)] if not df_m.empty else pd.DataFrame()
             
@@ -643,7 +647,6 @@ elif st.session_state.page == 'checkin':
 
         with col_status:
             st.markdown("#### 🟢 目前在場志工")
-            load_data_from_sheet.clear()
             logs = load_data_from_sheet("logs")
             present_df = get_present_volunteers(logs)
             if not present_df.empty:
@@ -669,8 +672,8 @@ elif st.session_state.page == 'checkin':
             st.markdown("### 🛠️ 補登操作")
             
             # --- 1. 初始化系統綁定的 Key ---
-            if 'ms_vols_tab2' not in st.session_state:
-                st.session_state.ms_vols_tab2 = []
+            if 'temp_vols_tab2' not in st.session_state:
+                st.session_state.temp_vols_tab2 = []
                 
             # --- 2. 篩選分類 ---
             cat_filter_tab2 = st.selectbox("📌 篩選志工分類", ["全部", "環保志工", "祥和志工", "關懷據點週二志工", "關懷據點週三志工"], key="cat_filter_tab2")
@@ -683,7 +686,10 @@ elif st.session_state.page == 'checkin':
             available_names_tab2 = sorted(filtered_m_tab2['姓名'].tolist())
             
             # --- 3. 組合選項：讓選項名單永遠包含「已選的人」，避免系統找不到人 ---
-            final_opts = sorted(list(set(available_names_tab2 + st.session_state.ms_vols_tab2)))
+            def update_vols_tab2():
+                st.session_state.temp_vols_tab2 = st.session_state.checkin_ms_tab2
+
+            final_opts = sorted(list(set(available_names_tab2 + st.session_state.temp_vols_tab2)))
             
             c1, c2, c3, c4 = st.columns(4)
             d_date = c1.date_input("日期", value=date.today(), key="d_date_tab2")
@@ -692,35 +698,45 @@ elif st.session_state.page == 'checkin':
             d_act = c4.selectbox("活動", DEFAULT_ACTIVITIES, key="d_act_tab2")
             
             # --- 4. 🔥 最純粹的多選單 (拔除 default，只留 key，絕不手動干預) ---
-            st.multiselect(
-                "👤 選擇志工 (可單選或多選)", 
+            selected_names = st.multiselect(
+                "👤 選擇志工 (可單選或多選)",
                 options=final_opts,
+                default=st.session_state.temp_vols_tab2,
                 placeholder="請點此選擇要補登的志工...",
-                key="ms_vols_tab2"  # 👈 系統會自動把結果存進 st.session_state.ms_vols_tab2
+                key="checkin_ms_tab2",
+                on_change=update_vols_tab2
             )
             
             st.write("") # 空行排版
             if st.button("✅ 確認補登", type="primary"):
-                # 直接從系統的 key 拿取名單
-                selected_names = st.session_state.ms_vols_tab2
                 
                 if not selected_names:
                     st.error("❌ 請至少選擇一位志工！")
                 else:
                     new_rows = []
                     for n in selected_names:
-                        row = active_m[active_m['姓名'] == n].iloc[0]
+                        matched = active_m[active_m['姓名'] == n]
+                        if matched.empty:
+                            st.warning(f"找不到志工資料：{n}")
+                            continue
+
+                        row = matched.iloc[0]
                         new_rows.append({
-                            '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
-                            '志工分類': row['志工分類'], '動作': d_action, 
-                            '時間': d_time.strftime("%H:%M:%S"), '日期': d_date.strftime("%Y-%m-%d"), 
+                            '姓名': n,
+                            '身分證字號': row['身分證字號'],
+                            '電話': row['電話'],
+                            '志工分類': row['志工分類'],
+                            '動作': d_action,
+                            '時間': d_time.strftime("%H:%M:%S"),
+                            '日期': d_date.strftime("%Y-%m-%d"),
                             '活動內容': d_act
                         })
                     
                     if batch_append_data("logs", new_rows, LOG_COLS):
                         st.success(f"✅ 已成功補登 {len(selected_names)} 筆資料！")
                         # 送出成功後，安全清空系統暫存區
-                        st.session_state.ms_vols_tab2 = []
+                        st.session_state.temp_vols_tab2 = []
+                        st.session_state.checkin_ms_tab2 = []
                         time.sleep(1)
                         st.rerun()
 
