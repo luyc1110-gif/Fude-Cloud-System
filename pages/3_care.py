@@ -526,6 +526,66 @@ def calculate_age(dob_str):
         bd = datetime.strptime(str(dob_str).strip(), "%Y-%m-%d").date()
         today = date.today(); return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
     except: return 0
+# =========================================================
+# 🌟 主檔 (Master Data) 橋接邏輯
+# =========================================================
+COLS_MASTER = ['姓名', '身分證字號', '性別', '出生年月日', '電話', '地址', '緊急聯絡人', '緊急聯絡電話', '身分_志工', '身分_關懷戶', '身分_據點長輩', '志工分類', '關懷_身分別', '同住_18歲以下', '同住_成人', '同住_65歲以上', '拒絕物資', '人際關係']
+
+def get_care_members():
+    """取代原本的 load_data，改由總表讀取並自動過濾關懷戶"""
+    df = load_data("master_residents", COLS_MASTER)
+    if df.empty: return pd.DataFrame(columns=COLS_MEM)
+    
+    care_df = df[df['身分_關懷戶'] == 'TRUE'].copy()
+    # 將總表欄位名稱映射回舊系統，避免下方幾百行程式碼報錯
+    care_df = care_df.rename(columns={
+        '出生年月日': '生日', '關懷_身分別': '身分別', '同住_18歲以下': '18歲以下子女', 
+        '同住_成人': '成人數量', '同住_65歲以上': '65歲以上長者'
+    })
+    for c in COLS_MEM:
+        if c not in care_df.columns: care_df[c] = ""
+    return care_df[COLS_MEM]
+
+def update_master_fields(uid, update_dict):
+    """專門用來更新總表特定欄位 (如拒絕物資、人際關係)"""
+    master = load_data("master_residents", COLS_MASTER)
+    if master.empty: return False
+    
+    map_dict = {'生日': '出生年月日', '身分別': '關懷_身分別', '18歲以下子女': '同住_18歲以下', '成人數量': '同住_成人', '65歲以上長者': '同住_65歲以上'}
+    final_update = {map_dict.get(k, k): v for k, v in update_dict.items()}
+
+    idx = master[master['身分證字號'] == uid].index
+    if len(idx) > 0:
+        for k, v in final_update.items():
+            master.at[idx[0], k] = v
+        return save_data(master, "master_residents")
+    return False
+
+def add_or_update_care_member_to_master(new_data):
+    """新增關懷戶時，自動判定是新人還是舊人"""
+    master = load_data("master_residents", COLS_MASTER)
+    uid = new_data['身分證字號'].upper()
+    
+    # 防呆：如果沒填身分證，自動生成 TEMP 編號
+    if not uid or uid == 'NAN':
+        uid = f"TEMP_{new_data.get('姓名', '').strip()}_{new_data.get('電話', '').strip()}"
+        new_data['身分證字號'] = uid
+        
+    map_dict = {'生日': '出生年月日', '身分別': '關懷_身分別', '18歲以下子女': '同住_18歲以下', '成人數量': '同住_成人', '65歲以上長者': '同住_65歲以上'}
+    master_data = {map_dict.get(k, k): v for k, v in new_data.items()}
+    master_data['身分_關懷戶'] = 'TRUE'
+
+    if not master.empty and uid in master['身分證字號'].values:
+        # 已在總表 (例如本來是志工)，直接更新資料並打勾
+        idx = master[master['身分證字號'] == uid].index[0]
+        for k, v in master_data.items():
+            master.at[idx, k] = str(v)
+        return save_data(master, "master_residents")
+    else:
+        # 完全的新人
+        for c in COLS_MASTER:
+            if c not in master_data: master_data[c] = "FALSE" if "身分_" in c else ""
+        return append_data("master_residents", master_data, COLS_MASTER)
 
 # =========================================================
 # 3) Navigation
@@ -571,7 +631,7 @@ def render_nav():
 if st.session_state.page == 'home':
     render_nav()
     st.markdown(f"<h2 style='color: {GREEN};'>📊 關懷戶概況看板</h2>", unsafe_allow_html=True)
-    mems, logs = load_data("care_members", COLS_MEM), load_data("care_logs", COLS_LOG)
+    mems, logs = get_care_members(), load_data("care_logs", COLS_LOG)
     
     if not mems.empty:
         mems['age'] = mems['生日'].apply(calculate_age)
@@ -622,7 +682,7 @@ if st.session_state.page == 'home':
 elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 關懷戶名冊管理")
-    df = load_data("care_members", COLS_MEM)
+    df = get_care_members()
     
     # === 🔥 修改開始：新增「最新 3 筆」卡片顯示區 ===
     st.markdown("### 🆕 最新建檔關懷戶")
@@ -685,7 +745,7 @@ elif st.session_state.page == 'members':
                         "身分別": ",".join(id_t),
                         "18歲以下子女": str(child), "成人數量": str(adult), "65歲以上長者": str(senior)
                     }
-                    if append_data("care_members", new, COLS_MEM):
+                    if add_or_update_care_member_to_master(new):
                         st.success("✅ 已新增！"); time.sleep(1); st.rerun()
 
 # =========================================================
@@ -694,7 +754,7 @@ elif st.session_state.page == 'members':
 elif st.session_state.page == 'health':
     render_nav()
     st.markdown("## 🏥 綜合健康評估")
-    h_df, m_df = load_data("care_health", COLS_HEALTH), load_data("care_members", COLS_MEM)
+    h_df, m_df = load_data("care_health", COLS_HEALTH), get_care_members()
     
     with st.expander("➕ 新增/更新 評估紀錄 (請依序填寫)", expanded=True):
         sel_n = st.selectbox("選擇關懷戶", m_df['姓名'].tolist() if not m_df.empty else ["無名冊"], index=None, placeholder="請選擇...")
@@ -1287,7 +1347,7 @@ elif st.session_state.page == 'visit':
     st.markdown("## 🤝 訪視與物資發放紀錄")
     
     # 1. 載入必要的資料表
-    mems = load_data("care_members", COLS_MEM)
+    mems = get_care_members()
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
     
@@ -1504,7 +1564,7 @@ elif st.session_state.page == 'visit':
             new_refuse_input = c_edit.text_input("拒絕項目 (逗號隔開)", value=current_refuse)
             if c_btn.button("💾 更新"):
                 mems.at[p_row_idx, '拒絕物資'] = new_refuse_input
-                save_data(mems, "care_members")
+                update_master_fields(mems.loc[p_row_idx, '身分證字號'], {'拒絕物資': new_refuse_input})
                 st.toast("✅ 備註已更新！"); time.sleep(1); st.rerun()
 
     st.markdown("#### 2. 填寫訪視內容與物資")
@@ -1666,7 +1726,7 @@ elif st.session_state.page == 'visit':
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
-    logs, mems = load_data("care_logs", COLS_LOG), load_data("care_members", COLS_MEM)
+    logs, mems = load_data("care_logs", COLS_LOG), get_care_members()
     h_df = load_data("care_health", COLS_HEALTH)
 
     # 修改：從 2 個分頁變成 3 個分頁
@@ -1887,7 +1947,7 @@ elif st.session_state.page == 'stats':
                                     new_val = f"{old_str},{new_entry}" if old_str else new_entry
                                     new_val = ",".join([x for x in new_val.split(',') if x.strip()])
                                     mems.at[p_idx, '人際關係'] = new_val
-                                    save_data(mems, "care_members")
+                                    update_master_fields(my_id, {'人際關係': new_val})
                                     st.success(f"已連結：{sel_target.split(' (')[0]}")
                                     time.sleep(0.5); st.rerun()
 
@@ -1907,7 +1967,7 @@ elif st.session_state.page == 'stats':
                                 new_val = f"{old_str},{new_entry}" if old_str else new_entry
                                 new_val = ",".join([x for x in new_val.split(',') if x.strip()])
                                 mems.at[p_idx, '人際關係'] = new_val
-                                save_data(mems, "care_members")
+                                update_master_fields(my_id, {'人際關係': new_val})
                                 st.rerun()
                 
                 # ... (原有的健康警示邏輯區塊，可接續在後) ...
