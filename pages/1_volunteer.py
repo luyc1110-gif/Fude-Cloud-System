@@ -132,106 +132,74 @@ div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadBut
 /* Toast */
 div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px solid {PRIMARY} !important; border-radius: 15px !important; padding: 15px !important; }}
 
-/* 1. 將所有日期選單內的文字強制改為「白色」，確保在深色背景下清晰可見 */
-div[data-baseweb="calendar"] div, 
-div[data-baseweb="calendar"] button, 
-div[data-baseweb="calendar"] h1, 
-div[data-baseweb="calendar"] h2, 
-div[data-baseweb="calendar"] h3, 
-div[data-baseweb="calendar"] h4, 
-div[data-baseweb="calendar"] h5, 
-div[data-baseweb="calendar"] h6 {{
-    color: #FFFFFF !important;
-}}
-
-/* 2. 將月份左右切換的箭頭改為「白色」 */
-div[data-baseweb="calendar"] svg {{
-    fill: #FFFFFF !important;
-}}
-
-/* 3. 修正「滑鼠移過去」和「被選中」日期的文字顏色 */
-div[data-baseweb="calendar"] button:hover,
-div[data-baseweb="calendar"] button[aria-selected="true"] {{
-    color: #FFFFFF !important; 
-    font-weight: bold !important;
-}}
-
-/* 4. 確保選單背景維持深色 (避免半白半黑的狀況) */
-div[data-baseweb="calendar"] {{
-    background-color: #262730 !important;
-}}
-
+/* 日期選單樣式 */
+div[data-baseweb="calendar"] div, div[data-baseweb="calendar"] button, div[data-baseweb="calendar"] h1, div[data-baseweb="calendar"] h2, div[data-baseweb="calendar"] h3, div[data-baseweb="calendar"] h4, div[data-baseweb="calendar"] h5, div[data-baseweb="calendar"] h6 {{ color: #FFFFFF !important; }}
+div[data-baseweb="calendar"] svg {{ fill: #FFFFFF !important; }}
+div[data-baseweb="calendar"] button:hover, div[data-baseweb="calendar"] button[aria-selected="true"] {{ color: #FFFFFF !important; font-weight: bold !important; }}
+div[data-baseweb="calendar"] {{ background-color: #262730 !important; }}
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic & Helpers (高效能優化版)
+# 2) Logic & Helpers (高效能優化版 + 橋接主檔)
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 ALL_CATEGORIES = ["祥和志工", "關懷據點週二志工", "關懷據點週三志工", "環保志工", "臨時志工"]
 DEFAULT_ACTIVITIES = ["關懷據點週二活動", "關懷據點週三活動", "環保清潔", "專案活動", "教育訓練"]
 
-# 🔥 定義固定欄位順序，確保 Append 時不會錯位
 MEM_COLS = ["姓名", "身分證字號", "性別", "電話", "志工分類", "生日", "地址", "備註", 
             "祥和_加入日期", "祥和_退出日期", "據點週二_加入日期", "據點週二_退出日期", 
             "據點週三_加入日期", "據點週三_退出日期", "環保_加入日期", "環保_退出日期"]
 
 LOG_COLS = ['姓名', '身分證字號', '電話', '志工分類', '動作', '時間', '日期', '活動內容']
+COLS_MASTER = ['姓名', '身分證字號', '性別', '出生年月日', '電話', '地址', '緊急聯絡人', '緊急聯絡電話', '身分_志工', '身分_關懷戶', '身分_據點長輩', '志工分類', '關懷_身分別', '同住_18歲以下', '同住_成人', '同住_65歲以上', '拒絕物資', '人際關係']
 
 @st.cache_resource
 def get_google_sheet_client():
     return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
 
-# 🔥 優化 A：讀取加速 (get_all_values)
+# 🔥 優化 A：支援動態欄位的 load_data
 @st.cache_data(ttl=60)
-def load_data_from_sheet(sheet_name):
-    target_cols = MEM_COLS if sheet_name == 'members' else LOG_COLS
+def load_data_from_sheet(sheet_name, target_cols=None):
     try:
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         data = sheet.get_all_values()
-
-        if not data:
-            return pd.DataFrame(columns=target_cols)
-
+        
+        t_cols = target_cols if target_cols is not None else (MEM_COLS if sheet_name == 'members' else LOG_COLS)
+        if not data: return pd.DataFrame(columns=t_cols)
+        
         headers = data.pop(0)
         df = pd.DataFrame(data, columns=headers)
-
-        for c in target_cols:
-            if c not in df.columns:
-                df[c] = ""
-
+        for c in t_cols: 
+            if c not in df.columns: df[c] = ""
         return df
+    except: 
+        t_cols = target_cols if target_cols is not None else (MEM_COLS if sheet_name == 'members' else LOG_COLS)
+        return pd.DataFrame(columns=t_cols)
 
-    except Exception as e:
-        st.error(f"讀取 {sheet_name} 失敗：{e}")
-        return pd.DataFrame(columns=target_cols)
-
-# 維持原版 save (僅用於修改資料/DataEditor)
+# 🔥 保護核取方塊的 save_data
 def save_data_to_sheet(df, sheet_name):
     try:
-        # 轉成字串避免 JSON 錯誤
         df_fix = df.fillna("").astype(str)
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
-        sheet.update([df_fix.columns.values.tolist()] + df_fix.values.tolist())
-        load_data_from_sheet.clear()
+        sheet.update([df_fix.columns.values.tolist()] + df_fix.values.tolist(), value_input_option="USER_ENTERED")
+        st.cache_data.clear()
     except Exception as e: st.error(f"寫入失敗：{e}")
 
-# 🔥 優化 B：單筆秒速寫入 (用於打卡、新增志工)
 def append_data(sheet_name, row_dict, col_order):
     try:
         values = [str(row_dict.get(c, "")).strip() for c in col_order]
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.append_row(values)
-        load_data_from_sheet.clear() # 清除快取，讓介面更新
+        sheet.append_row(values, value_input_option="USER_ENTERED")
+        st.cache_data.clear()
         return True
     except Exception as e:
         st.error(f"新增失敗：{e}"); return False
 
-# 🔥 優化 C：批次極速寫入 (用於補登)
 def batch_append_data(sheet_name, rows_list, col_order):
     try:
         values_list = []
@@ -240,8 +208,8 @@ def batch_append_data(sheet_name, rows_list, col_order):
         
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.append_rows(values_list)
-        load_data_from_sheet.clear()
+        sheet.append_rows(values_list, value_input_option="USER_ENTERED")
+        st.cache_data.clear()
         return True
     except Exception as e:
         st.error(f"批次失敗：{e}"); return False
@@ -267,21 +235,13 @@ def check_is_fully_retired(row):
     return not is_active
 
 def calculate_coverage_seconds(df_in):
-    """
-    通用版：計算傳入 DataFrame 的「不重疊」服務總秒數
-    適用於：首頁年度統計、報表活動統計
-    """
     if df_in.empty: return 0
-    
-    # 確保有 dt 欄位
     if 'dt' not in df_in.columns:
         df_in = df_in.copy()
         df_in['dt'] = pd.to_datetime(df_in['日期'] + ' ' + df_in['時間'], errors='coerce')
-    
     df_in = df_in.dropna(subset=['dt']).sort_values(['姓名', 'dt'])
     
     all_intervals = []
-    # 擷取區間
     for (name, date_val), group in df_in.groupby(['姓名', '日期']):
         actions = group['動作'].tolist()
         times = group['dt'].tolist()
@@ -298,8 +258,6 @@ def calculate_coverage_seconds(df_in):
             else: i += 1
             
     if not all_intervals: return 0
-
-    # 合併重疊
     all_intervals.sort(key=lambda x: x[0])
     merged = []
     if all_intervals:
@@ -329,20 +287,81 @@ def get_present_volunteers(logs_df):
     return present[['姓名', '時間', '活動內容']]
 
 # =========================================================
-# 🔄 同步功能：將志工時數同步到 App_Users (無照片/手機登入版)
+# 🌟 主檔橋接核心 (專為志工系統打造的主從合併邏輯)
+# =========================================================
+def get_volunteer_members():
+    """從主檔讀取基本資料，並跟舊 members 檔的退出日期合併"""
+    master = load_data_from_sheet("master_residents", COLS_MASTER)
+    vol_ext = load_data_from_sheet("members", MEM_COLS)
+    
+    if master.empty: return pd.DataFrame(columns=MEM_COLS)
+    
+    # 只抓取具備志工身分的人
+    vol_master = master[master['身分_志工'] == 'TRUE'].copy()
+    vol_master = vol_master.rename(columns={'出生年月日': '生日'})
+    
+    if not vol_ext.empty:
+        # 提取專屬的加入退出日期
+        ext_cols = ['身分證字號', '備註', '祥和_加入日期', '祥和_退出日期', '據點週二_加入日期', '據點週二_退出日期', '據點週三_加入日期', '據點週三_退出日期', '環保_加入日期', '環保_退出日期']
+        ext_cols = [c for c in ext_cols if c in vol_ext.columns]
+        vol_ext_mini = vol_ext[ext_cols].drop_duplicates(subset=['身分證字號'])
+        merged = pd.merge(vol_master, vol_ext_mini, on='身分證字號', how='left')
+    else:
+        merged = vol_master
+        
+    for c in MEM_COLS:
+        if c not in merged.columns: merged[c] = ""
+        
+    return merged[MEM_COLS]
+
+def add_or_update_volunteer_to_master(new_data):
+    master = load_data_from_sheet("master_residents", COLS_MASTER)
+    uid = new_data.get('身分證字號', '').upper()
+    
+    if not uid or uid == 'NAN':
+        uid = f"TEMP_{new_data.get('姓名', '').strip()}_{new_data.get('電話', '').strip()}"
+        new_data['身分證字號'] = uid
+        
+    # 1. 寫入主檔
+    master_data = {
+        '姓名': new_data['姓名'], '身分證字號': uid, '性別': new_data.get('性別',''),
+        '出生年月日': new_data.get('生日',''), '電話': new_data.get('電話',''),
+        '地址': new_data.get('地址',''), '志工分類': new_data.get('志工分類','')
+    }
+    master_data['身分_志工'] = 'TRUE'
+
+    if not master.empty and uid in master['身分證字號'].values:
+        idx = master[master['身分證字號'] == uid].index[0]
+        for k, v in master_data.items(): master.at[idx, k] = str(v)
+        save_data_to_sheet(master, "master_residents")
+    else:
+        for c in COLS_MASTER:
+            if c not in master_data: master_data[c] = "FALSE" if "身分_" in c else ""
+        append_data("master_residents", master_data, COLS_MASTER)
+        
+    # 2. 寫入志工延伸檔 (保留加入與退出日期)
+    vol_ext = load_data_from_sheet("members", MEM_COLS)
+    if not vol_ext.empty and uid in vol_ext['身分證字號'].values:
+        idx = vol_ext[vol_ext['身分證字號'] == uid].index[0]
+        for k, v in new_data.items(): vol_ext.at[idx, k] = str(v)
+        save_data_to_sheet(vol_ext, "members")
+    else:
+        append_data("members", new_data, MEM_COLS)
+        
+    return True
+
+# =========================================================
+# 🔄 同步功能：將志工時數同步到 App_Users
 # =========================================================
 def sync_to_app_users():
     try:
-        # 1. 讀取原始資料
-        members = load_data_from_sheet("members")
+        members = get_volunteer_members()
         logs = load_data_from_sheet("logs")
         
         if members.empty:
             st.warning("名冊空白，無法同步")
             return
 
-        # 2. 準備要寫入的資料
-        # 我們先讀取 App_Users 目前的資料，為了保留「點數」不被覆蓋
         client = get_google_sheet_client()
         try:
             sh = client.open_by_key(SHEET_ID)
@@ -354,19 +373,13 @@ def sync_to_app_users():
         current_app_data = ws.get_all_records()
         df_app = pd.DataFrame(current_app_data)
         
-        # 轉成字典方便查詢：Key=手機, Value={環保點數:x, 樂活點數:y}
         points_map = {}
         if not df_app.empty and '手機' in df_app.columns:
-            # 強制轉字串，避免格式問題
             df_app['手機'] = df_app['手機'].astype(str).str.replace(".0", "", regex=False)
             for _, row in df_app.iterrows():
                 phone_key = str(row['手機']).strip()
-                points_map[phone_key] = {
-                    '環保': row.get('環保點數', 0),
-                    '樂活': row.get('樂活點數', 0)
-                }
+                points_map[phone_key] = {'環保': row.get('環保點數', 0), '樂活': row.get('樂活點數', 0)}
 
-        # 3. 重新計算所有人的時數與等級
         final_rows = []
         progress_bar = st.progress(0)
         
@@ -375,39 +388,26 @@ def sync_to_app_users():
             pid = row['身分證字號']
             raw_phone = str(row['電話']).strip()
             
-            # 清理電話號碼 (移除 - 和空白)
             phone = raw_phone.replace("-", "").replace(" ", "")
-            if not phone: continue # 沒電話就跳過
+            if not phone: continue
             
-            # 計算時數
             person_logs = logs[logs['身分證字號'] == pid] if '身分證字號' in logs.columns else logs[logs['姓名'] == name]
             total_sec = calculate_coverage_seconds(person_logs)
             total_hours = round(total_sec / 3600, 1)
             
-            # 判斷等級
             badge = "🌱 新手志工"
             if total_hours >= 100: badge = "🥇 金牌志工"
             elif total_hours >= 50: badge = "🥈 銀牌志工"
             elif total_hours >= 20: badge = "🥉 銅牌志工"
             
-            # 密碼 (身分證後4碼)
             pwd = pid[-4:] if len(pid) >= 4 else "0000"
-            
-            # 取回舊點數 (如果有的話)
             saved_points = points_map.get(phone, {'環保': 0, '樂活': 0})
             
-            final_rows.append([
-                phone, pwd, name, 
-                saved_points['環保'], saved_points['樂活'], 
-                total_hours, badge
-            ])
+            final_rows.append([phone, pwd, name, saved_points['環保'], saved_points['樂活'], total_hours, badge])
             progress_bar.progress((idx + 1) / len(members))
 
-        # 4. 寫回 Google Sheet (全量覆蓋，但保留了點數)
         ws.clear()
-        ws.append_row(["手機", "密碼", "姓名", "環保點數", "樂活點數", "志工時數", "志工等級"])
-        ws.append_rows(final_rows)
-        
+        ws.update([["手機", "密碼", "姓名", "環保點數", "樂活點數", "志工時數", "志工等級"]] + final_rows, value_input_option="USER_ENTERED")
         st.success(f"✅ 同步完成！已更新 {len(final_rows)} 筆資料到 App。")
         
     except Exception as e:
@@ -463,19 +463,13 @@ if st.session_state.page == 'home':
     st.markdown(f"<h2 style='color: {PRIMARY};'>📊 {datetime.now().year} 年度志工概況</h2>", unsafe_allow_html=True)
     
     logs = load_data_from_sheet("logs")
-    members = load_data_from_sheet("members")
+    members = get_volunteer_members()
     this_year = datetime.now().year
     
-    # --- 🔥 修正開始：先篩選年度，再呼叫通用函式 ---
     if not logs.empty:
-        # 1. 建立時間欄位 (以利篩選年份)
         logs['dt'] = pd.to_datetime(logs['日期'] + ' ' + logs['時間'], errors='coerce')
         logs = logs.dropna(subset=['dt'])
-        
-        # 2. 篩選出今年的資料
         year_logs = logs[logs['dt'].dt.year == this_year]
-        
-        # 3. 呼叫通用函式計算 (計算團隊重疊後時數)
         total_sec = calculate_coverage_seconds(year_logs)
     else:
         total_sec = 0
@@ -542,11 +536,9 @@ elif st.session_state.page == 'checkin':
 
             st.markdown("---")
             
-            # 讀取名單
-            df_m = load_data_from_sheet("members")
+            df_m = get_volunteer_members()
             active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)] if not df_m.empty else pd.DataFrame()
             
-            # 定義環保志工分組
             env_groups = {
                 "第一組": ["涂玉梅", "羅愛梅", "楊素鳳", "張天德", "邱煥原", "張瑞群", "郭惠美", "林素玲", "范銀英", "石美花", "呂春煌", "解美菊", "陳張牡丹", "黃美燕", "黃麗卿", "林瑞琴"],
                 "第二組": ["簡玉娥", "李月鳳", "邱淑珠", "蔡寶雲", "邱黃秀", "李玉梅"],
@@ -561,18 +553,15 @@ elif st.session_state.page == 'checkin':
             if cat_filter == "環保志工":
                 group_filter = c_f2.selectbox("分組篩選 (環保)", ["全部", "第一組", "第二組", "第三組", "第四組"])
 
-            # --- 新增：利用 session_state 記住跨組別的選擇 ---
             if 'temp_vols' not in st.session_state:
                 st.session_state.temp_vols = []
 
             def update_vols():
-                # 當下拉選單有勾選變動時，馬上把名單存進暫存區
                 st.session_state.temp_vols = st.session_state.checkin_ms
 
             available_names = []
             
             if not active_m.empty:
-                # 依分類篩選
                 if cat_filter != "全部":
                     filtered_m = active_m[active_m['志工分類'].astype(str).str.contains(cat_filter, na=False)]
                 else:
@@ -580,14 +569,10 @@ elif st.session_state.page == 'checkin':
 
                 available_names = sorted(filtered_m['姓名'].tolist())
                 
-                # 如果有選環保志工的特定組別，則「縮小可選範圍」至該組名單
                 if cat_filter == "環保志工" and group_filter != "全部":
                     group_names = env_groups.get(group_filter, [])
-                    # 重新篩選：只保留存在於該組別的人
                     available_names = [n for n in available_names if n in group_names]
 
-            # 🔥 關鍵修復：將「目前已經勾選的人」也加入到當前的候選名單中
-            # 這樣切換到別組時，上一組選過的人才不會被系統自動洗掉
             final_options = sorted(list(set(available_names + st.session_state.temp_vols)))
 
             selected_names = st.multiselect(
@@ -621,7 +606,6 @@ elif st.session_state.page == 'checkin':
                         row = active_m[active_m['姓名'] == name].iloc[0]
                         pid = row['身分證字號']
                         
-                        # 判斷簽到或簽退
                         t_logs = df_l[(df_l['身分證字號'] == pid) & (df_l['日期'] == today)]
                         action = "簽到"
                         if not t_logs.empty and t_logs.iloc[-1]['動作'] == "簽到": 
@@ -636,10 +620,7 @@ elif st.session_state.page == 'checkin':
                         
                     if batch_append_data("logs", new_rows, LOG_COLS):
                         st.success(f"✅ 已成功處理 {len(selected_names)} 人的打卡紀錄！")
-                        
-                        # 🔥 打卡成功後，清空暫存區，讓下一批人可以乾淨地重新選
                         st.session_state.temp_vols = [] 
-                        
                         time.sleep(1)
                         st.rerun()
 
@@ -665,17 +646,13 @@ elif st.session_state.page == 'checkin':
             else: st.info("目前無人簽到中")
 
     with tab2:
-        df_m = load_data_from_sheet("members")
+        df_m = get_volunteer_members()
         if not df_m.empty:
             active_m = df_m[~df_m.apply(check_is_fully_retired, axis=1)]
             
             st.markdown("### 🛠️ 補登操作")
-            
-            # --- 1. 初始化系統綁定的 Key ---
-            if 'temp_vols_tab2' not in st.session_state:
-                st.session_state.temp_vols_tab2 = []
+            if 'ms_vols_tab2' not in st.session_state: st.session_state.ms_vols_tab2 = []
                 
-            # --- 2. 篩選分類 ---
             cat_filter_tab2 = st.selectbox("📌 篩選志工分類", ["全部", "環保志工", "祥和志工", "關懷據點週二志工", "關懷據點週三志工"], key="cat_filter_tab2")
             
             if cat_filter_tab2 != "全部":
@@ -684,12 +661,7 @@ elif st.session_state.page == 'checkin':
                 filtered_m_tab2 = active_m
                 
             available_names_tab2 = sorted(filtered_m_tab2['姓名'].tolist())
-            
-            # --- 3. 組合選項：讓選項名單永遠包含「已選的人」，避免系統找不到人 ---
-            def update_vols_tab2():
-                st.session_state.temp_vols_tab2 = st.session_state.checkin_ms_tab2
-
-            final_opts = sorted(list(set(available_names_tab2 + st.session_state.temp_vols_tab2)))
+            final_opts = sorted(list(set(available_names_tab2 + st.session_state.ms_vols_tab2)))
             
             c1, c2, c3, c4 = st.columns(4)
             d_date = c1.date_input("日期", value=date.today(), key="d_date_tab2")
@@ -697,55 +669,41 @@ elif st.session_state.page == 'checkin':
             d_action = c3.selectbox("動作", ["簽到", "簽退"], key="d_action_tab2")
             d_act = c4.selectbox("活動", DEFAULT_ACTIVITIES, key="d_act_tab2")
             
-            # --- 4. 🔥 最純粹的多選單 (拔除 default，只留 key，絕不手動干預) ---
-            selected_names = st.multiselect(
-                "👤 選擇志工 (可單選或多選)",
+            st.multiselect(
+                "👤 選擇志工 (可單選或多選)", 
                 options=final_opts,
-                default=st.session_state.temp_vols_tab2,
                 placeholder="請點此選擇要補登的志工...",
-                key="checkin_ms_tab2",
-                on_change=update_vols_tab2
+                key="ms_vols_tab2" 
             )
             
-            st.write("") # 空行排版
+            st.write("") 
             if st.button("✅ 確認補登", type="primary"):
+                selected_names = st.session_state.ms_vols_tab2
                 
                 if not selected_names:
                     st.error("❌ 請至少選擇一位志工！")
                 else:
                     new_rows = []
                     for n in selected_names:
-                        matched = active_m[active_m['姓名'] == n]
-                        if matched.empty:
-                            st.warning(f"找不到志工資料：{n}")
-                            continue
-
-                        row = matched.iloc[0]
+                        row = active_m[active_m['姓名'] == n].iloc[0]
                         new_rows.append({
-                            '姓名': n,
-                            '身分證字號': row['身分證字號'],
-                            '電話': row['電話'],
-                            '志工分類': row['志工分類'],
-                            '動作': d_action,
-                            '時間': d_time.strftime("%H:%M:%S"),
-                            '日期': d_date.strftime("%Y-%m-%d"),
+                            '姓名': n, '身分證字號': row['身分證字號'], '電話': row['電話'], 
+                            '志工分類': row['志工分類'], '動作': d_action, 
+                            '時間': d_time.strftime("%H:%M:%S"), '日期': d_date.strftime("%Y-%m-%d"), 
                             '活動內容': d_act
                         })
                     
                     if batch_append_data("logs", new_rows, LOG_COLS):
                         st.success(f"✅ 已成功補登 {len(selected_names)} 筆資料！")
-                        # 送出成功後，安全清空系統暫存區
-                        st.session_state.temp_vols_tab2 = []
-                        st.session_state.checkin_ms_tab2 = []
+                        st.session_state.ms_vols_tab2 = []
                         time.sleep(1)
                         st.rerun()
 
 elif st.session_state.page == 'members':
     render_nav()
     st.markdown("## 📋 志工名冊管理")
-    df = load_data_from_sheet("members")
+    df = get_volunteer_members()
     
-    # 公開區域：新增志工
     with st.expander("➕ 新增志工 (展開填寫)", expanded=False):
         with st.form("add_m"):
             c1, c2, c3 = st.columns(3)
@@ -787,18 +745,16 @@ elif st.session_state.page == 'members':
                         '環保_加入日期': str(d_e) if is_e else ""
                     }
                     
-                    # --- 🔥 修改重點：改用 append_data ---
-                    if append_data("members", new_data, MEM_COLS):
-                        st.success("新增成功"); time.sleep(1); st.rerun()
+                    if add_or_update_volunteer_to_master(new_data):
+                        st.success("新增成功並同步至主檔"); time.sleep(1); st.rerun()
     
-    # 🔒 密碼保護區域：完整名冊
     st.markdown("### 📝 完整志工名冊 (需密碼)")
     if not st.session_state.unlock_vol_members:
         c_pwd, c_btn = st.columns([2, 1])
         with c_pwd:
             pwd = st.text_input("請輸入管理員密碼", type="password", key="vol_pwd")
         with c_btn:
-            st.markdown("<br>", unsafe_allow_html=True) # spacer
+            st.markdown("<br>", unsafe_allow_html=True) 
             if st.button("🔓 解鎖名冊"):
                 if pwd == st.secrets["admin_password"]:
                     st.session_state.unlock_vol_members = True
@@ -806,7 +762,6 @@ elif st.session_state.page == 'members':
                 else:
                     st.error("密碼錯誤")
     else:
-        # 解鎖後顯示
         if st.button("🔒 鎖定名冊"):
             st.session_state.unlock_vol_members = False
             st.rerun()
@@ -814,7 +769,6 @@ elif st.session_state.page == 'members':
         if not df.empty:
             df['狀態'] = df.apply(lambda r: '已退隊' if check_is_fully_retired(r) else '服務中', axis=1)
             df['年齡'] = df['生日'].apply(calculate_age)
-            # 🔥 自動依照姓名排序
             df = df.sort_values(by='姓名')
             
             cols = ['姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
@@ -822,7 +776,11 @@ elif st.session_state.page == 'members':
             tab_active, tab_retired = st.tabs(["🔥 服務中", "🍂 已退隊"])
             with tab_active:
                 active_df = df[df['狀態'] == '服務中']
-                st.data_editor(active_df[cols], use_container_width=True, num_rows="dynamic", key="editor_active")
+                ed_df = st.data_editor(active_df[cols], use_container_width=True, num_rows="dynamic", key="editor_active")
+                if st.button("💾 儲存修改 (將寫回舊名冊表)"):
+                    save_data_to_sheet(ed_df, "members")
+                    st.success("✅ 修改已儲存！")
+                    time.sleep(1); st.rerun()
             with tab_retired:
                 retired_df = df[df['狀態'] == '已退隊']
                 st.data_editor(retired_df[cols], use_container_width=True, num_rows="dynamic", key="editor_retired")
@@ -832,7 +790,6 @@ elif st.session_state.page == 'report':
     st.markdown("## 📊 數據分析與報表")
     logs = load_data_from_sheet("logs")
     
-    # 搜尋與篩選區塊
     st.markdown('<div style="background:white; padding:20px; border-radius:15px; border:1px solid #ddd; margin-bottom:20px;">', unsafe_allow_html=True)
     c_date, c_mode = st.columns([1, 1])
     with c_date: d_range = st.date_input("📅 選擇日期區間", value=(date(date.today().year, 1, 1), date.today()))
@@ -877,28 +834,21 @@ elif st.session_state.page == 'report':
                 target_act = st.selectbox("選擇活動", ["全部"] + all_acts)
                 view_df = filtered_logs if target_act == "全部" else filtered_logs[filtered_logs['活動內容'] == target_act]
                 
-                # 1. 計算團隊實際服務時數 (扣除重疊)
                 cov_seconds = calculate_coverage_seconds(view_df)
                 cov_h = int(cov_seconds // 3600)
                 cov_m = int((cov_seconds % 3600) // 60)
-                team_time_str = f"{cov_h}小時 {cov_m}分" # 🔥 這裡是定義 team_time_str
+                team_time_str = f"{cov_h}小時 {cov_m}分" 
 
-                # 2. 計算總人次
-                tot_sess, _, _ = calc_stats_display(view_df) # 🔥 這裡的舊變數被 _ 取代了
+                tot_sess, _, _ = calc_stats_display(view_df) 
                 
-                # 🔥 1. 卡片式統計指標
                 m1, m2, m3 = st.columns(3)
                 with m1: st.markdown(f"""<div class="metric-box"><div class="metric-label">總人次</div><div class="metric-value">{tot_sess}</div></div>""", unsafe_allow_html=True)
-                
-                # 🔥 修正點：這裡要用 team_time_str，且建議標籤改成「團隊服務時數」
                 with m2: st.markdown(f"""<div class="metric-box"><div class="metric-label">團隊服務時數</div><div class="metric-value">{team_time_str}</div></div>""", unsafe_allow_html=True)
-                
                 with m3: st.markdown(f"""<div class="metric-box"><div class="metric-label">參與志工數</div><div class="metric-value">{view_df['姓名'].nunique()}</div></div>""", unsafe_allow_html=True)
                 
                 csv = view_df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button("📥 下載此報表 (CSV)", data=csv, file_name=f"志工報表_{date.today()}.csv", mime="text/csv")
                 
-                # 🔥 2. 卡片式志工明細 (Grid Layout)
                 st.markdown("### 📋 人員明細表")
                 summary = []
                 for name, g in view_df.groupby('姓名'):
@@ -907,7 +857,6 @@ elif st.session_state.page == 'report':
                 
                 summ_df = pd.DataFrame(summary).sort_values('排序用時數', ascending=False)
                 
-                # 每3個一列顯示卡片
                 for i in range(0, len(summ_df), 3):
                     cols = st.columns(3)
                     for j in range(3):
@@ -926,13 +875,12 @@ elif st.session_state.page == 'report':
                                 </div>
                                 """, unsafe_allow_html=True)
 
-            else: # 依志工查詢
+            else: 
                 all_names = sorted(filtered_logs['姓名'].unique().tolist())
                 target_name = st.selectbox("選擇志工", all_names)
                 view_df = filtered_logs[filtered_logs['姓名'] == target_name]
                 tot_sess, tot_time_str, _ = calc_stats_display(view_df)
                 
-                # 🔥 統計指標卡片
                 m1, m2 = st.columns(2)
                 with m1: st.markdown(f"""<div class="metric-box"><div class="metric-label">執勤次數</div><div class="metric-value">{tot_sess}</div></div>""", unsafe_allow_html=True)
                 with m2: st.markdown(f"""<div class="metric-box"><div class="metric-label">累積時數</div><div class="metric-value">{tot_time_str}</div></div>""", unsafe_allow_html=True)
@@ -940,7 +888,6 @@ elif st.session_state.page == 'report':
                 csv = view_df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button("📥 下載個人紀錄 (CSV)", data=csv, file_name=f"個人報表_{target_name}_{date.today()}.csv", mime="text/csv")
                 
-                # 🔥 卡片式打卡紀錄
                 st.markdown("### 📋 執勤紀錄明細")
                 view_df = view_df.sort_values(['日期', '時間'], ascending=False)
                 
