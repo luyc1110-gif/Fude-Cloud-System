@@ -1347,32 +1347,53 @@ elif st.session_state.page == 'visit':
                             "最後報到": last_seen_date.strftime('%Y-%m-%d')
                         })
 
-                # 6. 渲染 UI 工單卡片
+                # 6. 渲染 UI 工單卡片 (加入快速結案功能)
                 if pending_tickets:
-                    st.warning(f"⚠️ 偵測到 {len(pending_tickets)} 位長輩連續兩次未至據點，請優先安排關懷訪視！")
+                    st.warning(f"⚠️ 偵測到 {len(pending_tickets)} 位長輩連續兩次未至據點，請優先安排關懷訪視或快速結案！")
                     
                     cols = st.columns(3)
                     for idx, ticket in enumerate(pending_tickets):
+                        e_name = ticket['姓名']
                         with cols[idx % 3]:
-                            st.markdown(f"""
-                            <div style="background-color: #FFF3E0; border: 1px solid #FFB74D; border-left: 6px solid #F57C00; border-radius: 10px; padding: 15px; margin-bottom: 15px;">
-                                <div style="font-weight: 900; font-size: 1.2rem; color: #E65100;">{ticket['姓名']}</div>
-                                <div style="color: #555; font-size: 0.9rem; margin-top: 5px;">
+                            # 改用 st.container 加邊框，方便在裡面放按鈕與下拉選單
+                            with st.container(border=True):
+                                st.markdown(f"""
+                                <div style="font-weight: 900; font-size: 1.2rem; color: #E65100;">{e_name}</div>
+                                <div style="color: #555; font-size: 0.9rem; margin-top: 5px; margin-bottom: 10px;">
                                     📅 最後現身：{ticket['最後報到']}<br>
                                     <span style="color: #D32F2F; font-weight: bold;">缺席：{date_prev.strftime('%m/%d')}、{date_last.strftime('%m/%d')}</span>
                                 </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                                """, unsafe_allow_html=True)
+                                
+                                # ⚡ 快速結案選單
+                                quick_reason = st.selectbox(
+                                    "確認長輩安全狀況", 
+                                    ["路上有看到", "Line/電話有回覆", "有請假 / 家屬告知", "其他 (需手動填寫訪視)"], 
+                                    key=f"qr_{e_name}",
+                                    label_visibility="collapsed"
+                                )
+                                
+                                # 執行快速結案
+                                if st.button("✅ 標記為安全 (結案)", key=f"btn_{e_name}", use_container_width=True):
+                                    if "其他" in quick_reason:
+                                        st.error("請在下方表單填寫完整的訪視紀錄")
+                                    else:
+                                        # 組合一筆「純訪視」紀錄寫入資料庫
+                                        quick_log = {
+                                            "志工": "系統快速結案", 
+                                            "發放日期": str(date.today()), 
+                                            "關懷戶姓名": e_name,
+                                            "物資內容": "(僅訪視)", 
+                                            "發放數量": 0, 
+                                            "訪視紀錄": f"【快速結案】{quick_reason}"
+                                        }
+                                        # 寫入 care_logs，寫入成功後重整畫面，工單就會消失
+                                        if append_data("care_logs", quick_log, COLS_LOG):
+                                            st.toast(f"✅ 已將 {e_name} 標記為安全！")
+                                            time.sleep(0.5)
+                                            st.rerun()
                 else:
-                    st.success("🟢 缺席長輩皆已完成家訪追蹤。")
-            else:
-                st.success("🟢 目前所有長輩皆有穩定出席。")
-        else:
-            st.info("據點開課次數不足兩次，尚無法進行缺席判定。")
-    else:
-        st.info("尚無據點報到資料可供分析。")
-        
-    st.markdown("---")
+                    st.success("🟢 缺席長輩皆已確認安全或完成家訪追蹤。")
     
     # 2. 計算即時庫存
     stock_map = {}
