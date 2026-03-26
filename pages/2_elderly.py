@@ -249,7 +249,7 @@ def save_data(df, sheet_name):
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
-        sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist())
+        sheet.clear(); sheet.update([df_fix.columns.values.tolist()] + df_fix.values.tolist(), value_input_option="USER_ENTERED")
         st.cache_data.clear()
         return True
     except Exception as e:
@@ -291,6 +291,66 @@ def calculate_age(dob_str):
         today = date.today()
         return today.year - b_date.year - ((today.month, today.day) < (b_date.month, b_date.day))
     except: return 0
+
+# =========================================================
+# 🌟 主檔 (Master Data) 橋接邏輯
+# =========================================================
+COLS_MASTER = ['姓名', '身分證字號', '性別', '出生年月日', '電話', '地址', '緊急聯絡人', '緊急聯絡電話', '身分_志工', '身分_關懷戶', '身分_據點長輩', '志工分類', '關懷_身分別', '同住_18歲以下', '同住_成人', '同住_65歲以上', '拒絕物資', '人際關係']
+
+# 取得目前系統定義的欄位變數 (請確認你原本檔案最上方定義的變數名稱是 COLS_MEM 還是其他的)
+CURRENT_COLS = ["姓名", "身分證字號", "性別", "出生年月日", "電話", "地址", "緊急聯絡人", "緊急聯絡電話"] 
+
+def get_elderly_members():
+    """取代原本的 load_data，改由總表讀取並自動過濾據點長輩"""
+    df = load_data("master_residents", COLS_MASTER)
+    if df.empty: return pd.DataFrame(columns=CURRENT_COLS)
+    
+    elder_df = df[df['身分_據點長輩'] == 'TRUE'].copy()
+    for c in CURRENT_COLS:
+        if c not in elder_df.columns: elder_df[c] = ""
+    return elder_df[CURRENT_COLS]
+
+def add_or_update_elderly_to_master(new_data):
+    """新增長輩時，自動判定是新人還是舊人"""
+    master = load_data("master_residents", COLS_MASTER)
+    uid = new_data.get('身分證字號', '').upper()
+    
+    if not uid or uid == 'NAN':
+        uid = f"TEMP_{new_data.get('姓名', '').strip()}_{new_data.get('電話', '').strip()}"
+        new_data['身分證字號'] = uid
+        
+    master_data = {k: v for k, v in new_data.items()}
+    master_data['身分_據點長輩'] = 'TRUE'
+
+    if not master.empty and uid in master['身分證字號'].values:
+        # 已在總表，直接更新資料並打勾
+        idx = master[master['身分證字號'] == uid].index[0]
+        for k, v in master_data.items():
+            master.at[idx, k] = str(v)
+        return save_data(master, "master_residents")
+    else:
+        # 完全的新人
+        for c in COLS_MASTER:
+            if c not in master_data: master_data[c] = "FALSE" if "身分_" in c else ""
+        return append_data("master_residents", master_data, COLS_MASTER)
+
+def archive_elderly_in_master(uid, reason):
+    """【跨系統連動結案】將長輩移出據點名單，若過世/搬遷則全系統結案"""
+    master = load_data("master_residents", COLS_MASTER)
+    if master.empty: return False
+    
+    idx = master[master['身分證字號'] == uid].index
+    if len(idx) > 0:
+        # 1. 拔除據點長輩身分
+        master.at[idx[0], '身分_據點長輩'] = 'FALSE'
+        
+        # 2. 跨系統防呆：如果是過世或搬遷，一併拔除關懷戶與志工身分
+        if "過世" in reason or "搬遷" in reason:
+            master.at[idx[0], '身分_關懷戶'] = 'FALSE'
+            master.at[idx[0], '身分_志工'] = 'FALSE'
+            
+        return save_data(master, "master_residents")
+    return False
 
 # =========================================================
 # 3) Navigation (側邊欄版)
@@ -346,7 +406,7 @@ if st.session_state.page == 'home':
     render_nav()
     st.markdown(f"<h2 style='color: {PRIMARY};'>📊 據點關懷概況</h2>", unsafe_allow_html=True)
     
-    logs, members = load_data("elderly_logs"), load_data("elderly_members")
+    logs, members = load_data("elderly_logs"), get_elderly_members()
     this_year = get_tw_time().year
     today_str = get_tw_time().strftime("%Y-%m-%d")
     
@@ -421,7 +481,7 @@ elif st.session_state.page == 'members':
     st.markdown("## 📋 長輩名冊管理")
     
     # 讀取最新名冊
-    df = load_data("elderly_members")
+    df = get_elderly_members()
     
     # 🟢 1. 新增功能 (公開，方便填寫)
     with st.expander("➕ 新增長輩資料 (展開填寫)", expanded=False):
@@ -439,8 +499,8 @@ elif st.session_state.page == 'members':
                         st.error(f"❌ 身分證字號 {pid} 已存在於名冊中！")
                     else:
                         new_row = {"姓名": name, "身分證字號": pid.upper(), "性別": gender, "出生年月日": str(dob), "電話": phone, "地址": addr, "備註": note, "加入日期": str(date.today())}
-                        if append_data("elderly_members", new_row, M_COLS):
-                            st.success(f"✅ 已新增：{name}"); time.sleep(1); st.rerun()
+                        if add_or_update_elderly_to_master(new_data):
+                        st.success("✅ 已新增！"); time.sleep(1); st.rerun()
 
     # 🔴 2. [新增] 退出/結案功能 (將長輩移出名單)
     with st.expander("📤 長輩退出/結案 (移除名單)", expanded=False):
@@ -482,10 +542,9 @@ elif st.session_state.page == 'members':
                     if append_data("elderly_archive", target_row, ARCHIVE_COLS):
                         # 5. 從原表中刪除 (透過篩選掉該身分證號)
                         df_new = df[df['身分證字號'] != target_pid]
-                        if save_data(df_new, "elderly_members"):
-                            st.success(f"✅ 已將 {target_row['姓名']} 移至封存名單。")
-                            time.sleep(1)
-                            st.rerun()
+                        if archive_elderly_in_master(target_uid, reason):
+                            st.success("✅ 已結案！並同步更新至全社區主檔。")
+                            time.sleep(1); st.rerun()
                         else:
                             st.error("寫入封存成功，但刪除舊資料失敗，請聯繫管理員。")
                     else:
@@ -505,7 +564,7 @@ elif st.session_state.page == 'checkin':
         return alerts
 
     def do_checkin(pid, sbp, dbp, pulse):
-        df_m = load_data("elderly_members")
+        df_m = get_elderly_members()
         df_l = load_data("elderly_logs")
         pid_clean = pid.strip().upper()
         person = df_m[df_m['身分證字號'] == pid_clean]
@@ -562,7 +621,7 @@ elif st.session_state.page == 'checkin':
                 st.rerun()
 
     with tab2:
-        df_m = load_data("elderly_members")
+        df_m = get_elderly_members()
         if not df_m.empty:
             member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
             selected_member = st.selectbox("請選擇長輩", ["--- 請選擇 ---"] + member_options)
@@ -595,7 +654,7 @@ elif st.session_state.page == 'checkin':
 
     st.markdown("---")
     with st.expander("🕒 批次補登系統 (手動補錄過去資料)", expanded=False):
-        df_m = load_data("elderly_members")
+        df_m = get_elderly_members()
         if df_m.empty: st.warning("目前名冊中無長輩資料。")
         else:
             with st.form("manual_batch_form_new"):
@@ -636,7 +695,7 @@ elif st.session_state.page == 'checkin':
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 統計數據")
-    members, logs = load_data("elderly_members"), load_data("elderly_logs")
+    members, logs = get_elderly_members(), load_data("elderly_logs")
     if members.empty or logs.empty: st.info("尚無數據")
     else:
         logs['dt'] = pd.to_datetime(logs['日期'], errors='coerce')
