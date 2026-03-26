@@ -648,13 +648,19 @@ elif st.session_state.page == 'stats':
             tab_c, tab_h = st.tabs(["📚 課程成效", "🏥 長輩健康"])
             with tab_c:
                 merged = f_logs.merge(members[['姓名', '性別']], on='姓名', how='left')
-                st.markdown("### 1. 參與人次統計")
-                m1, m2, m3 = st.columns(3)
-                with m1: st.markdown(f"""<div class="dash-card"><div style="color:#666;">總參與人次</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{len(merged)} 次</div></div>""", unsafe_allow_html=True)
-                with m2: st.markdown(f"""<div class="dash-card"><div style="color:#666;">男性參與</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{len(merged[merged['性別']=='男'])} 次</div></div>""", unsafe_allow_html=True)
-                with m3: st.markdown(f"""<div class="dash-card"><div style="color:#666;">女性參與</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{len(merged[merged['性別']=='女'])} 次</div></div>""", unsafe_allow_html=True)
                 
+                # 將計算不重複場次的程式碼提前，以便上方卡片使用
                 unique_sessions = merged.drop_duplicates(subset=['日期', '課程名稱', '課程分類']).copy()
+                total_sessions_count = len(unique_sessions)
+                
+                st.markdown("### 1. 參與人次統計")
+                # 這裡改成 4 個欄位
+                m1, m2, m3, m4 = st.columns(4)
+                with m1: st.markdown(f"""<div class="dash-card"><div style="color:#666;">已舉辦場次</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{total_sessions_count} 場</div></div>""", unsafe_allow_html=True)
+                with m2: st.markdown(f"""<div class="dash-card"><div style="color:#666;">總參與人次</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{len(merged)} 人次</div></div>""", unsafe_allow_html=True)
+                with m3: st.markdown(f"""<div class="dash-card"><div style="color:#666;">男性參與</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{len(merged[merged['性別']=='男'])} 人次</div></div>""", unsafe_allow_html=True)
+                with m4: st.markdown(f"""<div class="dash-card"><div style="color:#666;">女性參與</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{len(merged[merged['性別']=='女'])} 人次</div></div>""", unsafe_allow_html=True)
+                
                 unique_sessions['大分類'] = unique_sessions['課程分類'].apply(lambda x: x.split('-')[0] if '-' in x else x)
                 unique_sessions['子分類'] = unique_sessions['課程分類'].apply(lambda x: x.split('-')[1] if '-' in x else x)
 
