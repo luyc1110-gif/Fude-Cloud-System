@@ -769,17 +769,51 @@ elif st.session_state.page == 'members':
         if not df.empty:
             df['狀態'] = df.apply(lambda r: '已退隊' if check_is_fully_retired(r) else '服務中', axis=1)
             df['年齡'] = df['生日'].apply(calculate_age)
-            df = df.sort_values(by='姓名')
+            df = df.sort_values(by='狀態', ascending=False) # 讓服務中排在最上面
             
-            cols = ['姓名', '年齡', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
-            cols = [c for c in cols if c in df.columns]
-            tab_active, tab_retired = st.tabs(["🔥 服務中", "🍂 已退隊"])
-            with tab_active:
-                active_df = df[df['狀態'] == '服務中']
-                ed_df = st.data_editor(active_df[cols], use_container_width=True, num_rows="dynamic", key="editor_active")
-                if st.button("💾 儲存修改 (將寫回舊名冊表)"):
-                    save_data_to_sheet(ed_df, "members")
-                    st.success("✅ 修改已儲存！")
+            # 【關鍵修正】必須綁定身分證字號，且合併顯示才能安全儲存
+            edit_cols = ['身分證字號', '狀態', '姓名', '電話', '地址', '志工分類'] + [c for c in df.columns if '日期' in c] + ['備註']
+            edit_cols = [c for c in edit_cols if c in df.columns]
+            
+            st.info("💡 編輯多重身分：在「志工分類」用半形逗號隔開 (例：關懷據點週二志工,環保志工)，並填上對應的加入日期。")
+            
+            ed_df = st.data_editor(
+                df[edit_cols], 
+                use_container_width=True, 
+                num_rows="dynamic", 
+                disabled=["身分證字號", "狀態"], # 鎖定 UID 防呆
+                key="editor_all"
+            )
+            
+            if st.button("💾 儲存修改 (同步至主檔與志工表)", type="primary"):
+                with st.spinner("同步寫入雙資料庫中..."):
+                    master = load_data_from_sheet("master_residents", COLS_MASTER)
+                    vols = load_data_from_sheet("members", MEM_COLS)
+                    
+                    # 雙向同步更新
+                    for _, row in ed_df.iterrows():
+                        uid = row['身分證字號']
+                        if not uid: continue
+                        
+                        # 1. 更新主檔 (基本資料)
+                        if uid in master['身分證字號'].values:
+                            idx_m = master[master['身分證字號'] == uid].index[0]
+                            master.at[idx_m, '電話'] = str(row['電話'])
+                            master.at[idx_m, '地址'] = str(row['地址'])
+                            master.at[idx_m, '志工分類'] = str(row['志工分類'])
+                            
+                        # 2. 更新志工附屬表 (日期與備註)
+                        if uid in vols['身分證字號'].values:
+                            idx_v = vols[vols['身分證字號'] == uid].index[0]
+                            for c in edit_cols:
+                                if c in vols.columns and c not in ['身分證字號', '狀態']:
+                                    vols.at[idx_v, c] = str(row[c])
+                    
+                    # 寫回 Google Sheets
+                    save_data_to_sheet(master, "master_residents")
+                    save_data_to_sheet(vols, "members")
+                    
+                    st.success("✅ 修改已完整儲存至雙系統！")
                     time.sleep(1); st.rerun()
             with tab_retired:
                 retired_df = df[df['狀態'] == '已退隊']
