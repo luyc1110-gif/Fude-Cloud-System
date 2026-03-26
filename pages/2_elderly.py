@@ -297,11 +297,9 @@ def calculate_age(dob_str):
 # =========================================================
 COLS_MASTER = ['姓名', '身分證字號', '性別', '出生年月日', '電話', '地址', '緊急聯絡人', '緊急聯絡電話', '身分_志工', '身分_關懷戶', '身分_據點長輩', '志工分類', '關懷_身分別', '同住_18歲以下', '同住_成人', '同住_65歲以上', '拒絕物資', '人際關係']
 
-# 取得目前系統定義的欄位變數 (請確認你原本檔案最上方定義的變數名稱是 COLS_MEM 還是其他的)
 CURRENT_COLS = ["姓名", "身分證字號", "性別", "出生年月日", "電話", "地址", "緊急聯絡人", "緊急聯絡電話"] 
 
 def get_elderly_members():
-    """取代原本的 load_data，改由總表讀取並自動過濾據點長輩"""
     df = load_data("master_residents", COLS_MASTER)
     if df.empty: return pd.DataFrame(columns=CURRENT_COLS)
     
@@ -311,7 +309,6 @@ def get_elderly_members():
     return elder_df[CURRENT_COLS]
 
 def add_or_update_elderly_to_master(new_data):
-    """新增長輩時，自動判定是新人還是舊人"""
     master = load_data("master_residents", COLS_MASTER)
     uid = new_data.get('身分證字號', '').upper()
     
@@ -323,32 +320,25 @@ def add_or_update_elderly_to_master(new_data):
     master_data['身分_據點長輩'] = 'TRUE'
 
     if not master.empty and uid in master['身分證字號'].values:
-        # 已在總表，直接更新資料並打勾
         idx = master[master['身分證字號'] == uid].index[0]
         for k, v in master_data.items():
             master.at[idx, k] = str(v)
         return save_data(master, "master_residents")
     else:
-        # 完全的新人
         for c in COLS_MASTER:
             if c not in master_data: master_data[c] = "FALSE" if "身分_" in c else ""
         return append_data("master_residents", master_data, COLS_MASTER)
 
 def archive_elderly_in_master(uid, reason):
-    """【跨系統連動結案】將長輩移出據點名單，若過世/搬遷則全系統結案"""
     master = load_data("master_residents", COLS_MASTER)
     if master.empty: return False
     
     idx = master[master['身分證字號'] == uid].index
     if len(idx) > 0:
-        # 1. 拔除據點長輩身分
         master.at[idx[0], '身分_據點長輩'] = 'FALSE'
-        
-        # 2. 跨系統防呆：如果是過世或搬遷，一併拔除關懷戶與志工身分
         if "過世" in reason or "搬遷" in reason:
             master.at[idx[0], '身分_關懷戶'] = 'FALSE'
             master.at[idx[0], '身分_志工'] = 'FALSE'
-            
         return save_data(master, "master_residents")
     return False
 
