@@ -1286,20 +1286,21 @@ elif st.session_state.page == 'visit':
     render_nav()
     st.markdown("## 🤝 訪視與物資發放紀錄")
     
-    # 1. 載入必要的資料表 (維持 logs 避免報錯)
+    # 1. 載入必要的資料表
     mems = load_data("care_members", COLS_MEM)
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
     
-    # [新增] 跨系統載入據點的報到紀錄
+    # [新增] 跨系統載入據點的報到紀錄，以及「目前活躍的據點長輩名單」
     elderly_logs = load_data("elderly_logs", ["姓名", "身分證字號", "日期"]) 
+    active_elders = load_data("elderly_members", ["姓名"]) # 👈 關鍵：抓取還沒被結案的長輩
 
     # =========================================================
     # 🚨 系統自動鉤稽：連續兩次未報到之預警工單
     # =========================================================
     st.markdown("### 🚨 待處理訪視工單 (系統自動產生)")
     
-    if not elderly_logs.empty:
+    if not elderly_logs.empty and not active_elders.empty:
         # 1. 確保日期格式正確
         elderly_logs['日期'] = pd.to_datetime(elderly_logs['日期'], errors='coerce')
         
@@ -1314,11 +1315,15 @@ elif st.session_state.page == 'visit':
             # 3. 找出每位長輩的最後報到日
             last_checkin = elderly_logs.groupby('姓名')['日期'].max().reset_index()
             
-            # 4. 篩選出「最後報到日 < 倒數第二次上課日」的長輩 (代表最近兩次都沒來)
+            # 4. 篩選出「最後報到日 < 倒數第二次上課日」的長輩
             missing_elders = last_checkin[last_checkin['日期'] < date_prev].copy()
             
+            # 🔴 5. [關鍵修復] 剔除已經結案/過世/退出的長輩
+            active_names = active_elders['姓名'].tolist()
+            missing_elders = missing_elders[missing_elders['姓名'].isin(active_names)]
+            
             if not missing_elders.empty:
-                # 5. [防呆機制] 檢查志工是否在「長輩開始缺席後」已經去家訪過了？
+                # 6. [防呆機制] 檢查志工是否已經去家訪過了
                 pending_tickets = []
                 
                 if not logs.empty:
@@ -1347,15 +1352,14 @@ elif st.session_state.page == 'visit':
                             "最後報到": last_seen_date.strftime('%Y-%m-%d')
                         })
 
-                # 6. 渲染 UI 工單卡片 (加入快速結案功能)
+                # 7. 渲染 UI 工單卡片 (含快速結案功能)
                 if pending_tickets:
-                    st.warning(f"⚠️ 偵測到 {len(pending_tickets)} 位長輩連續兩次未至據點，請優先安排關懷訪視或快速結案！")
+                    st.warning(f"⚠️ 偵測到 {len(pending_tickets)} 位活躍長輩連續兩次未至據點，請優先安排關懷訪視或快速結案！")
                     
                     cols = st.columns(3)
                     for idx, ticket in enumerate(pending_tickets):
                         e_name = ticket['姓名']
                         with cols[idx % 3]:
-                            # 改用 st.container 加邊框，方便在裡面放按鈕與下拉選單
                             with st.container(border=True):
                                 st.markdown(f"""
                                 <div style="font-weight: 900; font-size: 1.2rem; color: #E65100;">{e_name}</div>
@@ -1378,7 +1382,6 @@ elif st.session_state.page == 'visit':
                                     if "其他" in quick_reason:
                                         st.error("請在下方表單填寫完整的訪視紀錄")
                                     else:
-                                        # 組合一筆「純訪視」紀錄寫入資料庫
                                         quick_log = {
                                             "志工": "系統快速結案", 
                                             "發放日期": str(date.today()), 
@@ -1387,13 +1390,20 @@ elif st.session_state.page == 'visit':
                                             "發放數量": 0, 
                                             "訪視紀錄": f"【快速結案】{quick_reason}"
                                         }
-                                        # 寫入 care_logs，寫入成功後重整畫面，工單就會消失
                                         if append_data("care_logs", quick_log, COLS_LOG):
                                             st.toast(f"✅ 已將 {e_name} 標記為安全！")
                                             time.sleep(0.5)
                                             st.rerun()
                 else:
                     st.success("🟢 缺席長輩皆已確認安全或完成家訪追蹤。")
+            else:
+                st.success("🟢 目前所有活躍長輩皆有穩定出席。")
+        else:
+            st.info("據點開課次數不足兩次，尚無法進行缺席判定。")
+    else:
+        st.info("尚無足夠的據點報到與名冊資料可供分析。")
+        
+    st.markdown("---")
     
     # 2. 計算即時庫存
     stock_map = {}
