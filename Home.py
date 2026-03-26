@@ -348,3 +348,112 @@ for svc in services:
 """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
+
+with st.expander("⚠️ [管理員專用] 執行主檔資料整併 (包含 TEMP_UID 與子分類)"):
+    if st.button("🚀 開始整併", type="primary"):
+        with st.spinner("資料清洗與整併中..."):
+            try:
+                client = get_google_sheet_client()
+                
+                # 直接透過 API 抓取原始資料，避免依賴各系統不同的 load_data 函數
+                def fetch_sheet(sheet_name):
+                    try:
+                        data = client.open_by_key(SHEET_ID).worksheet(sheet_name).get_all_values()
+                        if not data: return pd.DataFrame()
+                        return pd.DataFrame(data[1:], columns=data[0])
+                    except:
+                        return pd.DataFrame()
+                    
+                vol_df = fetch_sheet("members")
+                care_df = fetch_sheet("care_members")
+                elder_df = fetch_sheet("elderly_members")
+                
+                master_dict = {}
+                
+                # 取得或建立 UID 的邏輯
+                def get_uid(row):
+                    pid = str(row.get('身分證字號', '')).strip().upper()
+                    if pid and pid not in ['NAN', 'NONE', '']: 
+                        return pid
+                    # 缺乏身分證時，使用「姓名+電話」當作暫時 UID
+                    name = str(row.get('姓名', '')).strip()
+                    phone = str(row.get('電話', '')).strip()
+                    return f"TEMP_{name}_{phone}"
+                    
+                # 初始化個人資料格式
+                def init_person(uid, row, dob_col):
+                    return {
+                        '姓名': str(row.get('姓名', '')).strip(),
+                        '身分證字號': uid,
+                        '性別': str(row.get('性別', '')).strip(),
+                        '出生年月日': str(row.get(dob_col, '')).strip(),
+                        '電話': str(row.get('電話', '')).strip(),
+                        '地址': str(row.get('地址', '')).strip(),
+                        '緊急聯絡人': str(row.get('緊急聯絡人', '')).strip(),
+                        '緊急聯絡電話': str(row.get('緊急聯絡人電話') or row.get('緊急聯絡電話', '')).strip(),
+                        '身分_志工': 'FALSE',
+                        '身分_關懷戶': 'FALSE',
+                        '身分_據點長輩': 'FALSE',
+                        '志工分類': '',
+                        '關懷_身分別': '',
+                        '同住_18歲以下': '',
+                        '同住_成人': '',
+                        '同住_65歲以上': '',
+                        '拒絕物資': '',
+                        '人際關係': ''
+                    }
+
+                # 補齊空缺的基本資料
+                def update_basic_info(uid, row):
+                    if not master_dict[uid]['電話'] and str(row.get('電話', '')).strip():
+                        master_dict[uid]['電話'] = str(row.get('電話', '')).strip()
+                    if not master_dict[uid]['地址'] and str(row.get('地址', '')).strip():
+                        master_dict[uid]['地址'] = str(row.get('地址', '')).strip()
+
+                # 1. 處理志工
+                if not vol_df.empty:
+                    for _, row in vol_df.iterrows():
+                        uid = get_uid(row)
+                        if uid not in master_dict: master_dict[uid] = init_person(uid, row, '生日')
+                        master_dict[uid]['身分_志工'] = 'TRUE'
+                        master_dict[uid]['志工分類'] = str(row.get('志工分類', '')).strip()
+                        update_basic_info(uid, row)
+
+                # 2. 處理關懷戶
+                if not care_df.empty:
+                    for _, row in care_df.iterrows():
+                        uid = get_uid(row)
+                        if uid not in master_dict: master_dict[uid] = init_person(uid, row, '生日')
+                        master_dict[uid]['身分_關懷戶'] = 'TRUE'
+                        master_dict[uid]['關懷_身分別'] = str(row.get('身分別', '')).strip()
+                        master_dict[uid]['同住_18歲以下'] = str(row.get('18歲以下子女', '')).strip()
+                        master_dict[uid]['同住_成人'] = str(row.get('成人數量', '')).strip()
+                        master_dict[uid]['同住_65歲以上'] = str(row.get('65歲以上長者', '')).strip()
+                        master_dict[uid]['拒絕物資'] = str(row.get('拒絕物資', '')).strip()
+                        master_dict[uid]['人際關係'] = str(row.get('人際關係', '')).strip()
+                        update_basic_info(uid, row)
+
+                # 3. 處理據點長輩
+                if not elder_df.empty:
+                    for _, row in elder_df.iterrows():
+                        uid = get_uid(row)
+                        if uid not in master_dict: master_dict[uid] = init_person(uid, row, '出生年月日')
+                        master_dict[uid]['身分_據點長輩'] = 'TRUE'
+                        update_basic_info(uid, row)
+
+                # 將整理好的字典轉回 DataFrame 準備寫入
+                FINAL_COLS = ['姓名', '身分證字號', '性別', '出生年月日', '電話', '地址', '緊急聯絡人', '緊急聯絡電話', 
+                              '身分_志工', '身分_關懷戶', '身分_據點長輩', '志工分類', '關懷_身分別', 
+                              '同住_18歲以下', '同住_成人', '同住_65歲以上', '拒絕物資', '人際關係']
+                
+                master_df = pd.DataFrame(list(master_dict.values()))
+                master_df = master_df[FINAL_COLS]
+                
+                # 寫入 master_residents 表
+                sheet_master = client.open_by_key(SHEET_ID).worksheet("master_residents")
+                sheet_master.clear()
+                sheet_master.update([master_df.columns.values.tolist()] + master_df.values.tolist())
+                
+                st.success(f"✅ 整併完成！共建立 {len(master_df)} 筆主檔資料 (含 TEMP 編號與所有子分類)。")
+            except Exception as e:
+                st.error(f"❌ 整併發生錯誤：{e}")
