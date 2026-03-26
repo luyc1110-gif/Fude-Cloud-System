@@ -245,7 +245,7 @@ def save_data(df, sheet_name):
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
-        sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist(), value_input_option="USER_ENTERED")
+        sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist())
         st.cache_data.clear()
         return True
     except Exception as e:
