@@ -1286,85 +1286,10 @@ elif st.session_state.page == 'visit':
     render_nav()
     st.markdown("## 🤝 訪視與物資發放紀錄")
     
-    # 1. 載入必要的資料表
+    # 1. 載入資料
     mems = load_data("care_members", COLS_MEM)
     inv = load_data("care_inventory", COLS_INV)
-    care_logs = load_data("care_logs", COLS_LOG)
-    
-    # [新增] 跨系統載入據點的報到紀錄
-    elderly_logs = load_data("elderly_logs", ["姓名", "身分證字號", "日期"]) 
-
-    # =========================================================
-    # 🚨 系統自動鉤稽：連續 14 天未報到之預警工單
-    # =========================================================
-    st.markdown("### 🚨 待處理訪視工單 (系統自動產生)")
-    
-    if not elderly_logs.empty:
-        # 1. 確保日期格式正確
-        elderly_logs['日期'] = pd.to_datetime(elderly_logs['日期'], errors='coerce')
-        
-        # 2. 找出每位長輩在「據點」的最後報到日
-        last_checkin = elderly_logs.groupby('姓名')['日期'].max().reset_index()
-        
-        # 3. 計算距離今天的天數
-        today = pd.to_datetime(date.today())
-        last_checkin['未出現天數'] = (today - last_checkin['日期']).dt.days
-        
-        # 4. 篩選出大於等於 14 天沒來的長輩
-        missing_elders = last_checkin[last_checkin['未出現天數'] >= 14].copy()
-        
-        if not missing_elders.empty:
-            # 5. [關鍵防呆] 檢查志工是不是最近 14 天內「已經去家訪過」了？
-            pending_tickets = []
-            
-            if not care_logs.empty:
-                care_logs['發放日期'] = pd.to_datetime(care_logs['發放日期'], errors='coerce')
-                last_visit = care_logs.groupby('關懷戶姓名')['發放日期'].max().reset_index()
-            else:
-                last_visit = pd.DataFrame(columns=['關懷戶姓名', '發放日期'])
-
-            for _, row in missing_elders.iterrows():
-                e_name = row['姓名']
-                missing_days = row['未出現天數']
-                last_seen_date = row['日期'].strftime('%Y-%m-%d')
-                
-                # 去 care_logs 找有沒有最近的訪視紀錄
-                visit_record = last_visit[last_visit['關懷戶姓名'] == e_name]
-                
-                needs_visit = True
-                if not visit_record.empty:
-                    v_date = visit_record.iloc[0]['發放日期']
-                    # 如果「最後一次家訪日」比「最後一次據點報到日」還晚，且距離今天小於 14 天，代表危機已解除
-                    if (today - v_date).days < 14 and v_date >= row['日期']:
-                        needs_visit = False
-                
-                if needs_visit:
-                    pending_tickets.append({"姓名": e_name, "未出現天數": missing_days, "最後報到": last_seen_date})
-
-            # 6. 渲染 UI 工單卡片
-            if pending_tickets:
-                st.warning(f"⚠️ 偵測到 {len(pending_tickets)} 位長輩連續兩週未至據點，請優先安排關懷訪視！")
-                
-                cols = st.columns(3)
-                for idx, ticket in enumerate(pending_tickets):
-                    with cols[idx % 3]:
-                        st.markdown(f"""
-                        <div style="background-color: #FFF3E0; border: 1px solid #FFB74D; border-left: 6px solid #F57C00; border-radius: 10px; padding: 15px; margin-bottom: 15px;">
-                            <div style="font-weight: 900; font-size: 1.2rem; color: #E65100;">{ticket['姓名']}</div>
-                            <div style="color: #555; font-size: 0.9rem; margin-top: 5px;">
-                                ⏱️ 已 <b>{ticket['未出現天數']}</b> 天未出現<br>
-                                📅 最後現身：{ticket['最後報到']}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-            else:
-                st.success("🟢 目前所有據點長輩皆有穩定出席或已完成家訪追蹤。")
-        else:
-            st.success("🟢 目前所有據點長輩皆有穩定出席。")
-    else:
-        st.info("尚無據點報到資料可供分析。")
-        
-    st.markdown("---")
+    logs = load_data("care_logs", COLS_LOG)
     
     # 2. 計算即時庫存
     stock_map = {}
