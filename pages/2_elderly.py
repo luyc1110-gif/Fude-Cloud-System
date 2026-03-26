@@ -681,14 +681,28 @@ elif st.session_state.page == 'stats':
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("#### 大分類明細")
-                    st.dataframe(main_cts[['類別', '場次']], use_container_width=True, column_config={"場次": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(main_cts['場次'].max() or 1))})
+                    st.dataframe(
+                        main_cts[['類別', '場次']], 
+                        use_container_width=True, 
+                        hide_index=True,  # 隱藏左邊的 0, 1, 2, 3
+                        column_config={
+                            "場次": st.column_config.NumberColumn("場次", format="%d 次")
+                        }
+                    )
                 with c2:
                     sc1, sc2 = st.columns([1.2, 2])
                     with sc1: st.markdown("#### 子分類鑽取")
                     with sc2: sel_m = st.selectbox("請選擇大分類", sorted(main_cts['類別'].unique()), label_visibility="collapsed", key="sel_main_stats")
                     sub_cts = unique_sessions[unique_sessions['大分類']==sel_m]['子分類'].value_counts().reset_index()
                     sub_cts.columns = ['子分類', '場次']
-                    st.dataframe(sub_cts, use_container_width=True, column_config={"場次": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(sub_cts['場次'].max() or 1))})
+                    st.dataframe(
+                        sub_cts, 
+                        use_container_width=True, 
+                        hide_index=True,  # 隱藏左邊的 0, 1, 2, 3
+                        column_config={
+                            "場次": st.column_config.NumberColumn("場次", format="%d 次")
+                        }
+                    )
                 # --- 新增：全勤名單 ---
                 st.markdown("### 3. 🏆 全勤長輩名單")
                 
