@@ -215,28 +215,31 @@ L_COLS = ["姓名", "身分證字號", "日期", "時間", "課程分類", "課�
 def get_google_sheet_client():
     return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
 
-# 🔥 優化 A: 讀取速度提升
+# 🔥 修復 1: 加入 target_cols=None，允許橋接邏輯塞入兩個參數
 @st.cache_data(ttl=60)
-def load_data(sheet_name):
+def load_data(sheet_name, target_cols=None):
     try:
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         data = sheet.get_all_values()
+        
+        # 動態判斷要使用的欄位 (如果沒有給定，才用舊的)
+        t_cols = target_cols if target_cols is not None else (M_COLS if sheet_name == 'elderly_members' else L_COLS)
+        
         if not data: 
-            target_cols = M_COLS if sheet_name == 'elderly_members' else L_COLS
-            return pd.DataFrame(columns=target_cols)
+            return pd.DataFrame(columns=t_cols)
             
         headers = data.pop(0)
         df = pd.DataFrame(data, columns=headers)
         
-        target_cols = M_COLS if sheet_name == 'elderly_members' else L_COLS
-        for c in target_cols: 
+        for c in t_cols: 
             if c not in df.columns: df[c] = ""
         return df
     except: 
-        return pd.DataFrame(columns=M_COLS if sheet_name == 'elderly_members' else L_COLS)
+        t_cols = target_cols if target_cols is not None else (M_COLS if sheet_name == 'elderly_members' else L_COLS)
+        return pd.DataFrame(columns=t_cols)
 
-# 維持舊版 save_data (僅用於編輯修改資料)
+# 🔥 修復 2: 加上 value_input_option="USER_ENTERED" 保護核取方塊
 def save_data(df, sheet_name):
     try:
         df_to_save = df.copy()
@@ -245,7 +248,7 @@ def save_data(df, sheet_name):
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
-        sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist())
+        sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist(), value_input_option="USER_ENTERED")
         st.cache_data.clear()
         return True
     except Exception as e:
@@ -257,7 +260,7 @@ def append_data(sheet_name, row_dict, col_order):
         values = [str(row_dict.get(c, "")).strip() for c in col_order]
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.append_row(values)
+        sheet.append_row(values, value_input_option="USER_ENTERED")
         st.cache_data.clear()
         return True
     except Exception as e:
@@ -272,7 +275,7 @@ def batch_append_data(sheet_name, rows_list, col_order):
             
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.append_rows(values_to_write)
+        sheet.append_rows(values_to_write, value_input_option="USER_ENTERED")
         st.cache_data.clear()
         return True
     except Exception as e:
