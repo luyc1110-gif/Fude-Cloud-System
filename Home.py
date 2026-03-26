@@ -353,7 +353,8 @@ with st.expander("⚠️ [管理員專用] 執行主檔資料整併 (包含 TEMP
     if st.button("🚀 開始整併", type="primary"):
         with st.spinner("資料清洗與整併中..."):
             try:
-                client = get_google_sheet_client()
+                # 🔴 這裡修正為你系統中正確的連線函數
+                client = get_client() 
                 
                 # 直接透過 API 抓取原始資料，避免依賴各系統不同的 load_data 函數
                 def fetch_sheet(sheet_name):
