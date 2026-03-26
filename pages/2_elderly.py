@@ -683,6 +683,28 @@ elif st.session_state.page == 'stats':
                     sub_cts = unique_sessions[unique_sessions['大分類']==sel_m]['子分類'].value_counts().reset_index()
                     sub_cts.columns = ['子分類', '場次']
                     st.dataframe(sub_cts, use_container_width=True, column_config={"場次": st.column_config.ProgressColumn("熱度", format="%d", min_value=0, max_value=int(sub_cts['場次'].max() or 1))})
+                    # --- 新增：全勤名單 ---
+                    st.markdown("### 3. 🏆 全勤長輩名單")
+                
+                    # 總課程場次數
+                    total_sessions_count = len(unique_sessions)
+                
+                    if total_sessions_count > 0:
+                        # 計算每位長輩出席的不重複場次數量
+                        elder_attendance = merged.groupby('姓名').apply(
+                            lambda x: len(x.drop_duplicates(subset=['日期', '課程名稱', '課程分類']))
+                        ).reset_index(name='出席場次')
+                    
+                        # 篩選出 出席場次 == 總場次 的長輩
+                        perfect_attendance = elder_attendance[elder_attendance['出席場次'] == total_sessions_count]
+                    
+                        if not perfect_attendance.empty:
+                            st.success(f"本區間共有 {total_sessions_count} 堂課，以下 {len(perfect_attendance)} 位長輩全勤：")
+                            st.markdown(f"**{'、'.join(perfect_attendance['姓名'].tolist())}**")
+                        else:
+                            st.info(f"本區間共有 {total_sessions_count} 堂課，目前無人全勤。")
+                    else:
+                        st.info("此區間內尚無任何課程紀錄。")
 
             with tab_h:
                 target_elder = st.selectbox("🔍 請選擇長輩", sorted(f_logs['姓名'].unique()), key="sel_elder_health")
