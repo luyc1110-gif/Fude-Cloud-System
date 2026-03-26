@@ -733,11 +733,56 @@ elif st.session_state.page == 'stats':
                     st.info("此區間內尚無任何課程紀錄。")
 
             with tab_h:
-                target_elder = st.selectbox("🔍 請選擇長輩", sorted(f_logs['姓名'].unique()), key="sel_elder_health")
+                st.markdown("### 🚨 區間血壓異常警示總覽")
+                
+                # 確保血壓欄位為數值格式
+                f_logs['收縮壓'] = pd.to_numeric(f_logs['收縮壓'], errors='coerce')
+                f_logs['舒張壓'] = pd.to_numeric(f_logs['舒張壓'], errors='coerce')
+                
+                # 判定異常：收縮壓 >= 140 或 <= 90，舒張壓 >= 90 或 <= 60
+                f_logs['血壓異常'] = (
+                    (f_logs['收縮壓'] >= 140) | (f_logs['舒張壓'] >= 90) | 
+                    (f_logs['收縮壓'] <= 90) | (f_logs['舒張壓'] <= 60)
+                )
+                
+                # 計算每位長輩的量測總次數與異常總次數
+                health_summary = f_logs.groupby('姓名').agg(
+                    量測次數=('日期', 'count'),
+                    異常次數=('血壓異常', 'sum')
+                ).reset_index()
+                
+                # 篩選出有異常的長輩並依異常次數排序
+                abnormal_list = health_summary[health_summary['異常次數'] > 0].sort_values(by=['異常次數', '量測次數'], ascending=[False, True])
+                
+                if not abnormal_list.empty:
+                    # 用單行卡片 HTML 顯示異常名單
+                    abnormal_html = '<div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">'
+                    for _, row in abnormal_list.iterrows():
+                        name = row['姓名']
+                        ab_count = int(row['異常次數'])
+                        total_count = int(row['量測次數'])
+                        pct = int((ab_count / total_count) * 100)
+                        
+                        abnormal_html += f'<div style="background: #FFEBEE; border-left: 5px solid #F44336; border-radius: 8px; padding: 12px 16px; min-width: 160px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);"><div style="font-weight: 900; color: #B71C1C; font-size: 1.1rem; margin-bottom: 4px;">{name}</div><div style="color: #424242; font-size: 0.95rem;">異常：<b>{ab_count}</b> / {total_count} 次 ({pct}%)</div></div>'
+                    
+                    abnormal_html += '</div>'
+                    st.markdown(abnormal_html, unsafe_allow_html=True)
+                else:
+                    st.success("本區間內所有長輩血壓量測皆為正常。")
+                
+                st.markdown("---")
+                st.markdown("### 🔍 個別長輩健康趨勢")
+                
+                target_elder = st.selectbox("請選擇長輩", sorted(f_logs['姓名'].unique()), key="sel_elder_health")
                 e_logs = f_logs[f_logs['姓名']==target_elder].sort_values('dt')
-                e_logs['收縮壓'] = pd.to_numeric(e_logs['收縮壓'], errors='coerce')
-                high_bp = len(e_logs[e_logs['收縮壓']>=140])
+                
+                # 取得該長輩的異常總數
+                high_bp = len(e_logs[e_logs['血壓異常'] == True])
+                
                 st.markdown(f"""<div class="dash-card" style="border-left:6px solid #E91E63"><div style="color:#666;">血壓異常次數</div><div style="font-size:1.8rem;color:{PRIMARY};font-weight:900;">{high_bp} 次</div></div>""", unsafe_allow_html=True)
-                fig = px.line(e_logs, x='dt', y=['收縮壓'], markers=True, title="收縮壓變化趨勢")
-                fig.add_hline(y=140, line_dash="dash", line_color="red")
+                
+                # 同時繪製收縮壓與舒張壓
+                fig = px.line(e_logs, x='dt', y=['收縮壓', '舒張壓'], markers=True, title="血壓變化趨勢")
+                fig.add_hline(y=140, line_dash="dash", line_color="red", annotation_text="收縮壓過高 (140)")
+                fig.add_hline(y=90, line_dash="dash", line_color="orange", annotation_text="舒張壓過高 (90)")
                 st.plotly_chart(fig, use_container_width=True)
