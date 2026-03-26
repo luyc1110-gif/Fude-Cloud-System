@@ -658,7 +658,7 @@ elif st.session_state.page == 'stats':
                 unique_sessions['大分類'] = unique_sessions['課程分類'].apply(lambda x: x.split('-')[0] if '-' in x else x)
                 unique_sessions['子分類'] = unique_sessions['課程分類'].apply(lambda x: x.split('-')[1] if '-' in x else x)
 
-                st.markdown("### 2. 課程場次占比 (靈動泡泡圖)")
+                st.markdown("### 2. 課程場次占比")
                 main_cts = unique_sessions['大分類'].value_counts().reset_index()
                 main_cts.columns = ['類別', '場次']
                 
