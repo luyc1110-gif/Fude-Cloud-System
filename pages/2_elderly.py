@@ -22,8 +22,6 @@ if 'page' not in st.session_state: st.session_state.page = 'home'
 # 初始化名冊解鎖狀態 (預設鎖住)
 if 'unlock_elder_list' not in st.session_state: st.session_state.unlock_elder_list = False
 
-# 🔥 [移除] 原本這裡的「全域門禁」程式碼已刪除，現在進入系統不用馬上打密碼了！
-
 TW_TZ = timezone(timedelta(hours=8))
 
 # 🎨【配色調整區】修改這邊的色碼，可以改變整站的主題色
@@ -223,7 +221,6 @@ def load_data(sheet_name):
     try:
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        # 改用 get_all_values (List of Lists) 讀取速度較快
         data = sheet.get_all_values()
         if not data: 
             target_cols = M_COLS if sheet_name == 'elderly_members' else L_COLS
@@ -232,7 +229,6 @@ def load_data(sheet_name):
         headers = data.pop(0)
         df = pd.DataFrame(data, columns=headers)
         
-        # 確保欄位存在
         target_cols = M_COLS if sheet_name == 'elderly_members' else L_COLS
         for c in target_cols: 
             if c not in df.columns: df[c] = ""
@@ -249,7 +245,7 @@ def save_data(df, sheet_name):
         client = get_google_sheet_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
         sheet.clear()
-        sheet.clear(); sheet.update([df_fix.columns.values.tolist()] + df_fix.values.tolist(), value_input_option="USER_ENTERED")
+        sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist(), value_input_option="USER_ENTERED")
         st.cache_data.clear()
         return True
     except Exception as e:
@@ -270,7 +266,6 @@ def append_data(sheet_name, row_dict, col_order):
 # 🔥 優化 C: 批次追加 (專用於批次補登，速度極快)
 def batch_append_data(sheet_name, rows_list, col_order):
     try:
-        # rows_list 是一個包含多個字典的 list
         values_to_write = []
         for row in rows_list:
             values_to_write.append([str(row.get(c, "")).strip() for c in col_order])
@@ -489,8 +484,8 @@ elif st.session_state.page == 'members':
                         st.error(f"❌ 身分證字號 {pid} 已存在於名冊中！")
                     else:
                         new_row = {"姓名": name, "身分證字號": pid.upper(), "性別": gender, "出生年月日": str(dob), "電話": phone, "地址": addr, "備註": note, "加入日期": str(date.today())}
-                        if add_or_update_elderly_to_master(new_data):
-                        st.success("✅ 已新增！"); time.sleep(1); st.rerun()
+                        if add_or_update_elderly_to_master(new_row):
+                            st.success("✅ 已新增！"); time.sleep(1); st.rerun()
 
     # 🔴 2. [新增] 退出/結案功能 (將長輩移出名單)
     with st.expander("📤 長輩退出/結案 (移除名單)", expanded=False):
@@ -531,8 +526,7 @@ elif st.session_state.page == 'members':
                     # 4. 寫入 Archive 表
                     if append_data("elderly_archive", target_row, ARCHIVE_COLS):
                         # 5. 從原表中刪除 (透過篩選掉該身分證號)
-                        df_new = df[df['身分證字號'] != target_pid]
-                        if archive_elderly_in_master(target_uid, reason):
+                        if archive_elderly_in_master(target_pid, exit_reason):
                             st.success("✅ 已結案！並同步更新至全社區主檔。")
                             time.sleep(1); st.rerun()
                         else:
