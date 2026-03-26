@@ -681,17 +681,12 @@ elif st.session_state.page == 'stats':
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("#### 大分類明細")
-                    # 將大分類資料轉為卡片式 HTML
                     main_html = '<div style="display: flex; flex-wrap: wrap; gap: 12px; padding-top: 5px;">'
                     for _, row in main_cts.iterrows():
                         cat_name = row['類別']
                         count = row['場次']
-                        main_html += f'''
-                            <div style="background: #FFF3E0; border: 1px solid #FFCC80; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex: 1 1 calc(50% - 12px); min-width: 140px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-                                <span style="font-weight: 900; color: #E65100; font-size: 1.1rem;">{cat_name}</span>
-                                <span style="background-color: #EF6C00; color: white; border-radius: 20px; padding: 4px 12px; font-size: 0.9rem; font-weight: bold;">{count} 場</span>
-                            </div>
-                        '''
+                        # 移除多行縮排，改為單行寫法
+                        main_html += f'<div style="background: #FFF3E0; border: 1px solid #FFCC80; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex: 1 1 calc(50% - 12px); min-width: 140px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);"><span style="font-weight: 900; color: #E65100; font-size: 1.1rem;">{cat_name}</span><span style="background-color: #EF6C00; color: white; border-radius: 20px; padding: 4px 12px; font-size: 0.9rem; font-weight: bold;">{count} 場</span></div>'
                     main_html += '</div>'
                     st.markdown(main_html, unsafe_allow_html=True)
 
@@ -703,18 +698,13 @@ elif st.session_state.page == 'stats':
                     sub_cts = unique_sessions[unique_sessions['大分類']==sel_m]['子分類'].value_counts().reset_index()
                     sub_cts.columns = ['子分類', '場次']
                     
-                    # 將子分類資料轉為卡片式 HTML
                     sub_html = '<div style="display: flex; flex-wrap: wrap; gap: 12px; padding-top: 5px;">'
                     if not sub_cts.empty:
                         for _, row in sub_cts.iterrows():
                             sub_name = row['子分類']
                             count = row['場次']
-                            sub_html += f'''
-                                <div style="background: #FFFFFF; border: 1px solid #E0E0E0; border-left: 5px solid #FFA726; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex: 1 1 calc(50% - 12px); min-width: 140px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                                    <span style="font-weight: bold; color: #424242; font-size: 1.05rem;">{sub_name}</span>
-                                    <span style="background-color: #F5F5F5; color: #616161; border-radius: 20px; padding: 4px 12px; font-size: 0.9rem; font-weight: bold;">{count} 場</span>
-                                </div>
-                            '''
+                            # 移除多行縮排，改為單行寫法
+                            sub_html += f'<div style="background: #FFFFFF; border: 1px solid #E0E0E0; border-left: 5px solid #FFA726; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex: 1 1 calc(50% - 12px); min-width: 140px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);"><span style="font-weight: bold; color: #424242; font-size: 1.05rem;">{sub_name}</span><span style="background-color: #F5F5F5; color: #616161; border-radius: 20px; padding: 4px 12px; font-size: 0.9rem; font-weight: bold;">{count} 場</span></div>'
                     else:
                         sub_html += '<div style="color: #999;">此分類尚無子分類資料。</div>'
                     sub_html += '</div>'
