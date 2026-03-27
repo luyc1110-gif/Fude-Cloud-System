@@ -678,104 +678,108 @@ if st.session_state.page == 'home':
         with c5: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#BC6C25 0%,#8E9775 100%);"><div>🎁 {cur_y} 當年度發放量</div><div style="font-size:3.5rem;">{int(cur_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
         with c6: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#6D6875 100%);"><div>⏳ {prev_y} 上年度發放量</div><div style="font-size:3.5rem;">{int(prev_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
 
-st.markdown("### 🚨 社區高風險預警看板")
-    
-    # 1. 讀取健康量表資料
-    # 注意：請確認你的 Google Sheet 名稱是 "care_health"
-    health_df = load_data("care_health")
-    
-    if not health_df.empty:
-        # 2. 只抓取每個人「最新的一筆」紀錄
-        health_df['dt'] = pd.to_datetime(health_df.get('日期', ''), errors='coerce')
-        latest_health = health_df.dropna(subset=['dt']).sort_values('dt').groupby('身分證字號').last().reset_index()
+        # =========================================================
+        # 🔥 [新增] 社區高風險預警看板 (自動抓取最新一筆健康紀錄)
+        # =========================================================
+        st.markdown("---")
+        st.markdown(f"<h3 style='color: {PRIMARY};'>🚨 智慧高風險預警雷達</h3>", unsafe_allow_html=True)
         
-        # 3. 建立分類名單的儲存容器
-        alert_lists = {
-            "心情_重度": [], "心情_中度": [], "心情_輕度": [],
-            "營養_異常": [], "認知_異常": [], "跌倒_高風險": []
-        }
+        h_df = load_data("care_health", COLS_HEALTH)
         
-        # 4. 進行判定 (🔴 請依據你 Google Sheet 實際的「欄位名稱」修改 get() 裡面的字眼)
-        for _, row in latest_health.iterrows():
-            name = str(row.get('姓名', '未知'))
+        if not h_df.empty:
+            # 1. 抓取每個人「最新的一筆」紀錄
+            h_df['dt'] = pd.to_datetime(h_df['評估日期'], errors='coerce')
+            latest_health = h_df.dropna(subset=['dt']).sort_values('dt').groupby('身分證字號').last().reset_index()
             
-            # --- A. BSRS-5 心情溫度計判定 ---
-            bsrs_score = str(row.get('BSRS總分', '')).strip()
-            if bsrs_score.isdigit():
-                score = int(bsrs_score)
-                # 判定標準：6-9 輕度，10-14 中度，15以上重度
-                if score >= 15: alert_lists["心情_重度"].append(f"{name} ({score}分)")
-                elif score >= 10: alert_lists["心情_中度"].append(f"{name} ({score}分)")
-                elif score >= 6: alert_lists["心情_輕度"].append(f"{name} ({score}分)")
+            # 2. 建立警示名單容器
+            alert_lists = {
+                "心情_重度": [], "心情_中度": [], "心情_輕度": [],
+                "營養_異常": [], "認知_異常": [], "跌倒_高風險": []
+            }
+            
+            # 3. 依據您的 COLS_HEALTH 進行精準判定
+            for _, row in latest_health.iterrows():
+                name = str(row.get('姓名', '未知'))
                 
-            # --- B. ICOPE 其他指標判定 (舉例) ---
-            # 假設你的欄位紀錄方式是文字的「異常」或「正常」
-            nutrition = str(row.get('營養評估', '')).strip()
-            if '異常' in nutrition or '風險' in nutrition:
-                alert_lists["營養_異常"].append(name)
-                
-            cognition = str(row.get('認知功能', '')).strip()
-            if '異常' in cognition or '衰退' in cognition:
-                alert_lists["認知_異常"].append(name)
-                
-            mobility = str(row.get('行動能力', '')).strip()
-            if '異常' in mobility or '跌倒風險' in mobility:
-                alert_lists["跌倒_高風險"].append(name)
+                # --- A. BSRS-5 心情溫度計 ---
+                bsrs_stat = str(row.get('BSRS_狀態', ''))
+                bsrs_score = str(row.get('BSRS_總分', ''))
+                if "重度" in bsrs_stat: alert_lists["心情_重度"].append(f"{name} ({bsrs_score}分)")
+                elif "中度" in bsrs_stat: alert_lists["心情_中度"].append(f"{name} ({bsrs_score}分)")
+                elif "輕度" in bsrs_stat: alert_lists["心情_輕度"].append(f"{name} ({bsrs_score}分)")
+                    
+                # --- B. 營養與進食 (MNA & ICOPE) ---
+                mna_stat = str(row.get('MNA_狀態', ''))
+                icope_weight = str(row.get('ICOPE_3_體重減輕', ''))
+                icope_eat = str(row.get('ICOPE_4_食慾不佳', ''))
+                if "不良" in mna_stat or "風險" in mna_stat or icope_weight == "是" or icope_eat == "是":
+                    alert_lists["營養_異常"].append(name)
+                    
+                # --- C. 認知與社交 (ICOPE) ---
+                icope_mem = str(row.get('ICOPE_1_記憶減退', ''))
+                if icope_mem == "是":
+                    alert_lists["認知_異常"].append(name)
+                    
+                # --- D. 跌倒風險 (ICOPE) ---
+                icope_fall = str(row.get('ICOPE_2_跌倒風險', ''))
+                if icope_fall == "是":
+                    alert_lists["跌倒_高風險"].append(name)
 
-        # 5. 繪製預警看板畫面
-        c1, c2, c3 = st.columns(3)
-        
-        # -- 看板 1：心情溫度計 (BSRS-5) --
-        with c1:
-            st.markdown("""<div style="background:#FFF3E0; border-left:5px solid #E65100; padding:15px; border-radius:10px; margin-bottom:15px; height:100%;">
-                <h4 style="color:#E65100; margin-top:0;">💔 心情溫度預警</h4>""", unsafe_allow_html=True)
+            # 4. 渲染警示看板
+            ca1, ca2, ca3 = st.columns(3)
             
-            if alert_lists["心情_重度"]:
-                st.error(f"🔴 重度風險 ({len(alert_lists['心情_重度'])}人)")
-                st.markdown(f"**{', '.join(alert_lists['心情_重度'])}**")
-            if alert_lists["心情_中度"]:
-                st.warning(f"🟠 中度風險 ({len(alert_lists['心情_中度'])}人)")
-                st.markdown(f"{', '.join(alert_lists['心情_中度'])}")
-            if alert_lists["心情_輕度"]:
-                st.info(f"🟡 輕度關注 ({len(alert_lists['心情_輕度'])}人)")
-                st.caption(f"{', '.join(alert_lists['心情_輕度'])}")
+            # -- 💔 警示卡 1：心情溫度計 --
+            with ca1:
+                st.markdown("""<div style="background:#FFF3E0; border-left:5px solid #E65100; padding:15px; border-radius:10px; margin-bottom:15px; height:100%; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <h4 style="color:#E65100; margin-top:0; font-weight:900;">💔 心情溫度預警</h4>""", unsafe_allow_html=True)
                 
-            if not any([alert_lists["心情_重度"], alert_lists["心情_中度"], alert_lists["心情_輕度"]]):
-                st.success("目前無長輩有心情風險")
-            st.markdown("</div>", unsafe_allow_html=True)
+                if alert_lists["心情_重度"]:
+                    st.markdown(f"<div style='color:#D32F2F; font-weight:bold; margin-bottom:5px;'>🔴 重度風險 ({len(alert_lists['心情_重度'])}人)</div>", unsafe_allow_html=True)
+                    st.markdown(f"**{', '.join(alert_lists['心情_重度'])}**")
+                if alert_lists["心情_中度"]:
+                    st.markdown(f"<div style='color:#EF6C00; font-weight:bold; margin-top:10px; margin-bottom:5px;'>🟠 中度風險 ({len(alert_lists['心情_中度'])}人)</div>", unsafe_allow_html=True)
+                    st.markdown(f"{', '.join(alert_lists['心情_中度'])}")
+                if alert_lists["心情_輕度"]:
+                    st.markdown(f"<div style='color:#F9A825; font-weight:bold; margin-top:10px; margin-bottom:5px;'>🟡 輕度關注 ({len(alert_lists['心情_輕度'])}人)</div>", unsafe_allow_html=True)
+                    st.caption(f"{', '.join(alert_lists['心情_輕度'])}")
+                    
+                if not any([alert_lists["心情_重度"], alert_lists["心情_中度"], alert_lists["心情_輕度"]]):
+                    st.markdown("<span style='color:#2E7D32; font-weight:bold;'>✅ 目前無長輩有心情風險</span>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-        # -- 看板 2：營養與進食風險 --
-        with c2:
-            st.markdown("""<div style="background:#E8F5E9; border-left:5px solid #2E7D32; padding:15px; border-radius:10px; margin-bottom:15px; height:100%;">
-                <h4 style="color:#2E7D32; margin-top:0;">🍲 營養不良預警</h4>""", unsafe_allow_html=True)
-            
-            if alert_lists["營養_異常"]:
-                st.error(f"🚨 高風險 ({len(alert_lists['營養_異常'])}人)")
-                st.markdown(f"**{', '.join(alert_lists['營養_異常'])}**")
-            else:
-                st.success("目前無長輩有營養風險")
-            st.markdown("</div>", unsafe_allow_html=True)
+            # -- 🍲 警示卡 2：營養風險 --
+            with ca2:
+                st.markdown("""<div style="background:#E8F5E9; border-left:5px solid #2E7D32; padding:15px; border-radius:10px; margin-bottom:15px; height:100%; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <h4 style="color:#2E7D32; margin-top:0; font-weight:900;">🍲 營養不良預警</h4>""", unsafe_allow_html=True)
+                
+                if alert_lists["營養_異常"]:
+                    # set() 用來去重，避免同時觸發 MNA 與 ICOPE 導致名字出現兩次
+                    st.markdown(f"<div style='color:#D32F2F; font-weight:bold; margin-bottom:5px;'>🚨 需注意名單 ({len(set(alert_lists['營養_異常']))}人)</div>", unsafe_allow_html=True)
+                    st.markdown(f"**{', '.join(set(alert_lists['營養_異常']))}**")
+                else:
+                    st.markdown("<span style='color:#2E7D32; font-weight:bold;'>✅ 目前無長輩有營養風險</span>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-        # -- 看板 3：行動與認知預警 --
-        with c3:
-            st.markdown("""<div style="background:#FCE4EC; border-left:5px solid #C2185B; padding:15px; border-radius:10px; margin-bottom:15px; height:100%;">
-                <h4 style="color:#C2185B; margin-top:0;">🧠 認知與防跌預警</h4>""", unsafe_allow_html=True)
-            
-            if alert_lists["認知_異常"]:
-                st.warning(f"🤯 認知異常 ({len(alert_lists['認知_異常'])}人)")
-                st.markdown(f"{', '.join(alert_lists['認知_異常'])}")
+            # -- 🧠 警示卡 3：認知與防跌 --
+            with ca3:
+                st.markdown("""<div style="background:#FCE4EC; border-left:5px solid #C2185B; padding:15px; border-radius:10px; margin-bottom:15px; height:100%; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <h4 style="color:#C2185B; margin-top:0; font-weight:900;">🧠 認知與防跌預警</h4>""", unsafe_allow_html=True)
                 
-            if alert_lists["跌倒_高風險"]:
-                st.error(f"⚠️ 跌倒高風險 ({len(alert_lists['跌倒_高風險'])}人)")
-                st.markdown(f"**{', '.join(alert_lists['跌倒_高風險'])}**")
+                if alert_lists["認知_異常"]:
+                    st.markdown(f"<div style='color:#E65100; font-weight:bold; margin-bottom:5px;'>🤯 記憶明顯減退 ({len(alert_lists['認知_異常'])}人)</div>", unsafe_allow_html=True)
+                    st.markdown(f"{', '.join(alert_lists['認知_異常'])}")
+                    
+                if alert_lists["跌倒_高風險"]:
+                    st.markdown(f"<div style='color:#D32F2F; font-weight:bold; margin-top:10px; margin-bottom:5px;'>⚠️ 跌倒高風險 ({len(alert_lists['跌倒_高風險'])}人)</div>", unsafe_allow_html=True)
+                    st.markdown(f"**{', '.join(alert_lists['跌倒_高風險'])}**")
+                    
+                if not alert_lists["認知_異常"] and not alert_lists["跌倒_高風險"]:
+                    st.markdown("<span style='color:#2E7D32; font-weight:bold;'>✅ 目前無認知或跌倒風險</span>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
                 
-            if not alert_lists["認知_異常"] and not alert_lists["跌倒_高風險"]:
-                st.success("目前無認知或跌倒風險")
-            st.markdown("</div>", unsafe_allow_html=True)
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-    else:
-        st.info("尚無健康量表測量紀錄。")
+            st.markdown("<br>", unsafe_allow_html=True)
+        else:
+            st.info("尚無健康評估紀錄，累積資料後系統將自動產出高風險預警。")
 # --- [分頁 1：名冊] ---
 elif st.session_state.page == 'members':
     render_nav()
