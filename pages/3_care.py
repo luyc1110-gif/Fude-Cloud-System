@@ -678,7 +678,7 @@ if st.session_state.page == 'home':
         with c5: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#BC6C25 0%,#8E9775 100%);"><div>🎁 {cur_y} 當年度發放量</div><div style="font-size:3.5rem;">{int(cur_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
         with c6: st.markdown(f'<div class="care-metric-box" style="background:linear-gradient(135deg,#A4AC86 0%,#6D6875 100%);"><div>⏳ {prev_y} 上年度發放量</div><div style="font-size:3.5rem;">{int(prev_val)} <span style="font-size:1.5rem;">份</span></div></div>', unsafe_allow_html=True)
 
-    st.markdown("### 🚨 社區高風險預警看板")
+st.markdown("### 🚨 社區高風險預警看板")
     
     # 1. 讀取健康量表資料
     # 注意：請確認你的 Google Sheet 名稱是 "care_health"
