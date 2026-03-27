@@ -1460,7 +1460,7 @@ elif st.session_state.page == 'visit':
     # =========================================================
     # 🚨 系統自動鉤稽：連續兩次未報到之預警工單
     # =========================================================
-    st.markdown("### 🚨 待處理訪視工單 (系統自動產生)")
+    st.markdown("### 🚨 建議訪視名單")
     
     if not elderly_logs.empty and not active_elders.empty:
         # 1. 確保日期格式正確
@@ -1583,7 +1583,7 @@ elif st.session_state.page == 'visit':
     # =========================================================
     # ✨ 功能 A：智慧發放建議 (含營養不良加權機制)
     # =========================================================
-    with st.expander("🤖 智慧發放建議 (點擊展開)", expanded=False):
+    with st.expander("🤖 優先發放建議", expanded=False):
         st.caption("💡 系統將根據「弱勢積分」推薦，並過濾「已領過」或「拒收」個案。若發放食物，有營養風險者將獲大幅加分。")
         
         if not stock_map:
@@ -1664,7 +1664,7 @@ elif st.session_state.page == 'visit':
     # =========================================================
     # ✨ 功能 B：訪視與物資發放 (修復卡片顯示)
     # =========================================================
-    st.markdown("#### 1. 選擇訪視對象")
+    st.markdown("#### 1. 訪視對象")
     
     # 篩選選單
     all_tags = set()
@@ -1695,7 +1695,7 @@ elif st.session_state.page == 'visit':
                 update_master_fields(mems.loc[p_row_idx, '身分證字號'], {'拒絕物資': new_refuse_input})
                 st.toast("✅ 備註已更新！"); time.sleep(1); st.rerun()
 
-    st.markdown("#### 2. 填寫訪視內容與物資")
+    st.markdown("#### 2. 訪視內容與物資")
     
     # --- [新增程式碼] 鉤稽志工系統名單 ---
     # 1. 讀取志工名冊 (共用同一個 Spreadsheet，分頁名稱為 'members')
