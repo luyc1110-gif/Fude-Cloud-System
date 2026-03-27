@@ -1567,36 +1567,54 @@ elif st.session_state.page == 'visit':
         
     st.markdown("---")
     
-    # 2. 計算即時庫存
+    # 2. 計算即時庫存與類型
     stock_map = {}
+    item_type_map = {} # 🟢 新增：用來記錄該庫存的物資類型
     if not inv.empty:
         for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
             total_in = group['總數量'].replace("","0").astype(float).sum()
             composite_name = f"{item_name} ({donor_name})"
             total_out = logs[logs['物資內容'] == composite_name]['發放數量'].replace("","0").astype(float).sum() if not logs.empty else 0
             remain = int(total_in - total_out)
-            if remain > 0: stock_map[composite_name] = remain
+            if remain > 0: 
+                stock_map[composite_name] = remain
+                item_type_map[composite_name] = group.iloc[0]['物資類型'] # 🟢 紀錄類型
 
     # =========================================================
-    # ✨ 功能 A：智慧發放建議 (已找回並升級)
+    # ✨ 功能 A：智慧發放建議 (含營養不良加權機制)
     # =========================================================
     with st.expander("🤖 智慧發放建議 (點擊展開)", expanded=False):
-        st.caption("💡 系統將根據「弱勢積分」推薦，並自動過濾「已領過」或「拒收」的個案。")
+        st.caption("💡 系統將根據「弱勢積分」推薦，並過濾「已領過」或「拒收」個案。若發放食物，有營養風險者將獲大幅加分。")
         
         if not stock_map:
             st.warning("目前無庫存物資可供分析。")
         else:
+            # 🟢 新增：預先找出有營養風險的名單，避免在迴圈內重複計算拖慢速度
+            malnutrition_names = set()
+            h_df = load_data("care_health", COLS_HEALTH)
+            if not h_df.empty:
+                h_df['dt'] = pd.to_datetime(h_df['評估日期'], errors='coerce')
+                latest_health = h_df.dropna(subset=['dt']).sort_values('dt').groupby('身分證字號').last().reset_index()
+                for _, r in latest_health.iterrows():
+                    mna_stat = str(r.get('MNA_狀態', ''))
+                    icope_w = str(r.get('ICOPE_3_體重減輕', ''))
+                    icope_e = str(r.get('ICOPE_4_食慾不佳', ''))
+                    # 只要符合任何一項營養風險指標，就加入名單
+                    if "不良" in mna_stat or "風險" in mna_stat or icope_w == "是" or icope_e == "是":
+                        malnutrition_names.add(str(r.get('姓名', '')))
+            
             suggest_item = st.selectbox("選擇要評估發放的物資：", list(stock_map.keys()))
+            is_food = (item_type_map.get(suggest_item) == "食物") # 判斷當前物資是否為食物
             
             suggestion_list = []
             for index, row in mems.iterrows():
                 p_name = row['姓名']
                 p_tags = str(row['身分別'])
-                p_refuse = str(row.get('拒絕物資', '')) # 取得該人的拒絕清單
+                p_refuse = str(row.get('拒絕物資', '')) 
                 
-                # 1. 檢查是否拒收 (呼叫我們寫好的字典判讀)
+                # 1. 檢查是否拒收 (呼叫字典判讀)
                 is_conflict, _ = check_conflict(p_refuse, suggest_item)
-                if is_conflict: continue # 如果拒收，直接跳過這個人
+                if is_conflict: continue 
 
                 # 2. 檢查是否領過
                 has_received = False
@@ -1618,14 +1636,22 @@ elif st.session_state.page == 'visit':
                         if int(row.get('18歲以下子女', 0)) > 2: score += 2
                     except: pass
                     
+                    # 🟢 新增：營養風險加權機制
+                    if is_food and p_name in malnutrition_names:
+                        score += 5  # 高權重加分 (直接加5分，保證名列前茅)
+                        p_tags += " | 🚨需營養補充" # 在畫面上多給一個警示標籤
+                    
                     suggestion_list.append({"姓名": p_name, "身分別": p_tags, "弱勢積分": score})
             
             # 顯示結果
             if suggestion_list:
                 df_suggest = pd.DataFrame(suggestion_list).sort_values("弱勢積分", ascending=False).head(5)
                 for _, row in df_suggest.iterrows():
+                    # 🟢 特殊樣式：若觸發營養補充條件，給予醒目的淡紅色背景與紅邊框
+                    alert_style = "border-left:5px solid #D32F2F; background:#FFEBEE;" if "需營養補充" in row['身分別'] else "border-left:5px solid #FF7043; background:white;"
+                    
                     st.markdown(f"""
-                    <div style="background:white; padding:8px; border-left:5px solid #FF7043; margin-bottom:5px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="{alert_style} padding:8px; margin-bottom:5px; box-shadow:0 1px 3px rgba(0,0,0,0.1); border-radius: 5px;">
                         <span style="font-weight:bold;">{row['姓名']}</span> 
                         <span style="color:#666; font-size:0.85rem;">(積分: {row['弱勢積分']} | {row['身分別']})</span>
                     </div>
