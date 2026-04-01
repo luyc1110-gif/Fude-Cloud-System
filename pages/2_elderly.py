@@ -277,7 +277,7 @@ def get_elderly_members():
     elder_df = df[df['身分_據點長輩'].astype(str).str.upper() == 'TRUE'].copy()
     for c in CURRENT_COLS:
         if c not in elder_df.columns: elder_df[c] = ""
-    return elder_df[CURRENT_COLS]
+    return elder_df[CURRENT_COLS].reset_index(drop=True)
 
 def add_or_update_elderly_to_master(new_data):
     uid = new_data.get('身分證字號', '').upper()
