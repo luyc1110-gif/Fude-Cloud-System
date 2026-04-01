@@ -694,47 +694,57 @@ elif st.session_state.page == 'members':
             
             st.info("💡 編輯多重身分：在「志工分類」用半形逗號隔開 (例：關懷據點週二志工,環保志工)，並填上對應的加入日期。")
             
-            ed_df = st.data_editor(
-                df[edit_cols], 
-                use_container_width=True, 
-                num_rows="dynamic", 
-                disabled=["身分證字號", "狀態"], # 鎖定 UID 防呆
-                key="editor_all"
-            )
+            # 建立正確的兩個分頁
+            tab_active, tab_retired = st.tabs(["🌟 服務中", "😴 已退隊"])
             
-            if st.button("💾 儲存修改 (寫入主檔)", type="primary"):
-                with st.spinner("正在將修改寫入資料庫..."):
-                    supabase = get_supabase_client()
-                    master = load_data_from_sheet("master_residents")
-                    
-                    for _, row in ed_df.iterrows():
-                        uid = row['身分證字號']
-                        if not uid: continue
+            with tab_active:
+                # 只顯示服務中的志工供編輯
+                ed_df = st.data_editor(
+                    df[df['狀態'] == '服務中'][edit_cols], 
+                    use_container_width=True, 
+                    num_rows="dynamic", 
+                    disabled=["身分證字號", "狀態"], # 鎖定 UID 防呆
+                    key="editor_active"
+                )
+                
+                if st.button("💾 儲存修改 (寫入主檔)", type="primary"):
+                    with st.spinner("正在將修改寫入資料庫..."):
+                        supabase = get_supabase_client()
+                        master = load_data_from_sheet("master_residents")
                         
-                        # 找出原本在資料庫裡面的 id
-                        existing = master[master['身分證字號'] == uid]
-                        if not existing.empty and 'id' in existing.columns:
-                            record_id = int(existing.iloc[0]['id'])
+                        for _, row in ed_df.iterrows():
+                            uid = row['身分證字號']
+                            if not uid: continue
                             
-                            # 整理要更新的資料字典
-                            update_payload = {}
-                            for c in edit_cols:
-                                if c in row and c not in ['身分證字號', '狀態']: 
-                                    # 處理生日欄位對應
-                                    if c == '生日':
-                                        update_payload['出生年月日'] = str(row[c])
-                                    else:
-                                        update_payload[c] = str(row[c])
-                                        
-                            # 執行 Supabase 精準更新
-                            supabase.table("master_residents").update(update_payload).eq("id", record_id).execute()
-                    
-                    load_data_from_sheet.clear()
-                    st.success("✅ 修改已完整儲存至主檔！")
-                    time.sleep(1); st.rerun()
+                            # 找出原本在資料庫裡面的 id
+                            existing = master[master['身分證字號'] == uid]
+                            if not existing.empty and 'id' in existing.columns:
+                                record_id = int(existing.iloc[0]['id'])
+                                
+                                # 整理要更新的資料字典
+                                update_payload = {}
+                                for c in edit_cols:
+                                    if c in row and c not in ['身分證字號', '狀態']: 
+                                        # 處理生日欄位對應
+                                        if c == '生日':
+                                            update_payload['出生年月日'] = str(row[c])
+                                        else:
+                                            update_payload[c] = str(row[c])
+                                            
+                                # 執行 Supabase 精準更新
+                                supabase.table("master_residents").update(update_payload).eq("id", record_id).execute()
+                        
+                        load_data_from_sheet.clear()
+                        st.success("✅ 修改已完整儲存至主檔！")
+                        time.sleep(1); st.rerun()
+            
             with tab_retired:
+                # 已退隊志工只供檢視，不提供編輯，避免誤改
                 retired_df = df[df['狀態'] == '已退隊']
-                st.data_editor(retired_df[cols], use_container_width=True, num_rows="dynamic", key="editor_retired")
+                if not retired_df.empty:
+                    st.dataframe(retired_df[edit_cols], use_container_width=True)
+                else:
+                    st.info("目前無退隊志工紀錄。")
 
 elif st.session_state.page == 'report':
     render_nav()
