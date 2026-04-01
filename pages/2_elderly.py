@@ -200,7 +200,7 @@ div[data-baseweb="calendar"] {{
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic & Data (優化版)
+# 2) Logic & Data (Supabase 單一真實來源版)
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 COURSE_HIERARCHY = {
@@ -212,74 +212,51 @@ M_COLS = ["姓名", "身分證字號", "性別", "出生年月日", "電話", "�
 L_COLS = ["姓名", "身分證字號", "日期", "時間", "課程分類", "課程名稱", "收縮壓", "舒張壓", "脈搏"]
 
 @st.cache_resource
-def get_google_sheet_client():
-    return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+def get_supabase_client():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
 
-# 🔥 修復 1: 加入 target_cols=None，允許橋接邏輯塞入兩個參數
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=1)
 def load_data(sheet_name, target_cols=None):
     try:
-        client = get_google_sheet_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        data = sheet.get_all_values()
+        supabase = get_supabase_client()
+        response = supabase.table(sheet_name).select("*").execute()
+        df = pd.DataFrame(response.data)
         
-        # 動態判斷要使用的欄位 (如果沒有給定，才用舊的)
         t_cols = target_cols if target_cols is not None else (M_COLS if sheet_name == 'elderly_members' else L_COLS)
+        if df.empty: return pd.DataFrame(columns=t_cols)
         
-        if not data: 
-            return pd.DataFrame(columns=t_cols)
-            
-        headers = data.pop(0)
-        df = pd.DataFrame(data, columns=headers)
-        
-        for c in t_cols: 
+        for c in t_cols:
             if c not in df.columns: df[c] = ""
         return df
-    except: 
+    except Exception as e:
+        st.error(f"資料庫讀取失敗：{e}")
         t_cols = target_cols if target_cols is not None else (M_COLS if sheet_name == 'elderly_members' else L_COLS)
         return pd.DataFrame(columns=t_cols)
 
-# 🔥 修復 2: 加上 value_input_option="USER_ENTERED" 保護核取方塊
-def save_data(df, sheet_name):
+def append_data(sheet_name, row_dict, col_order=None):
     try:
-        df_to_save = df.copy()
-        df_to_save = df_to_save.replace(['nan', 'NaN', 'None', '<NA>'], "")
-        df_to_save = df_to_save.fillna("")
-        client = get_google_sheet_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.clear()
-        sheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist(), value_input_option="USER_ENTERED")
-        st.cache_data.clear()
+        supabase = get_supabase_client()
+        clean_data = {k: str(v).strip() for k, v in row_dict.items() if str(v).strip() and str(v).strip() != 'nan'}
+        supabase.table(sheet_name).insert(clean_data).execute()
+        load_data.clear()
         return True
     except Exception as e:
-        st.error(f"寫入失敗：{e}"); return False
+        st.error(f"新增失敗：{e}")
+        return False
 
-# 🔥 優化 B: 單筆追加 (用於新增長輩、單人報到)
-def append_data(sheet_name, row_dict, col_order):
+def batch_append_data(sheet_name, rows_list, col_order=None):
     try:
-        values = [str(row_dict.get(c, "")).strip() for c in col_order]
-        client = get_google_sheet_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.append_row(values, value_input_option="USER_ENTERED")
-        st.cache_data.clear()
+        supabase = get_supabase_client()
+        clean_rows = [{k: str(v).strip() for k, v in r.items() if str(v).strip() and str(v).strip() != 'nan'} for r in rows_list]
+        if clean_rows:
+            supabase.table(sheet_name).insert(clean_rows).execute()
+        load_data.clear()
         return True
     except Exception as e:
-        st.error(f"新增失敗：{e}"); return False
-
-# 🔥 優化 C: 批次追加 (專用於批次補登，速度極快)
-def batch_append_data(sheet_name, rows_list, col_order):
-    try:
-        values_to_write = []
-        for row in rows_list:
-            values_to_write.append([str(row.get(c, "")).strip() for c in col_order])
-            
-        client = get_google_sheet_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.append_rows(values_to_write, value_input_option="USER_ENTERED")
-        st.cache_data.clear()
-        return True
-    except Exception as e:
-        st.error(f"批次失敗：{e}"); return False
+        st.error(f"批次新增失敗：{e}")
+        return False
 
 def get_tw_time(): return datetime.now(TW_TZ)
 
@@ -290,55 +267,56 @@ def calculate_age(dob_str):
         return today.year - b_date.year - ((today.month, today.day) < (b_date.month, b_date.day))
     except: return 0
 
-# =========================================================
-# 🌟 主檔 (Master Data) 橋接邏輯
-# =========================================================
 COLS_MASTER = ['姓名', '身分證字號', '性別', '出生年月日', '電話', '地址', '緊急聯絡人', '緊急聯絡電話', '身分_志工', '身分_關懷戶', '身分_據點長輩', '志工分類', '關懷_身分別', '同住_18歲以下', '同住_成人', '同住_65歲以上', '拒絕物資', '人際關係']
-
 CURRENT_COLS = ["姓名", "身分證字號", "性別", "出生年月日", "電話", "地址", "緊急聯絡人", "緊急聯絡電話"] 
 
 def get_elderly_members():
-    df = load_data("master_residents", COLS_MASTER)
+    df = load_data("master_residents")
     if df.empty: return pd.DataFrame(columns=CURRENT_COLS)
-    
-    elder_df = df[df['身分_據點長輩'] == 'TRUE'].copy()
+    if '身分_據點長輩' not in df.columns: df['身分_據點長輩'] = ""
+    elder_df = df[df['身分_據點長輩'].astype(str).str.upper() == 'TRUE'].copy()
     for c in CURRENT_COLS:
         if c not in elder_df.columns: elder_df[c] = ""
     return elder_df[CURRENT_COLS]
 
 def add_or_update_elderly_to_master(new_data):
-    master = load_data("master_residents", COLS_MASTER)
     uid = new_data.get('身分證字號', '').upper()
-    
     if not uid or uid == 'NAN':
         uid = f"TEMP_{new_data.get('姓名', '').strip()}_{new_data.get('電話', '').strip()}"
         new_data['身分證字號'] = uid
-        
-    master_data = {k: v for k, v in new_data.items()}
+
+    master_data = {k: str(v) for k, v in new_data.items()}
     master_data['身分_據點長輩'] = 'TRUE'
 
-    if not master.empty and uid in master['身分證字號'].values:
-        idx = master[master['身分證字號'] == uid].index[0]
-        for k, v in master_data.items():
-            master.at[idx, k] = str(v)
-        return save_data(master, "master_residents")
-    else:
-        for c in COLS_MASTER:
-            if c not in master_data: master_data[c] = "FALSE" if "身分_" in c else ""
-        return append_data("master_residents", master_data, COLS_MASTER)
+    try:
+        supabase = get_supabase_client()
+        existing = supabase.table("master_residents").select("id").eq("身分證字號", uid).execute()
+        if existing.data:
+            record_id = existing.data[0]['id']
+            supabase.table("master_residents").update(master_data).eq("id", record_id).execute()
+        else:
+            for c in COLS_MASTER:
+                if c not in master_data: master_data[c] = "FALSE" if "身分_" in c else ""
+            supabase.table("master_residents").insert(master_data).execute()
+        load_data.clear()
+        return True
+    except Exception as e: return False
 
 def archive_elderly_in_master(uid, reason):
-    master = load_data("master_residents", COLS_MASTER)
-    if master.empty: return False
-    
-    idx = master[master['身分證字號'] == uid].index
-    if len(idx) > 0:
-        master.at[idx[0], '身分_據點長輩'] = 'FALSE'
-        if "過世" in reason or "搬遷" in reason:
-            master.at[idx[0], '身分_關懷戶'] = 'FALSE'
-            master.at[idx[0], '身分_志工'] = 'FALSE'
-        return save_data(master, "master_residents")
-    return False
+    try:
+        supabase = get_supabase_client()
+        existing = supabase.table("master_residents").select("id").eq("身分證字號", uid).execute()
+        if existing.data:
+            record_id = existing.data[0]['id']
+            update_data = {'身分_據點長輩': 'FALSE'}
+            if "過世" in reason or "搬遷" in reason:
+                update_data['身分_關懷戶'] = 'FALSE'
+                update_data['身分_志工'] = 'FALSE'
+            supabase.table("master_residents").update(update_data).eq("id", record_id).execute()
+            load_data.clear()
+            return True
+        return False
+    except Exception as e: return False
 
 # =========================================================
 # 3) Navigation (側邊欄版)
@@ -632,10 +610,15 @@ elif st.session_state.page == 'checkin':
         if not today_logs.empty:
             edited_df = st.data_editor(today_logs, column_order=['時間', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'], use_container_width=True, num_rows="dynamic", key="today_checkin_editor")
             if st.button("💾 儲存名單修改"):
-                other_logs = logs[logs['日期'] != today_str]
-                final_logs = pd.concat([other_logs, edited_df], ignore_index=True)
-                if save_data(final_logs, "elderly_logs"):
-                    st.success("✅ 名單已更新至雲端！"); time.sleep(1); st.rerun()
+                with st.spinner("寫入資料庫..."):
+                    supabase = get_supabase_client()
+                    for _, row in edited_df.iterrows():
+                        if 'id' in row and pd.notna(row['id']):
+                            up_data = {k: str(v) for k, v in row.items() if k != 'id' and pd.notna(v)}
+                            supabase.table("elderly_logs").update(up_data).eq("id", int(row['id'])).execute()
+                    load_data.clear()
+                    st.success("✅ 名單已更新")
+                    time.sleep(1); st.rerun()
         else: st.info("今日尚無報到紀錄。")
     else: st.info("資料庫目前無任何紀錄。")
 
