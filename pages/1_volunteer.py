@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date, timedelta, timezone
-import gspread
+from supabase import create_client, Client
 import time
 import os
 import streamlit.components.v1 as components
@@ -141,80 +141,71 @@ div[data-baseweb="calendar"] {{ background-color: #262730 !important; }}
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) Logic & Helpers (高效能優化版 + 橋接主檔)
+# 2) Logic & Helpers (Supabase 光速版)
 # =========================================================
-SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
 ALL_CATEGORIES = ["祥和志工", "關懷據點週二志工", "關懷據點週三志工", "環保志工", "臨時志工"]
 DEFAULT_ACTIVITIES = ["關懷據點週二活動", "關懷據點週三活動", "環保清潔", "專案活動", "教育訓練"]
 
 MEM_COLS = ["姓名", "身分證字號", "性別", "電話", "志工分類", "生日", "地址", "備註", 
             "祥和_加入日期", "祥和_退出日期", "據點週二_加入日期", "據點週二_退出日期", 
             "據點週三_加入日期", "據點週三_退出日期", "環保_加入日期", "環保_退出日期"]
-
 LOG_COLS = ['姓名', '身分證字號', '電話', '志工分類', '動作', '時間', '日期', '活動內容']
-COLS_MASTER = ['姓名', '身分證字號', '性別', '出生年月日', '電話', '地址', '緊急聯絡人', '緊急聯絡電話', '身分_志工', '身分_關懷戶', '身分_據點長輩', '志工分類', '關懷_身分別', '同住_18歲以下', '同住_成人', '同住_65歲以上', '拒絕物資', '人際關係']
 
 @st.cache_resource
-def get_google_sheet_client():
-    return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+def get_supabase_client():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
 
-# 🔥 優化 A：支援動態欄位的 load_data
-@st.cache_data(ttl=60)
-def load_data_from_sheet(sheet_name, target_cols=None):
+# 保留 @st.cache_data(ttl=1) 是為了解決 Streamlit 後續調用 .clear() 會報錯的問題，1 秒過期等同於即時讀取
+@st.cache_data(ttl=1)
+def load_data_from_sheet(sheet_name):
     try:
-        client = get_google_sheet_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        data = sheet.get_all_values()
+        supabase = get_supabase_client()
+        response = supabase.table(sheet_name).select("*").execute()
+        df = pd.DataFrame(response.data)
         
-        t_cols = target_cols if target_cols is not None else (MEM_COLS if sheet_name == 'members' else LOG_COLS)
-        if not data: return pd.DataFrame(columns=t_cols)
+        target_cols = MEM_COLS if sheet_name == 'members' else LOG_COLS
+        if df.empty: 
+            return pd.DataFrame(columns=target_cols)
         
-        headers = data.pop(0)
-        df = pd.DataFrame(data, columns=headers)
-        for c in t_cols: 
+        for c in target_cols: 
             if c not in df.columns: df[c] = ""
         return df
-    except: 
-        t_cols = target_cols if target_cols is not None else (MEM_COLS if sheet_name == 'members' else LOG_COLS)
-        return pd.DataFrame(columns=t_cols)
+    except Exception as e:
+        st.error(f"資料庫讀取失敗：{e}")
+        return pd.DataFrame()
 
-# 🔥 保護核取方塊的 save_data
+# 原本的 save_data_to_sheet 是全表覆蓋，在真實資料庫非常危險。
+# 這裡暫時改成提醒，請直接從 Supabase 後台像 Excel 一樣修改單筆志工資料。
 def save_data_to_sheet(df, sheet_name):
-    try:
-        df_fix = df.fillna("").astype(str)
-        client = get_google_sheet_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.clear()
-        sheet.update([df_fix.columns.values.tolist()] + df_fix.values.tolist(), value_input_option="USER_ENTERED")
-        st.cache_data.clear()
-    except Exception as e: st.error(f"寫入失敗：{e}")
+    st.warning("已切換為 Supabase 資料庫。為確保資料不混亂，請直接登入 Supabase 後台修改志工資料！")
 
 def append_data(sheet_name, row_dict, col_order):
     try:
-        values = [str(row_dict.get(c, "")).strip() for c in col_order]
-        client = get_google_sheet_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.append_row(values, value_input_option="USER_ENTERED")
-        st.cache_data.clear()
+        supabase = get_supabase_client()
+        # 過濾空值，避免文字欄位寫入 'nan'
+        clean_data = {k: str(v).strip() for k, v in row_dict.items() if str(v).strip() and str(v).strip() != 'nan'}
+        supabase.table(sheet_name).insert(clean_data).execute()
+        load_data_from_sheet.clear()
         return True
     except Exception as e:
-        st.error(f"新增失敗：{e}"); return False
+        st.error(f"新增失敗：{e}")
+        return False
 
 def batch_append_data(sheet_name, rows_list, col_order):
     try:
-        values_list = []
+        supabase = get_supabase_client()
+        clean_rows = []
         for r in rows_list:
-            values_list.append([str(r.get(c, "")).strip() for c in col_order])
-        
-        client = get_google_sheet_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        sheet.append_rows(values_list, value_input_option="USER_ENTERED")
-        st.cache_data.clear()
+            clean_rows.append({k: str(v).strip() for k, v in r.items() if str(v).strip() and str(v).strip() != 'nan'})
+        if clean_rows:
+            supabase.table(sheet_name).insert(clean_rows).execute()
+        load_data_from_sheet.clear()
         return True
     except Exception as e:
-        st.error(f"批次失敗：{e}"); return False
-
-def get_tw_time(): return datetime.now(TW_TZ)
+        st.error(f"批次失敗：{e}")
+        return False
 
 def calculate_age(birthday_str):
     try:
