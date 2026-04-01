@@ -2222,7 +2222,7 @@ elif st.session_state.page == 'stats':
                     main_content = f"領取：{row['物資內容']}"
                     badge_style = "background:#E8F5E9; color:#2E7D32; font-weight:bold;"
 
-                note_text = row['訪視紀錄'] if row['訪視紀錄'] and row['訪視紀錄'].strip() != "" else "(本次無詳細文字紀錄)"
+                note_text = str(row['訪視紀錄']).strip() if pd.notna(row['訪視紀錄']) and str(row['訪視紀錄']).strip() != "" else "(本次無詳細文字紀錄)"
 
                 # --- 渲染 HTML 卡片 ---
                 st.markdown(f"""
