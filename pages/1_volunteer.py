@@ -165,7 +165,7 @@ def load_data_from_sheet(sheet_name):
         response = supabase.table(sheet_name).select("*").execute()
         df = pd.DataFrame(response.data)
         
-        target_cols = MEM_COLS if sheet_name == 'members' else LOG_COLS
+        target_cols = LOG_COLS  # members 表已整併至 master_residents
         if df.empty: 
             return pd.DataFrame(columns=target_cols)
         
