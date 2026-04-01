@@ -1438,7 +1438,7 @@ elif st.session_state.page == 'visit':
     
     # [新增] 跨系統載入據點的報到紀錄，以及「目前活躍的據點長輩名單」
     elderly_logs = load_data("elderly_logs", ["姓名", "身分證字號", "日期"]) 
-    active_elders = load_data("elderly_members", ["姓名"]) # 👈 關鍵：抓取還沒被結案的長輩
+    active_elders = load_data("master_residents", ["姓名"]) # 👈 關鍵：抓取還沒被結案的長輩
 
     # =========================================================
     # 🚨 系統自動鉤稽：連續兩次未報到之預警工單
