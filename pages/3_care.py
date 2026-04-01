@@ -417,39 +417,28 @@ def check_conflict(refuse_str, item_name):
     return False, None
 
 # =========================================================
-# 2) 資料邏輯 (優化版)
+# 2) 資料庫核心 (Supabase)
 # =========================================================
-# ... (保留原本的 SHEET_ID 與 COLS 定義) ...
-
 @st.cache_resource
-def get_client(): return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+def get_supabase_client():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
 
-# 優化 A：快取時間延長至 60 秒，減少切換頁面時的卡頓
-@st.cache_data(ttl=60)
-def load_data(sn, target_cols):
+@st.cache_data(ttl=1)
+def load_data(sheet_name, target_cols=None):
     try:
-        client = get_client(); sheet = client.open_by_key(SHEET_ID).worksheet(sn)
-        # 這裡建議用 get_all_values 比較快，再轉 DataFrame
-        data = sheet.get_all_values()
-        if not data: return pd.DataFrame(columns=target_cols)
-        headers = data.pop(0)
-        df = pd.DataFrame(data, columns=headers)
-        # 補齊缺少的欄位
-        for c in target_cols:
-            if c not in df.columns: df[c] = ""
+        supabase = get_supabase_client()
+        response = supabase.table(sheet_name).select("*").execute()
+        df = pd.DataFrame(response.data)
+        if df.empty: return pd.DataFrame(columns=target_cols if target_cols else [])
+        if target_cols:
+            for c in target_cols:
+                if c not in df.columns: df[c] = ""
         return df
-    except: return pd.DataFrame(columns=target_cols)
-
-# 維持原本的 save_data 用於「修改舊資料/編輯整張表」
-def save_data(df, sn):
-    try:
-        df_fix = df.fillna("").replace(['nan', 'NaN', 'nan.0', 'None', '<NA>'], "").astype(str)
-        client = get_client(); sheet = client.open_by_key(SHEET_ID).worksheet(sn)
-        sheet.clear(); sheet.update([df_fix.columns.values.tolist()] + df_fix.values.tolist())
-        st.cache_data.clear()
-        return True
     except Exception as e:
-        st.error(f"寫入失敗：{e}"); return False
+        st.error(f"資料庫讀取失敗：{e}")
+        return pd.DataFrame(columns=target_cols if target_cols else [])
 
 # 🔥 [新增] 卡片式標籤題目 (完全符合草圖需求)
 def ui_card_radio(label, options, key=None, help_text=None, index=None):
@@ -482,26 +471,12 @@ def ui_card_slider(label, min_v, max_v, key=None, help_text=None, annotations=No
     
     return val
 
-# 優化 B：新增「追加模式」函式 (新增資料專用)
-def append_data(sn, row_dict, col_order):
-    """
-    sn: 工作表名稱 (如 'care_logs')
-    row_dict: 要新增的資料字典
-    col_order: 欄位順序列表 (如 COLS_LOG)
-    """
+def append_data(sheet_name, row_dict, col_order=None):
     try:
-        row_values = [str(row_dict.get(c, "")).strip() for c in col_order]
-
-        client = get_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sn)
-
-        sheet.append_row(
-            row_values,
-            value_input_option="USER_ENTERED",
-            insert_data_option="INSERT_ROWS",
-        )
-
-        st.cache_data.clear()
+        supabase = get_supabase_client()
+        clean_data = {k: str(v).strip() for k, v in row_dict.items() if str(v).strip() and str(v).strip() != 'nan'}
+        supabase.table(sheet_name).insert(clean_data).execute()
+        load_data.clear()
         return True
     except Exception as e:
         st.error(f"新增失敗：{e}")
@@ -527,17 +502,16 @@ def calculate_age(dob_str):
         today = date.today(); return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
     except: return 0
 # =========================================================
-# 🌟 主檔 (Master Data) 橋接邏輯
+# 🌟 主檔 (Master Data) 橋接邏輯 (單一真實來源版)
 # =========================================================
 COLS_MASTER = ['姓名', '身分證字號', '性別', '出生年月日', '電話', '地址', '緊急聯絡人', '緊急聯絡電話', '身分_志工', '身分_關懷戶', '身分_據點長輩', '志工分類', '關懷_身分別', '同住_18歲以下', '同住_成人', '同住_65歲以上', '拒絕物資', '人際關係']
 
 def get_care_members():
-    """取代原本的 load_data，改由總表讀取並自動過濾關懷戶"""
-    df = load_data("master_residents", COLS_MASTER)
+    df = load_data("master_residents")
     if df.empty: return pd.DataFrame(columns=COLS_MEM)
+    if '身分_關懷戶' not in df.columns: df['身分_關懷戶'] = ""
     
-    care_df = df[df['身分_關懷戶'] == 'TRUE'].copy()
-    # 將總表欄位名稱映射回舊系統，避免下方幾百行程式碼報錯
+    care_df = df[df['身分_關懷戶'].astype(str).str.upper() == 'TRUE'].copy()
     care_df = care_df.rename(columns={
         '出生年月日': '生日', '關懷_身分別': '身分別', '同住_18歲以下': '18歲以下子女', 
         '同住_成人': '成人數量', '同住_65歲以上': '65歲以上長者'
@@ -547,45 +521,45 @@ def get_care_members():
     return care_df[COLS_MEM]
 
 def update_master_fields(uid, update_dict):
-    """專門用來更新總表特定欄位 (如拒絕物資、人際關係)"""
-    master = load_data("master_residents", COLS_MASTER)
-    if master.empty: return False
-    
-    map_dict = {'生日': '出生年月日', '身分別': '關懷_身分別', '18歲以下子女': '同住_18歲以下', '成人數量': '同住_成人', '65歲以上長者': '同住_65歲以上'}
-    final_update = {map_dict.get(k, k): v for k, v in update_dict.items()}
-
-    idx = master[master['身分證字號'] == uid].index
-    if len(idx) > 0:
-        for k, v in final_update.items():
-            master.at[idx[0], k] = v
-        return save_data(master, "master_residents")
-    return False
+    try:
+        supabase = get_supabase_client()
+        master = load_data("master_residents")
+        existing = master[master['身分證字號'] == uid]
+        if not existing.empty and 'id' in existing.columns:
+            record_id = int(existing.iloc[0]['id'])
+            map_dict = {'生日': '出生年月日', '身分別': '關懷_身分別', '18歲以下子女': '同住_18歲以下', '成人數量': '同住_成人', '65歲以上長者': '同住_65歲以上'}
+            final_update = {map_dict.get(k, k): str(v) for k, v in update_dict.items()}
+            supabase.table("master_residents").update(final_update).eq("id", record_id).execute()
+            load_data.clear()
+            return True
+        return False
+    except: return False
 
 def add_or_update_care_member_to_master(new_data):
-    """新增關懷戶時，自動判定是新人還是舊人"""
-    master = load_data("master_residents", COLS_MASTER)
-    uid = new_data['身分證字號'].upper()
-    
-    # 防呆：如果沒填身分證，自動生成 TEMP 編號
+    uid = new_data.get('身分證字號', '').upper()
     if not uid or uid == 'NAN':
         uid = f"TEMP_{new_data.get('姓名', '').strip()}_{new_data.get('電話', '').strip()}"
         new_data['身分證字號'] = uid
         
     map_dict = {'生日': '出生年月日', '身分別': '關懷_身分別', '18歲以下子女': '同住_18歲以下', '成人數量': '同住_成人', '65歲以上長者': '同住_65歲以上'}
-    master_data = {map_dict.get(k, k): v for k, v in new_data.items()}
+    master_data = {map_dict.get(k, k): str(v) for k, v in new_data.items()}
     master_data['身分_關懷戶'] = 'TRUE'
 
-    if not master.empty and uid in master['身分證字號'].values:
-        # 已在總表 (例如本來是志工)，直接更新資料並打勾
-        idx = master[master['身分證字號'] == uid].index[0]
-        for k, v in master_data.items():
-            master.at[idx, k] = str(v)
-        return save_data(master, "master_residents")
-    else:
-        # 完全的新人
-        for c in COLS_MASTER:
-            if c not in master_data: master_data[c] = "FALSE" if "身分_" in c else ""
-        return append_data("master_residents", master_data, COLS_MASTER)
+    try:
+        supabase = get_supabase_client()
+        existing = supabase.table("master_residents").select("id").eq("身分證字號", uid).execute()
+        if existing.data:
+            record_id = existing.data[0]['id']
+            supabase.table("master_residents").update(master_data).eq("id", record_id).execute()
+        else:
+            for c in COLS_MASTER:
+                if c not in master_data: master_data[c] = "FALSE" if "身分_" in c else ""
+            supabase.table("master_residents").insert(master_data).execute()
+        load_data.clear()
+        return True
+    except Exception as e:
+        st.error(f"寫入失敗：{e}")
+        return False
 
 # =========================================================
 # 3) Navigation
@@ -1292,7 +1266,7 @@ elif st.session_state.page == 'health':
                     for k, v in qol_ans.items():
                         row_data[f"QOL_{k.replace('Q','')}"] = safe_str(v)
                     
-                    if save_data(pd.concat([h_df, pd.DataFrame([row_data])], ignore_index=True), "care_health"): 
+                    if append_data("care_health", row_data, COLS_HEALTH): 
                         st.success("✅ 問卷儲存成功！"); st.rerun()
 
     # === 🔥 修改開始：直接抓取資料表「最下方」的 3 筆 ===
@@ -1441,7 +1415,16 @@ elif st.session_state.page == 'inventory':
 
         with st.expander("🛠️ 進階管理：編輯原始庫存資料 (點擊展開)"):
             ed_i = st.data_editor(inv, use_container_width=True, num_rows="dynamic", key="inv_ed")
-            if st.button("💾 儲存修改內容"): save_data(ed_i, "care_inventory")
+            if st.button("💾 儲存修改內容"):
+                with st.spinner("正在寫入資料庫..."):
+                    supabase = get_supabase_client()
+                    for _, row in ed_i.iterrows():
+                        if 'id' in row and pd.notna(row['id']):
+                            update_data = {k: str(v) for k, v in row.items() if k != 'id' and pd.notna(v)}
+                            supabase.table("care_inventory").update(update_data).eq("id", int(row['id'])).execute()
+                    load_data.clear()
+                    st.success("✅ 庫存修改已儲存")
+                    time.sleep(1); st.rerun()
 
 # --- [插入位置：分頁 4：訪視] ---
 elif st.session_state.page == 'visit':
