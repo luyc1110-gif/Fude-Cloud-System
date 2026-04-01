@@ -441,33 +441,6 @@ if st.session_state.page == 'home':
             </div>
         </div>""", unsafe_allow_html=True)
 
-# --- [分頁 1：名冊 (局部上鎖)] ---
-elif st.session_state.page == 'members':
-    render_nav()
-    st.markdown("## 📋 長輩名冊管理")
-    
-    # 讀取最新名冊
-    df = get_elderly_members()
-    
-    # 🟢 1. 新增功能 (公開，方便填寫)
-    with st.expander("➕ 新增長輩資料 (展開填寫)", expanded=False):
-        with st.form("add_elder"):
-            c1, c2, c3 = st.columns(3)
-            name, pid, gender = c1.text_input("姓名"), c2.text_input("身分證字號"), c3.selectbox("性別", ["男", "女"])
-            c4, c5 = st.columns([1, 2])
-            dob, phone = c4.date_input("出生年月日", value=date(2025, 1, 1), min_value=date(1900, 1, 1)), c5.text_input("電話")
-            addr, note = st.text_input("地址"), st.text_input("備註")
-            if st.form_submit_button("確認新增"):
-                if not pid or not name: st.error("姓名與身分證字號為必填")
-                else:
-                    # 檢查是否重複
-                    if not df.empty and pid.upper() in df['身分證字號'].values:
-                        st.error(f"❌ 身分證字號 {pid} 已存在於名冊中！")
-                    else:
-                        new_row = {"姓名": name, "身分證字號": pid.upper(), "性別": gender, "出生年月日": str(dob), "電話": phone, "地址": addr, "備註": note, "加入日期": str(date.today())}
-                        if add_or_update_elderly_to_master(new_row):
-                            st.success("✅ 已新增！"); time.sleep(1); st.rerun()
-
     # 🔴 2. [新增] 退出/結案功能 (將長輩移出名單)
     with st.expander("📤 長輩退出/結案 (移除名單)", expanded=False):
         st.markdown("""
