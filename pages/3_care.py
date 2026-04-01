@@ -578,7 +578,6 @@ def render_nav():
         if st.session_state.page == 'members':
             st.markdown('<div class="nav-active">📋 名冊管理</div>', unsafe_allow_html=True)
         else:
-            if st.button("📋 名冊管理", key="nav_members", use_container_width=True): st.session_state.page = 'members'; st.rerun()
         if st.session_state.page == 'health':
             st.markdown('<div class="nav-active">🏥 健康追蹤</div>', unsafe_allow_html=True)
         else:
@@ -757,75 +756,6 @@ if st.session_state.page == 'home':
             st.markdown("<br>", unsafe_allow_html=True)
         else:
             st.info("尚無健康評估紀錄，累積資料後系統將自動產出高風險預警。")
-# --- [分頁 1：名冊] ---
-elif st.session_state.page == 'members':
-    render_nav()
-    st.markdown("## 📋 關懷戶名冊管理")
-    df = get_care_members()
-    
-    # === 🔥 修改開始：新增「最新 3 筆」卡片顯示區 ===
-    st.markdown("### 🆕 最新建檔關懷戶")
-    if not df.empty:
-        # 1. 取出最後 3 筆 (假設最新資料在最下面)，並反轉順序讓最新的排第一個
-        recent_mems = df.tail(3).iloc[::-1]
-        
-        cols = st.columns(3)
-        for idx, (i, row) in enumerate(recent_mems.iterrows()):
-            with cols[idx]:
-                # 使用簡單的卡片樣式
-                st.markdown(f"""
-                <div style="
-                    background: white; 
-                    border-radius: 12px; 
-                    padding: 15px; 
-                    border-left: 5px solid #8E9775; 
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                    text-align: center;">
-                    <div style="font-size: 1.2rem; font-weight: 900; color: #333;">{row['姓名']}</div>
-                    <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">
-                        {row.get('性別','')} / {calculate_age(row.get('生日',''))} 歲
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-    else:
-        st.info("尚無名冊資料")
-    st.markdown("---")
-    
-    with st.expander("➕ 新增關懷戶 (展開填寫)", expanded=False):
-        with st.form("add_care", clear_on_submit=True):
-            c1, c2, c3, c4 = st.columns(4)
-            n = c1.text_input("姓名")
-            p = c2.text_input("身分證")
-            g = c3.selectbox("性別", ["男", "女"])
-            b = c4.date_input("生日", value=date(1950, 1, 1), min_value=date(1911, 1, 1), max_value=date(2025, 12, 31))
-            addr = st.text_input("地址")
-            ph = st.text_input("電話")
-            ce1, ce2 = st.columns(2)
-            en = ce1.text_input("緊急聯絡人")
-            ep = ce2.text_input("緊急聯絡電話")
-            cn1, cn2, cn3 = st.columns(3)
-            child = cn1.number_input("18歲以下子女", min_value=0, value=0, step=1)
-            adult = cn2.number_input("成人數量", min_value=0, value=0, step=1)
-            senior = cn3.number_input("65歲以上長者", min_value=0, value=0, step=1)
-            id_t = st.multiselect("身分別", ["低收", "中低收", "中低老人", "身障", "獨居", "獨居有子女", "一般戶"])
-            
-            if st.form_submit_button("確認新增"):
-                is_duplicate = False
-                if not df.empty:
-                    mask = (df['姓名'] == n) & (df['身分證字號'] == p.upper())
-                    if not df[mask].empty: is_duplicate = True
-
-                if is_duplicate: st.error(f"❌ 資料重複！名冊中已有「{n} ({p})」的資料。")
-                elif not n or not p: st.error("❌ 姓名與身分證字號必填")
-                else:
-                    new = {
-                        "姓名": n, "身分證字號": p.upper(), "性別": g, "生日": str(b), 
-                        "地址": addr, "電話": ph, "緊急聯絡人": en, "緊急聯絡電話": ep, 
-                        "身分別": ",".join(id_t),
-                        "18歲以下子女": str(child), "成人數量": str(adult), "65歲以上長者": str(senior)
-                    }
-                    if add_or_update_care_member_to_master(new):
-                        st.success("✅ 已新增！"); time.sleep(1); st.rerun()
 
 # =========================================================
 # 🔥 Page: Health (分頁優化、即時計算、無預設值)
