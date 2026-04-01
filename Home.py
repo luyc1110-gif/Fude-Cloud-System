@@ -391,7 +391,7 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
     r_eld_join = None
     if is_eld:
         st.markdown("#### 長者資料")
-        r_eld_join = st.date_input("長者加入日期", value=date.today(), key="add_eld_join")
+        r_eld_join = st.date_input("長者_加入日期", value=date.today(), key="add_eld_join")
 
     # --- 關懷戶專屬欄位 ---
     r_care_type = ""
@@ -439,7 +439,7 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
                 "據點週三_加入日期":  str(d_wed)   if d_wed   else "",
                 "環保_加入日期":      str(d_eco)   if d_eco   else "",
                 # 長者欄位
-                "長者加入日期":       str(r_eld_join) if r_eld_join else "",
+                "長者_加入日期":       str(r_eld_join) if r_eld_join else "",
                 # 關懷戶欄位
                 "關懷_身分別":   r_care_type,
                 "同住_18歲以下": str(r_u18),
@@ -471,7 +471,7 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
                     if is_eld and str(rec.get("身分_據點長輩","")).upper() != "TRUE":
                         update["身分_據點長輩"] = "TRUE"
                     if is_eld:
-                        update["長者加入日期"] = str(r_eld_join) if r_eld_join else ""
+                        update["長者_加入日期"] = str(r_eld_join) if r_eld_join else ""
 
                     if is_care and str(rec.get("身分_關懷戶","")).upper() != "TRUE":
                         update["身分_關懷戶"] = "TRUE"
