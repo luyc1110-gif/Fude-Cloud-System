@@ -575,9 +575,6 @@ def render_nav():
             st.markdown('<div class="nav-active">📊 關懷概況看板</div>', unsafe_allow_html=True)
         else:
             if st.button("📊 關懷概況看板", key="nav_home", use_container_width=True): st.session_state.page = 'home'; st.rerun()
-        if st.session_state.page == 'members':
-            st.markdown('<div class="nav-active">📋 名冊管理</div>', unsafe_allow_html=True)
-        else:
         if st.session_state.page == 'health':
             st.markdown('<div class="nav-active">🏥 健康追蹤</div>', unsafe_allow_html=True)
         else:
