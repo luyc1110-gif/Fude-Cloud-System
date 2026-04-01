@@ -332,7 +332,7 @@ div[data-testid="stSlider"] {{
 # 2) 資料邏輯 (更新欄位定義)
 # =========================================================
 SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
-COLS_MEM = ["姓名", "身分證字號", "性別", "生日", "地址", "電話", "緊急聯絡人", "緊急聯絡人電話", "身分別", "18歲以下子女", "成人數量", "65歲以上長者", "拒絕物資", "人際關係"] 
+COLS_MEM = ["姓名", "身分證字號", "性別", "生日", "地址", "電話", "緊急聯絡人", "緊急聯絡電話", "身分別", "18歲以下子女", "成人數量", "65歲以上長者", "拒絕物資", "人際關係"] 
 
 # 更新資料定義：包含 Word 檔所有題項
 # =========================================================
@@ -512,6 +512,9 @@ def get_care_members():
     if '身分_關懷戶' not in df.columns: df['身分_關懷戶'] = ""
     
     care_df = df[df['身分_關懷戶'].astype(str).str.upper() == 'TRUE'].copy()
+    # 統一欄位名稱：master用出生年月日，本頁用生日
+    if '出生年月日' in care_df.columns and '生日' not in care_df.columns:
+        care_df = care_df.rename(columns={'出生年月日': '生日'})
     care_df = care_df.rename(columns={
         '出生年月日': '生日', '關懷_身分別': '身分別', '同住_18歲以下': '18歲以下子女', 
         '同住_成人': '成人數量', '同住_65歲以上': '65歲以上長者'
@@ -817,7 +820,7 @@ elif st.session_state.page == 'members':
                 else:
                     new = {
                         "姓名": n, "身分證字號": p.upper(), "性別": g, "生日": str(b), 
-                        "地址": addr, "電話": ph, "緊急聯絡人": en, "緊急聯絡人電話": ep, 
+                        "地址": addr, "電話": ph, "緊急聯絡人": en, "緊急聯絡電話": ep, 
                         "身分別": ",".join(id_t),
                         "18歲以下子女": str(child), "成人數量": str(adult), "65歲以上長者": str(senior)
                     }
@@ -1688,13 +1691,13 @@ elif st.session_state.page == 'visit':
     # 2. 預設名單
     vol_list = ["呂宜政", "預設志工"]
     
-    # 3. 篩選邏輯：志工分類包含 "關懷據點" (涵蓋週二、週三志工)
+    # 3. 篩選：具備志工身分 且 分類包含"關懷據點"
     if not vol_df.empty:
-        # 確保志工分類轉為字串並進行篩選
+        is_vol = vol_df['身分_志工'].astype(str).str.upper() == 'TRUE'
         mask = vol_df['志工分類'].astype(str).str.contains("關懷據點", na=False)
-        target_vols = vol_df[mask]['姓名'].unique().tolist()
+        target_vols = vol_df[is_vol & mask]['姓名'].unique().tolist()
         if target_vols:
-            vol_list = sorted(target_vols) # 排序方便查找
+            vol_list = sorted(target_vols)
     # ------------------------------------
 
     c1, c2 = st.columns(2)
@@ -2261,7 +2264,7 @@ elif st.session_state.page == 'stats':
 <b>🏠 家庭結構明細：</b> 18歲以下 <b>{p_data['18歲以下子女']}</b> 人，成人 <b>{p_data['成人數量']}</b> 人，65歲以上 <b>{p_data['65歲以上長者']}</b> 人
 </div>
 <div style="margin-top: 10px; color: #D32F2F;">
-<b>🚨 緊急聯絡人：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡人電話']})
+<b>🚨 緊急聯絡人：</b> {p_data['緊急聯絡人']} ({p_data['緊急聯絡電話']})
 </div>
 </div>
 """, unsafe_allow_html=True)
