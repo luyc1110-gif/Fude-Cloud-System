@@ -500,3 +500,152 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
 
             except Exception as e:
                 st.error(f"寫入失敗：{e}")
+# =========================================================
+# 5) 整合退出管理功能
+# =========================================================
+with st.expander("📤 退出管理 / 志工・長者・關懷戶", expanded=False):
+    st.markdown("#### 選擇要退出的人員")
+
+    try:
+        supabase = get_supabase_client()
+        res = supabase.table("master_residents").select(
+            "id", "姓名", "身分證字號", "性別", "出生年月日",
+            "電話", "地址", "緊急聯絡人", "緊急聯絡電話",
+            "身分_志工", "身分_據點長輩", "身分_關懷戶",
+            "祥和_加入日期", "祥和_退出日期",
+            "據點週二_加入日期", "據點週二_退出日期",
+            "據點週三_加入日期", "據點週三_退出日期",
+            "環保_加入日期", "環保_退出日期"
+        ).execute()
+        df_all = pd.DataFrame(res.data) if res.data else pd.DataFrame()
+    except Exception as e:
+        st.error(f"讀取資料失敗：{e}")
+        df_all = pd.DataFrame()
+
+    if df_all.empty:
+        st.info("目前無資料")
+    else:
+        exit_type = st.selectbox(
+            "篩選身份",
+            ["志工", "長者", "關懷戶"],
+            key="exit_type"
+        )
+
+        col_map = {
+            "志工":   "身分_志工",
+            "長者":   "身分_據點長輩",
+            "關懷戶": "身分_關懷戶"
+        }
+        target_col = col_map[exit_type]
+
+        active_df = df_all[
+            df_all[target_col].astype(str).str.upper() == 'TRUE'
+        ].copy()
+
+        if active_df.empty:
+            st.info(f"目前沒有在籍的{exit_type}")
+        else:
+            options = [
+                f"{row['姓名']} ({row['身分證字號']})"
+                for _, row in active_df.iterrows()
+            ]
+            selected = st.selectbox(
+                f"選擇要退出的{exit_type}",
+                ["--- 請選擇 ---"] + options,
+                key="exit_target"
+            )
+
+            EXIT_REASONS = ["過世", "搬遷/無法聯繫", "自願退出", "進入長照機構", "其他"]
+            exit_reason = st.selectbox("退出原因", EXIT_REASONS, key="exit_reason")
+
+            # 志工：額外選退出的分類
+            exit_vol_cols = []
+            if exit_type == "志工" and selected != "--- 請選擇 ---":
+                target_pid = selected.split("(")[-1].replace(")", "")
+                vdata = active_df[active_df['身分證字號'] == target_pid].iloc[0]
+                role_map = {
+                    "祥和志工":        "祥和_退出日期",
+                    "關懷據點週二志工": "據點週二_退出日期",
+                    "關懷據點週三志工": "據點週三_退出日期",
+                    "環保志工":        "環保_退出日期",
+                }
+                join_map = {
+                    "祥和志工":        "祥和_加入日期",
+                    "關懷據點週二志工": "據點週二_加入日期",
+                    "關懷據點週三志工": "據點週三_加入日期",
+                    "環保志工":        "環保_加入日期",
+                }
+                st.markdown("##### 退出哪些志工分類？")
+                ev1, ev2 = st.columns(2)
+                for i, (role_name, exit_col) in enumerate(role_map.items()):
+                    join_col = join_map[role_name]
+                    has_joined = str(vdata.get(join_col, "")).strip() not in ("", "nan", "None")
+                    already_exited = str(vdata.get(exit_col, "")).strip() not in ("", "nan", "None")
+                    if has_joined and not already_exited:
+                        col = ev1 if i % 2 == 0 else ev2
+                        if col.checkbox(role_name, key=f"exit_vol_{role_name}"):
+                            exit_vol_cols.append(exit_col)
+
+            st.warning(f"⚠️ 確認後將把此人的「{exit_type}」身份標記為退出，並封存至 residents_archive，過去紀錄不受影響。")
+
+            if st.button("確認退出", key="exit_submit", type="primary"):
+                if selected == "--- 請選擇 ---":
+                    st.error("請先選擇人員")
+                elif exit_type == "志工" and not exit_vol_cols:
+                    st.error("請至少勾選一個要退出的志工分類")
+                else:
+                    target_pid = selected.split("(")[-1].replace(")", "")
+                    target_name = selected.split("(")[0].strip()
+                    rec = active_df[active_df['身分證字號'] == target_pid].iloc[0]
+                    rec_id = int(rec["id"])
+
+                    # 1. 寫入 residents_archive
+                    archive_row = {
+                        "姓名":        target_name,
+                        "身分證字號":   target_pid,
+                        "性別":        str(rec.get("性別", "")),
+                        "出生年月日":   str(rec.get("出生年月日", "")),
+                        "電話":        str(rec.get("電話", "")),
+                        "地址":        str(rec.get("地址", "")),
+                        "緊急聯絡人":   str(rec.get("緊急聯絡人", "")),
+                        "緊急聯絡電話": str(rec.get("緊急聯絡電話", "")),
+                        "退出身份":    exit_type,
+                        "退出原因":    exit_reason,
+                        "退出日期":    str(date.today()),
+                        "備註":        "",
+                    }
+
+                    # 2. 更新 master_residents
+                    update = {target_col: "FALSE"}
+                    if exit_type == "志工":
+                        for exit_col in exit_vol_cols:
+                            update[exit_col] = str(date.today())
+                        # 檢查是否所有分類都已退出，才把身分_志工整個改 FALSE
+                        all_exit_cols = [
+                            "祥和_退出日期", "據點週二_退出日期",
+                            "據點週三_退出日期", "環保_退出日期"
+                        ]
+                        all_join_cols = [
+                            "祥和_加入日期", "據點週二_加入日期",
+                            "據點週三_加入日期", "環保_加入日期"
+                        ]
+                        # 合併本次退出與既有退出日期來判斷
+                        still_active = False
+                        for jc, ec in zip(all_join_cols, all_exit_cols):
+                            joined = str(rec.get(jc, "")).strip() not in ("", "nan", "None")
+                            exited = str(rec.get(ec, "")).strip() not in ("", "nan", "None")
+                            will_exit = ec in exit_vol_cols
+                            if joined and not exited and not will_exit:
+                                still_active = True
+                        if still_active:
+                            # 還有其他分類在籍，不改身分_志工
+                            del update[target_col]
+
+                    try:
+                        supabase.table("residents_archive").insert(archive_row).execute()
+                        supabase.table("master_residents").update(update).eq("id", rec_id).execute()
+                        st.success(f"✅ {target_name} 已退出{exit_type}，原因：{exit_reason}，資料已封存。")
+                        load_dashboard_stats.clear()
+                        import time; time.sleep(1); st.rerun()
+                    except Exception as e:
+                        st.error(f"操作失敗：{e}")
