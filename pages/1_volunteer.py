@@ -206,7 +206,9 @@ def batch_append_data(sheet_name, rows_list, col_order):
     except Exception as e:
         st.error(f"批次失敗：{e}")
         return False
-
+        
+def get_tw_time(): return datetime.now(TW_TZ)
+    
 def calculate_age(birthday_str):
     try:
         b_date = datetime.strptime(str(birthday_str).strip(), "%Y-%m-%d")
@@ -327,69 +329,6 @@ def add_or_update_volunteer_to_master(new_data):
     except Exception as e:
         st.error(f"資料庫寫入失敗：{e}")
         return False
-
-# =========================================================
-# 🔄 同步功能：將志工時數同步到 App_Users
-# =========================================================
-def sync_to_app_users():
-    try:
-        members = get_volunteer_members()
-        logs = load_data_from_sheet("logs")
-        
-        if members.empty:
-            st.warning("名冊空白，無法同步")
-            return
-
-        client = get_google_sheet_client()
-        try:
-            sh = client.open_by_key(SHEET_ID)
-            ws = sh.worksheet("App_Users")
-        except:
-            st.error("找不到 'App_Users' 分頁，請先在 Google Sheet 建立！")
-            return
-
-        current_app_data = ws.get_all_records()
-        df_app = pd.DataFrame(current_app_data)
-        
-        points_map = {}
-        if not df_app.empty and '手機' in df_app.columns:
-            df_app['手機'] = df_app['手機'].astype(str).str.replace(".0", "", regex=False)
-            for _, row in df_app.iterrows():
-                phone_key = str(row['手機']).strip()
-                points_map[phone_key] = {'環保': row.get('環保點數', 0), '樂活': row.get('樂活點數', 0)}
-
-        final_rows = []
-        progress_bar = st.progress(0)
-        
-        for idx, row in members.iterrows():
-            name = row['姓名']
-            pid = row['身分證字號']
-            raw_phone = str(row['電話']).strip()
-            
-            phone = raw_phone.replace("-", "").replace(" ", "")
-            if not phone: continue
-            
-            person_logs = logs[logs['身分證字號'] == pid] if '身分證字號' in logs.columns else logs[logs['姓名'] == name]
-            total_sec = calculate_coverage_seconds(person_logs)
-            total_hours = round(total_sec / 3600, 1)
-            
-            badge = "🌱 新手志工"
-            if total_hours >= 100: badge = "🥇 金牌志工"
-            elif total_hours >= 50: badge = "🥈 銀牌志工"
-            elif total_hours >= 20: badge = "🥉 銅牌志工"
-            
-            pwd = pid[-4:] if len(pid) >= 4 else "0000"
-            saved_points = points_map.get(phone, {'環保': 0, '樂活': 0})
-            
-            final_rows.append([phone, pwd, name, saved_points['環保'], saved_points['樂活'], total_hours, badge])
-            progress_bar.progress((idx + 1) / len(members))
-
-        ws.clear()
-        ws.update([["手機", "密碼", "姓名", "環保點數", "樂活點數", "志工時數", "志工等級"]] + final_rows, value_input_option="USER_ENTERED")
-        st.success(f"✅ 同步完成！已更新 {len(final_rows)} 筆資料到 App。")
-        
-    except Exception as e:
-        st.error(f"同步失敗：{e}")
 
 # =========================================================
 # 3) Navigation
@@ -914,4 +853,4 @@ elif st.session_state.page == 'report':
                     """, unsafe_allow_html=True)
 
         if st.button("🔄 同步資料到 App"):
-            sync_to_app_users()
+            st.warning("🚧 App 尚未搬遷至 Supabase，此功能暫時關閉。")
