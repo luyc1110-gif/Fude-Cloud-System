@@ -450,11 +450,11 @@ if st.session_state.page == 'home':
         </div>
         """, unsafe_allow_html=True)
 
-        if df.empty:
+        if members.empty:
             st.info("目前無長輩資料可供操作。")
         else:
             # 製作選單
-            member_options_exit = [f"{row.姓名} ({row.身分證字號})" for idx, row in enumerate(df.itertuples(index=False))]
+            member_options_exit = [f"{row.姓名} ({row.身分證字號})" for idx, row in enumerate(members.itertuples(index=False))]
             c_sel, c_reason = st.columns([1, 1])
             with c_sel:
                 target_exit = st.selectbox("選擇退出長輩", ["--- 請選擇 ---"] + member_options_exit)
