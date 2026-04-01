@@ -278,68 +278,55 @@ def get_present_volunteers(logs_df):
     return present[['姓名', '時間', '活動內容']]
 
 # =========================================================
-# 🌟 主檔橋接核心 (專為志工系統打造的主從合併邏輯)
+# 🌟 主檔橋接核心 (單一資料表 master_residents 完美版)
 # =========================================================
 def get_volunteer_members():
-    """從主檔讀取基本資料，並跟舊 members 檔的退出日期合併"""
-    master = load_data_from_sheet("master_residents", COLS_MASTER)
-    vol_ext = load_data_from_sheet("members", MEM_COLS)
-    
+    """直接從 master_residents 抓取具備志工身分的人"""
+    master = load_data_from_sheet("master_residents")
     if master.empty: return pd.DataFrame(columns=MEM_COLS)
     
-    # 只抓取具備志工身分的人
-    vol_master = master[master['身分_志工'] == 'TRUE'].copy()
+    # 確保所有需要的欄位都存在，避免報錯
+    for c in MEM_COLS + ["身分_志工", "出生年月日"]:
+        if c not in master.columns: master[c] = ""
+        
+    # 篩選出具備「志工」身分的人 (相容 'TRUE', 'true')
+    vol_master = master[master['身分_志工'].astype(str).str.upper() == 'TRUE'].copy()
+    
+    # 為了相容舊版介面，把 出生年月日 換名為 生日
     vol_master = vol_master.rename(columns={'出生年月日': '生日'})
     
-    if not vol_ext.empty:
-        # 提取專屬的加入退出日期
-        ext_cols = ['身分證字號', '備註', '祥和_加入日期', '祥和_退出日期', '據點週二_加入日期', '據點週二_退出日期', '據點週三_加入日期', '據點週三_退出日期', '環保_加入日期', '環保_退出日期']
-        ext_cols = [c for c in ext_cols if c in vol_ext.columns]
-        vol_ext_mini = vol_ext[ext_cols].drop_duplicates(subset=['身分證字號'])
-        merged = pd.merge(vol_master, vol_ext_mini, on='身分證字號', how='left')
-    else:
-        merged = vol_master
-        
-    for c in MEM_COLS:
-        if c not in merged.columns: merged[c] = ""
-        
-    return merged[MEM_COLS]
+    return vol_master
 
 def add_or_update_volunteer_to_master(new_data):
-    master = load_data_from_sheet("master_residents", COLS_MASTER)
+    """直接在 master_residents 進行新增或更新"""
     uid = new_data.get('身分證字號', '').upper()
-    
     if not uid or uid == 'NAN':
         uid = f"TEMP_{new_data.get('姓名', '').strip()}_{new_data.get('電話', '').strip()}"
         new_data['身分證字號'] = uid
         
-    # 1. 寫入主檔
-    master_data = {
-        '姓名': new_data['姓名'], '身分證字號': uid, '性別': new_data.get('性別',''),
-        '出生年月日': new_data.get('生日',''), '電話': new_data.get('電話',''),
-        '地址': new_data.get('地址',''), '志工分類': new_data.get('志工分類','')
-    }
-    master_data['身分_志工'] = 'TRUE'
-
-    if not master.empty and uid in master['身分證字號'].values:
-        idx = master[master['身分證字號'] == uid].index[0]
-        for k, v in master_data.items(): master.at[idx, k] = str(v)
-        save_data_to_sheet(master, "master_residents")
-    else:
-        for c in COLS_MASTER:
-            if c not in master_data: master_data[c] = "FALSE" if "身分_" in c else ""
-        append_data("master_residents", master_data, COLS_MASTER)
+    # 確保標記身分為志工，並處理生日欄位名稱
+    new_data['身分_志工'] = 'TRUE'
+    if '生日' in new_data:
+        new_data['出生年月日'] = new_data.pop('生日')
         
-    # 2. 寫入志工延伸檔 (保留加入與退出日期)
-    vol_ext = load_data_from_sheet("members", MEM_COLS)
-    if not vol_ext.empty and uid in vol_ext['身分證字號'].values:
-        idx = vol_ext[vol_ext['身分證字號'] == uid].index[0]
-        for k, v in new_data.items(): vol_ext.at[idx, k] = str(v)
-        save_data_to_sheet(vol_ext, "members")
-    else:
-        append_data("members", new_data, MEM_COLS)
+    try:
+        supabase = get_supabase_client()
+        # 檢查資料庫是否已有此人
+        existing = supabase.table("master_residents").select("id").eq("身分證字號", uid).execute()
         
-    return True
+        if existing.data:
+            # 已存在 -> 用 id 進行 Update
+            record_id = existing.data[0]['id']
+            supabase.table("master_residents").update(new_data).eq("id", record_id).execute()
+        else:
+            # 不存在 -> 直接 Insert
+            supabase.table("master_residents").insert(new_data).execute()
+            
+        load_data_from_sheet.clear()
+        return True
+    except Exception as e:
+        st.error(f"資料庫寫入失敗：{e}")
+        return False
 
 # =========================================================
 # 🔄 同步功能：將志工時數同步到 App_Users
@@ -776,35 +763,35 @@ elif st.session_state.page == 'members':
                 key="editor_all"
             )
             
-            if st.button("💾 儲存修改 (同步至主檔與志工表)", type="primary"):
-                with st.spinner("同步寫入雙資料庫中..."):
-                    master = load_data_from_sheet("master_residents", COLS_MASTER)
-                    vols = load_data_from_sheet("members", MEM_COLS)
+            if st.button("💾 儲存修改 (寫入主檔)", type="primary"):
+                with st.spinner("正在將修改寫入資料庫..."):
+                    supabase = get_supabase_client()
+                    master = load_data_from_sheet("master_residents")
                     
-                    # 雙向同步更新
                     for _, row in ed_df.iterrows():
                         uid = row['身分證字號']
                         if not uid: continue
                         
-                        # 1. 更新主檔 (基本資料)
-                        if uid in master['身分證字號'].values:
-                            idx_m = master[master['身分證字號'] == uid].index[0]
-                            master.at[idx_m, '電話'] = str(row['電話'])
-                            master.at[idx_m, '地址'] = str(row['地址'])
-                            master.at[idx_m, '志工分類'] = str(row['志工分類'])
+                        # 找出原本在資料庫裡面的 id
+                        existing = master[master['身分證字號'] == uid]
+                        if not existing.empty and 'id' in existing.columns:
+                            record_id = int(existing.iloc[0]['id'])
                             
-                        # 2. 更新志工附屬表 (日期與備註)
-                        if uid in vols['身分證字號'].values:
-                            idx_v = vols[vols['身分證字號'] == uid].index[0]
+                            # 整理要更新的資料字典
+                            update_payload = {}
                             for c in edit_cols:
-                                if c in vols.columns and c not in ['身分證字號', '狀態']:
-                                    vols.at[idx_v, c] = str(row[c])
+                                if c in row and c not in ['身分證字號', '狀態']: 
+                                    # 處理生日欄位對應
+                                    if c == '生日':
+                                        update_payload['出生年月日'] = str(row[c])
+                                    else:
+                                        update_payload[c] = str(row[c])
+                                        
+                            # 執行 Supabase 精準更新
+                            supabase.table("master_residents").update(update_payload).eq("id", record_id).execute()
                     
-                    # 寫回 Google Sheets
-                    save_data_to_sheet(master, "master_residents")
-                    save_data_to_sheet(vols, "members")
-                    
-                    st.success("✅ 修改已完整儲存至雙系統！")
+                    load_data_from_sheet.clear()
+                    st.success("✅ 修改已完整儲存至主檔！")
                     time.sleep(1); st.rerun()
             with tab_retired:
                 retired_df = df[df['狀態'] == '已退隊']
