@@ -1682,7 +1682,8 @@ elif st.session_state.page == 'visit':
     
     # --- [新增程式碼] 鉤稽志工系統名單 ---
     # 1. 讀取志工名冊 (共用同一個 Spreadsheet，分頁名稱為 'members')
-    vol_df = load_data("members", ["姓名", "志工分類"])
+    vol_df = load_data("master_residents", ["姓名", "志工分類", "身分_志工"])
+    vol_df = vol_df[vol_df['身分_志工'].astype(str).str.upper() == 'TRUE']
     
     # 2. 預設名單
     vol_list = ["呂宜政", "預設志工"]
