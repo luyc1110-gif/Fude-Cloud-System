@@ -224,7 +224,7 @@ def load_data(sheet_name, target_cols=None):
         response = supabase.table(sheet_name).select("*").execute()
         df = pd.DataFrame(response.data)
         
-        t_cols = target_cols if target_cols is not None else (M_COLS if sheet_name == 'elderly_members' else L_COLS)
+        t_cols = target_cols if target_cols is not None else (M_COLS if sheet_name == 'master_residents' else L_COLS)
         if df.empty: return pd.DataFrame(columns=t_cols)
         
         for c in t_cols:
@@ -232,7 +232,7 @@ def load_data(sheet_name, target_cols=None):
         return df
     except Exception as e:
         st.error(f"資料庫讀取失敗：{e}")
-        t_cols = target_cols if target_cols is not None else (M_COLS if sheet_name == 'elderly_members' else L_COLS)
+        t_cols = target_cols if target_cols is not None else (M_COLS if sheet_name == 'master_residents' else L_COLS)
         return pd.DataFrame(columns=t_cols)
 
 def append_data(sheet_name, row_dict, col_order=None):
