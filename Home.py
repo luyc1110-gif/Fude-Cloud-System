@@ -334,3 +334,169 @@ for svc in services:
 </div>
 </div>
 """, unsafe_allow_html=True)
+# =========================================================
+# 4) 整合新增居民功能
+# =========================================================
+with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=False):
+    st.markdown("#### 基本資料")
+    c1, c2, c3 = st.columns(3)
+    r_name   = c1.text_input("姓名", key="add_name")
+    r_pid    = c2.text_input("身分證字號", key="add_pid")
+    r_gender = c3.selectbox("性別", ["男", "女"], key="add_gender")
+
+    c4, c5, c6 = st.columns(3)
+    r_dob   = c4.date_input("出生年月日", value=date(1950, 1, 1),
+                             min_value=date(1900, 1, 1), key="add_dob")
+    r_phone = c5.text_input("電話", key="add_phone")
+    r_addr  = c6.text_input("地址", key="add_addr")
+
+    c7, c8 = st.columns(2)
+    r_ec_name  = c7.text_input("緊急聯絡人", key="add_ec_name")
+    r_ec_phone = c8.text_input("緊急聯絡電話", key="add_ec_phone")
+
+    st.markdown("#### 身份選擇（可複選）")
+    ci1, ci2, ci3 = st.columns(3)
+    is_vol  = ci1.checkbox("💜 志工", key="add_is_vol")
+    is_eld  = ci2.checkbox("👴 長者", key="add_is_eld")
+    is_care = ci3.checkbox("🏠 關懷戶", key="add_is_care")
+
+    # --- 志工專屬欄位 ---
+    vol_cats = []
+    d_xiang  = d_tue = d_wed = d_eco = None
+
+    if is_vol:
+        st.markdown("#### 志工資料")
+        st.caption("勾選參與的分類，並填入加入日期")
+        vc1, vc2 = st.columns(2)
+        is_xiang = vc1.checkbox("祥和志工",       key="add_xiang")
+        is_tue   = vc1.checkbox("關懷據點週二志工", key="add_tue")
+        is_wed   = vc2.checkbox("關懷據點週三志工", key="add_wed")
+        is_eco   = vc2.checkbox("環保志工",        key="add_eco")
+
+        if is_xiang:
+            d_xiang = st.date_input("祥和 加入日期",       value=date.today(), key="add_d_xiang")
+        if is_tue:
+            d_tue   = st.date_input("據點週二 加入日期",   value=date.today(), key="add_d_tue")
+        if is_wed:
+            d_wed   = st.date_input("據點週三 加入日期",   value=date.today(), key="add_d_wed")
+        if is_eco:
+            d_eco   = st.date_input("環保 加入日期",       value=date.today(), key="add_d_eco")
+
+        if is_xiang: vol_cats.append("祥和志工")
+        if is_tue:   vol_cats.append("關懷據點週二志工")
+        if is_wed:   vol_cats.append("關懷據點週三志工")
+        if is_eco:   vol_cats.append("環保志工")
+
+    # --- 長者專屬欄位 ---
+    r_eld_join = None
+    if is_eld:
+        st.markdown("#### 長者資料")
+        r_eld_join = st.date_input("長者加入日期", value=date.today(), key="add_eld_join")
+
+    # --- 關懷戶專屬欄位 ---
+    r_care_type = ""
+    r_u18 = r_adult = r_o65 = 0
+    r_reject = ""
+    if is_care:
+        st.markdown("#### 關懷戶資料")
+        CARE_TYPES = ["低收入戶", "中低收入戶", "獨居老人", "身心障礙", "特殊境遇家庭", "其他"]
+        r_care_type = st.selectbox("關懷身分別", CARE_TYPES, key="add_care_type")
+        cc1, cc2, cc3 = st.columns(3)
+        r_u18   = cc1.number_input("同住 18歲以下", min_value=0, step=1, key="add_u18")
+        r_adult = cc2.number_input("同住成人數",    min_value=0, step=1, key="add_adult")
+        r_o65   = cc3.number_input("同住 65歲以上", min_value=0, step=1, key="add_o65")
+        r_reject = st.text_input("拒絕物資（如有）", key="add_reject")
+
+    st.markdown("")
+    if st.button("✅ 確認新增", key="add_submit", use_container_width=True):
+        # --- 驗證 ---
+        if not r_name.strip():
+            st.error("請填寫姓名")
+        elif not r_pid.strip():
+            st.error("請填寫身分證字號")
+        elif not is_vol and not is_eld and not is_care:
+            st.error("請至少勾選一種身份")
+        elif is_vol and not vol_cats:
+            st.error("勾選志工後，請至少選擇一種志工分類")
+        else:
+            uid = r_pid.strip().upper()
+            payload = {
+                "姓名":         r_name.strip(),
+                "身分證字號":    uid,
+                "性別":         r_gender,
+                "出生年月日":    str(r_dob),
+                "電話":         r_phone.strip(),
+                "地址":         r_addr.strip(),
+                "緊急聯絡人":    r_ec_name.strip(),
+                "緊急聯絡電話":  r_ec_phone.strip(),
+                "身分_志工":     "TRUE" if is_vol  else "FALSE",
+                "身分_據點長輩": "TRUE" if is_eld  else "FALSE",
+                "身分_關懷戶":   "TRUE" if is_care else "FALSE",
+                # 志工欄位
+                "志工分類":          ",".join(vol_cats),
+                "祥和_加入日期":      str(d_xiang) if d_xiang else "",
+                "據點週二_加入日期":  str(d_tue)   if d_tue   else "",
+                "據點週三_加入日期":  str(d_wed)   if d_wed   else "",
+                "環保_加入日期":      str(d_eco)   if d_eco   else "",
+                # 長者欄位
+                "長者加入日期":       str(r_eld_join) if r_eld_join else "",
+                # 關懷戶欄位
+                "關懷_身分別":   r_care_type,
+                "同住_18歲以下": str(r_u18),
+                "同住_成人":     str(r_adult),
+                "同住_65歲以上": str(r_o65),
+                "拒絕物資":      r_reject.strip(),
+                "人際關係":      "",
+            }
+            try:
+                supabase = get_supabase_client()
+                existing = supabase.table("master_residents").select(
+                    "id", "身分_志工", "身分_據點長輩", "身分_關懷戶"
+                ).eq("身分證字號", uid).execute()
+
+                if existing.data:
+                    # 已存在：疊加身份與對應欄位，不覆蓋舊資料
+                    rec = existing.data[0]
+                    update = {}
+
+                    if is_vol and str(rec.get("身分_志工","")).upper() != "TRUE":
+                        update["身分_志工"] = "TRUE"
+                    if is_vol:
+                        update["志工分類"]         = ",".join(vol_cats)
+                        update["祥和_加入日期"]     = str(d_xiang) if d_xiang else ""
+                        update["據點週二_加入日期"] = str(d_tue)   if d_tue   else ""
+                        update["據點週三_加入日期"] = str(d_wed)   if d_wed   else ""
+                        update["環保_加入日期"]     = str(d_eco)   if d_eco   else ""
+
+                    if is_eld and str(rec.get("身分_據點長輩","")).upper() != "TRUE":
+                        update["身分_據點長輩"] = "TRUE"
+                    if is_eld:
+                        update["長者加入日期"] = str(r_eld_join) if r_eld_join else ""
+
+                    if is_care and str(rec.get("身分_關懷戶","")).upper() != "TRUE":
+                        update["身分_關懷戶"] = "TRUE"
+                    if is_care:
+                        update["關懷_身分別"]   = r_care_type
+                        update["同住_18歲以下"] = str(r_u18)
+                        update["同住_成人"]     = str(r_adult)
+                        update["同住_65歲以上"] = str(r_o65)
+                        update["拒絕物資"]      = r_reject.strip()
+
+                    if update:
+                        supabase.table("master_residents").update(update).eq("id", rec["id"]).execute()
+                        st.success(f"✅ {r_name} 已存在，已更新身份與資料")
+                    else:
+                        st.info(f"ℹ️ {r_name} 已存在且身份相同，無需更新")
+                else:
+                    supabase.table("master_residents").insert(payload).execute()
+                    label = " / ".join(filter(None, [
+                        "志工" if is_vol else "",
+                        "長者" if is_eld else "",
+                        "關懷戶" if is_care else ""
+                    ]))
+                    st.success(f"✅ {r_name} 新增成功！身份：{label}")
+
+                load_dashboard_stats.clear()
+
+            except Exception as e:
+                st.error(f"寫入失敗：{e}")
