@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date, timedelta, timezone
-import gspread
+from supabase import create_client, Client
 import time
 import os
 import plotly.express as px
