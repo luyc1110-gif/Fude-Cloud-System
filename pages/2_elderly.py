@@ -445,7 +445,7 @@ if st.session_state.page == 'home':
     with st.expander("📤 長輩退出/結案 (移除名單)", expanded=False):
         st.markdown("""
         <div style="background-color:#FFF3E0; padding:10px; border-radius:10px; border-left:5px solid #FF9800; margin-bottom:10px;">
-        ⚠️ <b>注意：</b> 此操作會將長輩從「服務中名單」移除，並存入「elderly_archive」封存表中。<br>
+        ⚠️ <b>注意：</b> 此操作會將長輩從「服務中名單」移除，並封存至 residents_archive。<br>
         過去的服務紀錄與血壓數據<b>不會</b>消失，但該長輩將無法再進行報到。
         </div>
         """, unsafe_allow_html=True)
@@ -453,40 +453,51 @@ if st.session_state.page == 'home':
         if members.empty:
             st.info("目前無長輩資料可供操作。")
         else:
-            # 製作選單
-            member_options_exit = [f"{row.姓名} ({row.身分證字號})" for idx, row in enumerate(members.itertuples(index=False))]
+            member_options_exit = [
+                f"{row.姓名} ({row.身分證字號})"
+                for row in members.itertuples(index=False)
+            ]
             c_sel, c_reason = st.columns([1, 1])
             with c_sel:
                 target_exit = st.selectbox("選擇退出長輩", ["--- 請選擇 ---"] + member_options_exit)
             with c_reason:
                 exit_reason = st.selectbox("退出/結案原因", ["過世", "搬遷/無法聯繫", "自願退出", "進入長照機構", "其他"])
-            
-            # 確認按鈕
-            if st.button("確認執行封存 (無法復原)", type="primary"):
+
+            if st.button("確認執行退出 (無法復原)", type="primary"):
                 if target_exit == "--- 請選擇 ---":
                     st.error("請先選擇長輩！")
                 else:
-                    # 1. 抓出該長輩資料
                     target_pid = target_exit.split("(")[-1].replace(")", "")
-                    target_row = df[df['身分證字號'] == target_pid].iloc[0].to_dict()
-                    
-                    # 2. 加上退出資訊
-                    target_row["退出日期"] = str(date.today())
-                    target_row["退出原因"] = exit_reason
-                    
-                    # 3. 定義封存的欄位順序 (包含原欄位 + 新增欄位)
-                    ARCHIVE_COLS = M_COLS + ["退出日期", "退出原因"]
-                    
-                    # 4. 寫入 Archive 表
-                    if append_data("elderly_archive", target_row, ARCHIVE_COLS):
-                        # 5. 從原表中刪除 (透過篩選掉該身分證號)
-                        if archive_elderly_in_master(target_pid, exit_reason):
-                            st.success("✅ 已結案！並同步更新至全社區主檔。")
-                            time.sleep(1); st.rerun()
-                        else:
-                            st.error("寫入封存成功，但刪除舊資料失敗，請聯繫管理員。")
-                    else:
-                        st.error("寫入封存失敗，請檢查 Google Sheet 是否有建立 'elderly_archive' 分頁。")
+                    rec = members[members['身分證字號'] == target_pid].iloc[0]
+
+                    # 1. 寫入共用封存表
+                    archive_row = {
+                        "姓名":        str(rec.get("姓名", "")),
+                        "身分證字號":   target_pid,
+                        "性別":        str(rec.get("性別", "")),
+                        "出生年月日":   str(rec.get("出生年月日", "")),
+                        "電話":        str(rec.get("電話", "")),
+                        "地址":        str(rec.get("地址", "")),
+                        "緊急聯絡人":   str(rec.get("緊急聯絡人", "")),
+                        "緊急聯絡電話": str(rec.get("緊急聯絡電話", "")),
+                        "退出身份":    "長者",
+                        "退出原因":    exit_reason,
+                        "退出日期":    str(date.today()),
+                        "備註":        "",
+                    }
+
+                    # 2. 更新 master_residents
+                    try:
+                        supabase = get_supabase_client()
+                        supabase.table("residents_archive").insert(archive_row).execute()
+                        supabase.table("master_residents").update(
+                            {"身分_據點長輩": "FALSE"}
+                        ).eq("身分證字號", target_pid).execute()
+                        load_data.clear()
+                        st.success("✅ 已結案並封存至 residents_archive！")
+                        import time; time.sleep(1); st.rerun()
+                    except Exception as e:
+                        st.error(f"操作失敗：{e}")
 
 # --- [分頁 2：據點報到 (完全公開)] ---
 elif st.session_state.page == 'checkin':
