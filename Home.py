@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date, timedelta
-import gspread
+from supabase import create_client, Client
 import os
 import base64
 
@@ -124,13 +124,13 @@ section[data-testid="stSidebar"] button:hover {
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2) 邏輯處理：資料讀取與計算
+# 2) 邏輯處理：資料庫讀取與計算 (Supabase 版)
 # =========================================================
-SHEET_ID = "1A3-VwCBYjnWdcEiL6VwbV5-UECcgX7TqKH94sKe8P90"
-
 @st.cache_resource
-def get_client():
-    return gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+def get_supabase_client():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
 
 def calculate_age(dob_str):
     try:
@@ -139,42 +139,28 @@ def calculate_age(dob_str):
         return today.year - b_date.year - ((today.month, today.day) < (b_date.month, b_date.day))
     except: return 0
 
-# 🔥 新增：檢查是否已完全退役的函數
 def check_is_fully_retired(row):
-    """
-    邏輯：
-    1. 檢查四個組別 (祥和, 週二, 週三, 環保)
-    2. 如果有加入日期，但沒有退出日期，視為 Active (在職)
-    3. 如果完全沒填加入日期，視為 Active (可能是新人)
-    4. 只有當「所有曾加入的組別」都填了「退出日期」，才視為 Retired (退役)
-    """
     roles = [
         ('祥和_加入日期', '祥和_退出日期'), 
         ('據點週二_加入日期', '據點週二_退出日期'), 
         ('據點週三_加入日期', '據點週三_退出日期'), 
         ('環保_加入日期', '環保_退出日期')
     ]
-    has_any = False # 是否有參加過任何一組
-    is_active = False # 是否目前仍在職
+    has_any = False 
+    is_active = False 
     
     for join_col, exit_col in roles:
-        # 使用 .get 避免欄位不存在報錯
         join_val = str(row.get(join_col, '')).strip()
-        if join_val:
+        if join_val and join_val != 'nan':
             has_any = True
             exit_val = str(row.get(exit_col, '')).strip()
-            # 有加入且沒退出 -> Active
-            if not exit_val: 
+            if not exit_val or exit_val == 'nan': 
                 is_active = True
     
-    # 如果完全沒參加過 (或是資料空白)，預設為 Active
     if not has_any: return False 
-    
-    # 如果有參加過，且 is_active 仍為 False (代表所有參加的都退了) -> Retired
     return not is_active
 
 def calculate_year_hours(logs_df):
-    """計算當年度志工總時數"""
     try:
         cur_year = datetime.now().year
         logs_df['dt'] = pd.to_datetime(logs_df['日期'] + ' ' + logs_df['時間'], errors='coerce')
@@ -198,11 +184,8 @@ def calculate_year_hours(logs_df):
         return int(total_seconds // 3600)
     except: return 0
 
-@st.cache_data(ttl=60) # 緩存 60 秒
+@st.cache_data(ttl=60)
 def load_dashboard_stats():
-    client = get_client()
-    sh = client.open_by_key(SHEET_ID)
-    
     stats = {
         "vol_count": 0, "vol_age": 0, "vol_hours": 0,
         "eld_count": 0, "eld_age": 0,
@@ -210,40 +193,45 @@ def load_dashboard_stats():
     }
     
     try:
-        # 1. 志工數據
-        df_v = pd.DataFrame(sh.worksheet("members").get_all_records()).astype(str)
-        df_vl = pd.DataFrame(sh.worksheet("logs").get_all_records()).astype(str)
+        supabase = get_supabase_client()
         
-        if not df_v.empty:
-            # 🔥 關鍵修改：過濾掉已退役的志工
-            # apply(axis=1) 會對每一列執行 check_is_fully_retired
-            # 我們保留那些 return False (即 check_is_fully_retired 為假，代表還在職) 的人
-            active_volunteers = df_v[~df_v.apply(check_is_fully_retired, axis=1)]
+        # 1. 抓取主檔
+        res_master = supabase.table("master_residents").select("*").execute()
+        df_m = pd.DataFrame(res_master.data) if res_master.data else pd.DataFrame()
+        
+        # 2. 抓取志工打卡
+        res_vl = supabase.table("logs").select("*").execute()
+        df_vl = pd.DataFrame(res_vl.data) if res_vl.data else pd.DataFrame()
+        
+        # 3. 抓取關懷戶發放紀錄
+        res_cl = supabase.table("care_logs").select("*").execute()
+        df_cl = pd.DataFrame(res_cl.data) if res_cl.data else pd.DataFrame()
+        
+        if not df_m.empty:
+            df_m['age'] = df_m['出生年月日'].apply(calculate_age)
             
-            stats["vol_count"] = len(active_volunteers)
-            
-            # 計算平均年齡 (只算在職的)
-            active_volunteers['age'] = active_volunteers['生日'].apply(calculate_age)
-            valid_ages = active_volunteers[active_volunteers['age'] > 0]['age']
-            stats["vol_age"] = round(valid_ages.mean(), 1) if not valid_ages.empty else 0
-            
+            # --- 志工數據 ---
+            df_v = df_m[df_m['身分_志工'].astype(str).str.upper() == 'TRUE']
+            if not df_v.empty:
+                active_volunteers = df_v[~df_v.apply(check_is_fully_retired, axis=1)]
+                stats["vol_count"] = len(active_volunteers)
+                valid_ages = active_volunteers[active_volunteers['age'] > 0]['age']
+                stats["vol_age"] = round(valid_ages.mean(), 1) if not valid_ages.empty else 0
+                
+            # --- 長輩數據 ---
+            df_e = df_m[df_m['身分_據點長輩'].astype(str).str.upper() == 'TRUE']
+            if not df_e.empty:
+                stats["eld_count"] = len(df_e)
+                valid_ages = df_e[df_e['age'] > 0]['age']
+                stats["eld_age"] = round(valid_ages.mean(), 1) if not valid_ages.empty else 0
+
+            # --- 關懷戶數據 ---
+            df_c = df_m[df_m['身分_關懷戶'].astype(str).str.upper() == 'TRUE']
+            if not df_c.empty:
+                stats["care_count"] = len(df_c)
+                
         if not df_vl.empty:
             stats["vol_hours"] = calculate_year_hours(df_vl)
-
-        # 2. 長輩數據
-        df_e = pd.DataFrame(sh.worksheet("elderly_members").get_all_records()).astype(str)
-        if not df_e.empty:
-            stats["eld_count"] = len(df_e)
-            df_e['age'] = df_e['出生年月日'].apply(calculate_age)
-            valid_ages = df_e[df_e['age'] > 0]['age']
-            stats["eld_age"] = round(valid_ages.mean(), 1) if not valid_ages.empty else 0
-
-        # 3. 關懷戶數據
-        df_c = pd.DataFrame(sh.worksheet("care_members").get_all_records()).astype(str)
-        df_cl = pd.DataFrame(sh.worksheet("care_logs").get_all_records()).astype(str)
-        
-        if not df_c.empty:
-            stats["care_count"] = len(df_c)
             
         if not df_cl.empty:
             cur_year = datetime.now().year
@@ -273,7 +261,7 @@ with st.sidebar:
     if st.button("👴 進入 長輩關懷系統"): st.switch_page("pages/2_elderly.py")
     if st.button("🏠 進入 關懷戶系統"): st.switch_page("pages/3_care.py")
     st.markdown("---")
-    st.markdown("<div style='text-align:center; color:#999; font-size:0.8rem; margin-top:20px;'>福德里辦公處 © 2025</div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center; color:#999; font-size:0.8rem; margin-top:20px;'>福德里辦公處 © 2026</div>", unsafe_allow_html=True)
 
 st.markdown('<div class="hero-title">🏘️ 福德里 - 社區數位管理中樞</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="hero-subtitle">志工調度．長輩照護．弱勢關懷．一站整合 ({datetime.now().year} 年度數據)</div>', unsafe_allow_html=True)
@@ -346,5 +334,3 @@ for svc in services:
 </div>
 </div>
 """, unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
