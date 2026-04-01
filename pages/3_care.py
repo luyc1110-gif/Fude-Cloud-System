@@ -518,7 +518,7 @@ def get_care_members():
     })
     for c in COLS_MEM:
         if c not in care_df.columns: care_df[c] = ""
-    return care_df[COLS_MEM]
+    return care_df[COLS_MEM].reset_index(drop=True)
 
 def update_master_fields(uid, update_dict):
     try:
