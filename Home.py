@@ -24,25 +24,6 @@ st.markdown("""
 
 html, body, [class*="css"], div, p, span, li, ul {
     font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-    color: #333333;
-}
-
-.stApp { background-color: #F0F2F5 !important; }
-section[data-testid="stSidebar"] { background-color: #F0F2F5; border-right: none; }
-
-/* 懸浮大卡片 */
-.block-container {
-    background-color: #FFFFFF;
-    border-radius: 25px;
-    padding: 3rem 4rem !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-top: 2rem; margin-bottom: 2rem;
-    max-width: 1100px !important;st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
-
-html, body, [class*="css"], div, p, span, li, ul {
-    font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
 }
 
 .stApp { background-color: var(--color-background-tertiary) !important; }
