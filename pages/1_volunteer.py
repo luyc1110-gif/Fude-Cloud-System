@@ -146,7 +146,7 @@ div[data-baseweb="calendar"] {{ background-color: #262730 !important; }}
 ALL_CATEGORIES = ["祥和志工", "關懷據點週二志工", "關懷據點週三志工", "環保志工", "臨時志工"]
 DEFAULT_ACTIVITIES = ["關懷據點週二活動", "關懷據點週三活動", "環保清潔", "專案活動", "教育訓練"]
 
-MEM_COLS = ["姓名", "身分證字號", "性別", "電話", "志工分類", "生日", "地址", "備註", 
+MEM_COLS = ["姓名", "身分證字號", "性別", "電話", "志工分類", "出生年月日", "地址", "備註", 
             "祥和_加入日期", "祥和_退出日期", "據點週二_加入日期", "據點週二_退出日期", 
             "據點週三_加入日期", "據點週三_退出日期", "環保_加入日期", "環保_退出日期"]
 LOG_COLS = ['姓名', '身分證字號', '電話', '志工分類', '動作', '時間', '日期', '活動內容']
@@ -295,10 +295,10 @@ def get_volunteer_members():
     vol_master = master[master['身分_志工'].astype(str).str.upper() == 'TRUE'].copy()
     
     # 為了相容舊版介面，把 出生年月日 換名為 生日
-    vol_master = vol_master.rename(columns={'出生年月日': '生日'})
+    vol_master = vol_master.rename(columns={'出生年月日': '出生年月日'})
     
     # 加上 reset_index(drop=True) 重新整理行號，防止年齡計算時報錯
-    vol_master = vol_master.rename(columns={'出生年月日': '生日'})
+    vol_master = vol_master.rename(columns={'出生年月日': '出生年月日'})
     vol_master = vol_master.reset_index(drop=True)  # rename 之後再 reset 一次
     return vol_master
 
@@ -311,8 +311,8 @@ def add_or_update_volunteer_to_master(new_data):
         
     # 確保標記身分為志工，並處理生日欄位名稱
     new_data['身分_志工'] = 'TRUE'
-    if '生日' in new_data:
-        new_data['出生年月日'] = new_data.pop('生日')
+    if '出生年月日' in new_data:
+        new_data['出生年月日'] = new_data.pop('出生年月日')
         
     try:
         supabase = get_supabase_client()
@@ -406,7 +406,7 @@ if st.session_state.page == 'home':
     
     if not members.empty:
         active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy().reset_index(drop=True)
-        active_m['age'] = active_m['生日'].apply(calculate_age)
+        active_m['age'] = active_m['出生年月日'].apply(calculate_age)
         
         cols = st.columns(4)
         for idx, cat in enumerate(ALL_CATEGORIES):
