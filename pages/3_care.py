@@ -374,8 +374,8 @@ div[data-testid="stSlider"] {{
     background: #FCEBEB; border-radius: 10px;
     padding: 10px 14px; margin-top: 16px;
 }}
-.hf-missing-title {{ font-size: 12px; font-weight: 500; color: #A32D2D; margin-bottom: 6px; }
-.hf-missing-list {{ font-size: 12px; color: #791F1F; }
+.hf-missing-title {{ font-size: 12px; font-weight: 500; color: #A32D2D; margin-bottom: 6px; }}
+.hf-missing-list {{ font-size: 12px; color: #791F1F; }}
 .hf-complete-box {{
     background: #EAF3DE; border-radius: 10px;
     padding: 8px 14px; margin-top: 16px;
@@ -385,8 +385,8 @@ div[data-testid="stSlider"] {{
     background: #EEEDFE; border-left: 4px solid #534AB7;
     border-radius: 0 10px 10px 0; padding: 10px 14px; margin-bottom: 8px;
 }}
-.hf-referral-name {{ font-size: 14px; font-weight: 500; color: #3C3489; }
-.hf-referral-reason {{ font-size: 12px; color: #534AB7; margin-top: 3px; }
+.hf-referral-name {{ font-size: 14px; font-weight: 500; color: #3C3489; }}
+.hf-referral-reason {{ font-size: 12px; color: #534AB7; margin-top: 3px; }}
 .hf-section-label {{
     font-size: 11px; font-weight: 500; color: var(--color-text-secondary);
     text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 8px;
