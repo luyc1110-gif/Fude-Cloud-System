@@ -342,19 +342,11 @@ def render_nav():
                 st.session_state.page = 'checkin'; st.rerun()
 
         # 3. 長輩名冊
-        elif st.session_state.page == 'members':
-            render_nav()
-            st.markdown("## 📋 長輩名冊")
-            members = get_elderly_members()
-            if members.empty:
-                st.info("目前名冊中無長輩資料，請至首頁新增。")
-            else:
-                st.caption(f"共 {len(members)} 位長輩")
-                st.dataframe(
-                    members[['姓名', '性別', '出生年月日', '電話', '地址']],
-                    use_container_width=True, hide_index=True
-                )
-            st.info("💡 如需新增或退出長輩，請至系統首頁操作。")
+        if st.session_state.page == 'members':
+            st.markdown('<div class="nav-active">📋 長輩名冊</div>', unsafe_allow_html=True)
+        else:
+            if st.button("📋 長輩名冊管理", key="nav_members", use_container_width=True):
+                st.session_state.page = 'members'; st.rerun()
 
         # 4. 統計數據
         if st.session_state.page == 'stats':
@@ -807,3 +799,16 @@ elif st.session_state.page == 'stats':
                 fig.add_hline(y=140, line_dash="dash", line_color="red", annotation_text="收縮壓過高 (140)")
                 fig.add_hline(y=90, line_dash="dash", line_color="orange", annotation_text="舒張壓過高 (90)")
                 st.plotly_chart(fig, use_container_width=True)
+elif st.session_state.page == 'members':
+    render_nav()
+    st.markdown("## 📋 長輩名冊")
+    members = get_elderly_members()
+    if members.empty:
+        st.info("目前名冊中無長輩資料，請至首頁新增。")
+    else:
+        st.caption(f"共 {len(members)} 位長輩")
+        st.dataframe(
+            members[['姓名', '性別', '出生年月日', '電話', '地址']],
+            use_container_width=True, hide_index=True
+        )
+    st.info("💡 如需新增或退出長輩，請至系統首頁操作。")
