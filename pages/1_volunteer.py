@@ -403,7 +403,7 @@ if st.session_state.page == 'home':
     """, unsafe_allow_html=True)
     
     if not members.empty:
-        active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy()
+        active_m = members[~members.apply(check_is_fully_retired, axis=1)].copy().reset_index(drop=True)
         active_m['age'] = active_m['生日'].apply(calculate_age)
         
         cols = st.columns(4)
