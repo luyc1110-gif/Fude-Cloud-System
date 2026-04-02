@@ -329,6 +329,73 @@ div[data-testid="stSlider"] {{
     padding-top: 10px;
 }}
 
+/* ===== 健康評估表單樣式 ===== */
+.hf-person-card {{
+    background: var(--color-background-secondary);
+    border-radius: 12px; padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+}}
+.hf-avatar {{
+    width: 48px; height: 48px; border-radius: 50%;
+    background: #EEEDFE; display: flex; align-items: center;
+    justify-content: center; font-size: 15px; font-weight: 500;
+    color: #3C3489; flex-shrink: 0;
+}}
+.hf-q-card {{
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 10px;
+}}
+.hf-q-text {{
+    font-size: 13px; font-weight: 500;
+    color: var(--color-text-primary); margin-bottom: 10px;
+}}
+.hf-measure-grid {{
+    display: grid; grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 8px; margin-bottom: 8px;
+}}
+.hf-measure-box {{
+    background: var(--color-background-secondary);
+    border-radius: 8px; padding: 10px 12px;
+}}
+.hf-measure-label {{
+    font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px;
+}}
+.hf-measure-val {{
+    font-size: 20px; font-weight: 500; color: var(--color-text-primary);
+}}
+.hf-measure-unit {{ font-size: 11px; color: var(--color-text-secondary); }
+.hf-score-banner {{
+    border-radius: 10px; padding: 12px 16px;
+    display: flex; align-items: center;
+    justify-content: space-between; margin-top: 12px;
+}}
+.hf-missing-box {{
+    background: #FCEBEB; border-radius: 10px;
+    padding: 10px 14px; margin-top: 16px;
+}}
+.hf-missing-title {{ font-size: 12px; font-weight: 500; color: #A32D2D; margin-bottom: 6px; }
+.hf-missing-list {{ font-size: 12px; color: #791F1F; }
+.hf-complete-box {{
+    background: #EAF3DE; border-radius: 10px;
+    padding: 8px 14px; margin-top: 16px;
+    font-size: 12px; color: #27500A;
+}}
+.hf-referral-item {{
+    background: #EEEDFE; border-left: 4px solid #534AB7;
+    border-radius: 0 10px 10px 0; padding: 10px 14px; margin-bottom: 8px;
+}}
+.hf-referral-name {{ font-size: 14px; font-weight: 500; color: #3C3489; }
+.hf-referral-reason {{ font-size: 12px; color: #534AB7; margin-top: 3px; }
+.hf-section-label {{
+    font-size: 11px; font-weight: 500; color: var(--color-text-secondary);
+    text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 8px;
+}}
+.hf-autoload-box {{
+    border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;
+    font-size: 13px; display: flex; justify-content: space-between;
+    align-items: center;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -446,33 +513,31 @@ def load_data(sheet_name, target_cols=None):
 
 # 🔥 [新增] 卡片式標籤題目 (完全符合草圖需求)
 def ui_card_radio(label, options, key=None, help_text=None, index=None):
-    """
-    產生一個帶邊框的卡片，內含題目與橢圓形標籤選項
-    """
-    # 🎨 border=True 會產生如草圖般的圓角矩形外框
-    with st.container(border=True): 
-        # 顯示題目
-        st.markdown(f'<span class="q-text">{label}</span>', unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown(f'<div class="hf-q-text">{label}</div>', unsafe_allow_html=True)
         if help_text:
-            st.markdown(f'<span class="q-help">{help_text}</span>', unsafe_allow_html=True)
-        
-        # 顯示選項 (horizontal=True 讓選項橫向排列)
+            st.markdown(f'<span class="q-help" style="font-size:11px; color:var(--color-text-tertiary);">{help_text}</span>', unsafe_allow_html=True)
         return st.radio(label, options, key=key, index=index, horizontal=True, label_visibility="collapsed")
 
 # 🔥 [新增] 卡片式滑桿題目 (含程度註記)
 def ui_card_slider(label, min_v, max_v, key=None, help_text=None, annotations=None):
     with st.container(border=True):
-        st.markdown(f'<span class="q-text">{label}</span>', unsafe_allow_html=True)
+        st.markdown(f'<div class="hf-q-text">{label}</div>', unsafe_allow_html=True)
         if help_text:
-            st.markdown(f'<span class="q-help">{help_text}</span>', unsafe_allow_html=True)
-        
+            st.markdown(f'<span style="font-size:11px; color:var(--color-text-tertiary);">{help_text}</span>', unsafe_allow_html=True)
         val = st.slider(label, min_v, max_v, key=key, label_visibility="collapsed")
-    
-    # 顯示滑桿下方的程度文字
-    if annotations:
-        current_anno = annotations.get(val, f"{val} 分")
-        st.caption(f"📍 目前選擇程度：**{current_anno}**")
-    
+        if annotations:
+            current_anno = annotations.get(val, f"{val} 分")
+            cols = st.columns(len(annotations))
+            for i, (score, text) in enumerate(annotations.items()):
+                is_current = (score == val)
+                bg = "#EEEDFE" if is_current else "transparent"
+                color = "#3C3489" if is_current else "var(--color-text-tertiary)"
+                cols[i].markdown(
+                    f'<div style="text-align:center; font-size:11px; background:{bg}; '
+                    f'color:{color}; border-radius:6px; padding:2px 4px;">{text}</div>',
+                    unsafe_allow_html=True
+                )
     return val
 
 def append_data(sheet_name, row_dict, col_order=None):
@@ -791,7 +856,17 @@ elif st.session_state.page == 'health':
                 st.rerun()
 
         referral_dialog()
-    
+    def render_tab_status(missing_list):
+        if missing_list:
+            st.markdown(f"""
+            <div class="hf-missing-box">
+                <div class="hf-missing-title">⚠️ 本頁尚有 {len(missing_list)} 項未填：</div>
+                <div class="hf-missing-list">{"、".join(missing_list)}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="hf-complete-box">✅ 本頁填寫完整</div>',
+                        unsafe_allow_html=True)
     with st.expander("➕ 新增/更新 評估紀錄 (請依序填寫)", expanded=True):
         sel_n = st.selectbox("選擇關懷戶", m_df['姓名'].tolist() if not m_df.empty else ["無名冊"], index=None, placeholder="請選擇...")
         
@@ -804,7 +879,22 @@ elif st.session_state.page == 'health':
             p_info['age'] = calculate_age(p_row['生日'])
             p_info['floor'] = extract_floor(p_row['地址'])
             
-            st.info(f"✅ 系統已自動帶入個案基本資料：{p_info['gender']}性 / {p_info['age']}歲 / {p_info['dob']} / 推測住 {p_info['floor']}")
+            initials = sel_n[0] if sel_n else "？"
+            st.markdown(f"""
+            <div class="hf-person-card">
+                <div class="hf-avatar">{initials}</div>
+                <div>
+                    <div style="font-size:15px; font-weight:500;
+                        color:var(--color-text-primary); margin-bottom:3px;">{sel_n}</div>
+                    <div style="font-size:12px; color:var(--color-text-secondary);">
+                        {p_info['gender']}性 ・ {p_info['age']} 歲 ・
+                        {p_info['dob']} ・ 推測住 {p_info['floor']}
+                    </div>
+                </div>
+                <div style="margin-left:auto; font-size:12px;
+                    color:var(--color-text-tertiary);">{str(eval_date)}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         eval_date = st.date_input("填表日期", value=date.today())
 
@@ -948,20 +1038,7 @@ elif st.session_state.page == 'health':
             if med_sleep is None:    t1_missing.append("第11題：助眠藥")
             if med_cv is None:       t1_missing.append("第12題：心血管藥")
             if milk_habit is None:   t1_missing.append("第13題：乳品習慣")
-            if t1_missing:
-                st.markdown(f"""
-                <div style="background:#FCEBEB; border-radius:10px; padding:10px 14px; margin-top:16px;">
-                <div style="font-size:12px; font-weight:500; color:#A32D2D; margin-bottom:6px;">
-                    ⚠️ 本頁尚有 {len(t1_missing)} 項未填：</div>
-                <div style="font-size:12px; color:#791F1F;">{"、".join(t1_missing)}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="background:#EAF3DE; border-radius:10px; padding:8px 14px; margin-top:16px;">
-                <div style="font-size:12px; color:#27500A;">✅ 本頁填寫完整</div>
-                </div>
-                """, unsafe_allow_html=True)
+            render_tab_status(t1_missing)
 
             # --- 二、ICOPE ---
         with t2:
@@ -1056,20 +1133,7 @@ elif st.session_state.page == 'health':
             if icope_teeth is None:        t2_missing.append("第7題：牙科洗牙")
             if icope_mood is None:         t2_missing.append("第9題：心情低落")
             if icope_soc is None:          t2_missing.append("第10題：減少社交")
-            if t2_missing:
-                st.markdown(f"""
-                <div style="background:#FCEBEB; border-radius:10px; padding:10px 14px; margin-top:16px;">
-                <div style="font-size:12px; font-weight:500; color:#A32D2D; margin-bottom:6px;">
-                    ⚠️ 本頁尚有 {len(t2_missing)} 項未填：</div>
-                <div style="font-size:12px; color:#791F1F;">{"、".join(t2_missing)}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="background:#EAF3DE; border-radius:10px; padding:8px 14px; margin-top:16px;">
-                <div style="font-size:12px; color:#27500A;">✅ 本頁填寫完整</div>
-                </div>
-                """, unsafe_allow_html=True)
+            render_tab_status(t2_missing)
 
             # --- 三、BSRS-5 (使用滑桿卡片) ---
         with t3:
@@ -1108,20 +1172,7 @@ elif st.session_state.page == 'health':
             if b4 is None: t3_missing.append("第4題：憂鬱低落")
             if b5 is None: t3_missing.append("第5題：比不上別人")
             if b6 is None: t3_missing.append("第6題：自殺想法")
-            if t3_missing:
-                st.markdown(f"""
-                <div style="background:#FCEBEB; border-radius:10px; padding:10px 14px; margin-top:16px;">
-                <div style="font-size:12px; font-weight:500; color:#A32D2D; margin-bottom:6px;">
-                    ⚠️ 本頁尚有 {len(t3_missing)} 項未填：</div>
-                <div style="font-size:12px; color:#791F1F;">{"、".join(t3_missing)}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="background:#EAF3DE; border-radius:10px; padding:8px 14px; margin-top:16px;">
-                <div style="font-size:12px; color:#27500A;">✅ 本頁填寫完整</div>
-                </div>
-                """, unsafe_allow_html=True)
+            render_tab_status(t3_missing)
 
             # --- 四、MNA ---
         # --- 四、MNA ---
@@ -1201,20 +1252,7 @@ elif st.session_state.page == 'health':
             if mna_d is None: t4_missing.append("D題：心理創傷")
             if mna_e is None: t4_missing.append("E題：精神心理")
             if bmi_val == 0:  t4_missing.append("F題：BMI（請先填身高體重）")
-            if t4_missing:
-                st.markdown(f"""
-                <div style="background:#FCEBEB; border-radius:10px; padding:10px 14px; margin-top:16px;">
-                <div style="font-size:12px; font-weight:500; color:#A32D2D; margin-bottom:6px;">
-                    ⚠️ 本頁尚有 {len(t4_missing)} 項未填：</div>
-                <div style="font-size:12px; color:#791F1F;">{"、".join(t4_missing)}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="background:#EAF3DE; border-radius:10px; padding:8px 14px; margin-top:16px;">
-                <div style="font-size:12px; color:#27500A;">✅ 本頁填寫完整</div>
-                </div>
-                """, unsafe_allow_html=True)
+            render_tab_status(t4_missing)
 
             # --- 五、WHO-5 ---
         with t5:
@@ -1240,20 +1278,7 @@ elif st.session_state.page == 'health':
             if w3 is None: t5_missing.append("第3題")
             if w4 is None: t5_missing.append("第4題")
             if w5 is None: t5_missing.append("第5題")
-            if t5_missing:
-                st.markdown(f"""
-                <div style="background:#FCEBEB; border-radius:10px; padding:10px 14px; margin-top:16px;">
-                <div style="font-size:12px; font-weight:500; color:#A32D2D; margin-bottom:6px;">
-                    ⚠️ 本頁尚有 {len(t5_missing)} 項未填：</div>
-                <div style="font-size:12px; color:#791F1F;">{"、".join(t5_missing)}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="background:#EAF3DE; border-radius:10px; padding:8px 14px; margin-top:16px;">
-                <div style="font-size:12px; color:#27500A;">✅ 本頁填寫完整</div>
-                </div>
-                """, unsafe_allow_html=True)
+            render_tab_status(t5_missing)
 
             # --- 六、膀胱 ---
         with t6:
@@ -1293,20 +1318,7 @@ elif st.session_state.page == 'health':
             if iq5 is None: t6_missing.append("IIQ第5題：社交")
             if iq6 is None: t6_missing.append("IIQ第6題：情緒")
             if iq7 is None: t6_missing.append("IIQ第7題：挫折感")
-            if t6_missing:
-                st.markdown(f"""
-                <div style="background:#FCEBEB; border-radius:10px; padding:10px 14px; margin-top:16px;">
-                <div style="font-size:12px; font-weight:500; color:#A32D2D; margin-bottom:6px;">
-                    ⚠️ 本頁尚有 {len(t6_missing)} 項未填：</div>
-                <div style="font-size:12px; color:#791F1F;">{"、".join(t6_missing)}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="background:#EAF3DE; border-radius:10px; padding:8px 14px; margin-top:16px;">
-                <div style="font-size:12px; color:#27500A;">✅ 本頁填寫完整</div>
-                </div>
-                """, unsafe_allow_html=True)
+            render_tab_status(t6_missing)
 
             # --- 七、WHOQOL ---
         with t7:
@@ -1352,19 +1364,7 @@ elif st.session_state.page == 'health':
                 qol_ans[f'Q{idx}'] = st.radio(f"{idx}. {txt}", opts, index=None, horizontal=True)
                 # --- Tab 七 即時漏填提示 ---
             t7_missing = [k for k, v in qol_ans.items() if v is None]
-            if t7_missing:
-                st.markdown(f"""
-                <div style="background:#FCEBEB; border-radius:10px; padding:10px 14px; margin-top:16px;">
-                <div style="font-size:12px; font-weight:500; color:#A32D2D; margin-bottom:6px;">
-                    ⚠️ 本頁尚有 {len(t7_missing)} 題未填：{", ".join(t7_missing)}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="background:#EAF3DE; border-radius:10px; padding:8px 14px; margin-top:16px;">
-                <div style="font-size:12px; color:#27500A;">✅ 本頁填寫完整</div>
-                </div>
-                """, unsafe_allow_html=True)
+            render_tab_status(t7_missing)
 
             # --- 提交 ---
             st.markdown("---")
