@@ -37,6 +37,26 @@ section[data-testid="stSidebar"] { background-color: #F0F2F5; border-right: none
     padding: 3rem 4rem !important;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
     margin-top: 2rem; margin-bottom: 2rem;
+    max-width: 1100px !important;st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
+
+html, body, [class*="css"], div, p, span, li, ul {
+    font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+}
+
+.stApp { background-color: var(--color-background-tertiary) !important; }
+section[data-testid="stSidebar"] { 
+    background-color: var(--color-background-tertiary); 
+    border-right: none; 
+}
+
+.block-container {
+    background-color: var(--color-background-primary);
+    border-radius: 25px;
+    padding: 3rem 4rem !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    margin-top: 2rem; margin-bottom: 2rem;
     max-width: 1100px !important;
 }
 
@@ -47,49 +67,53 @@ section[data-testid="stSidebar"] { background-color: #F0F2F5; border-right: none
 header[data-testid="stHeader"] { background-color: transparent !important; }
 header[data-testid="stHeader"] .decoration { display: none; }
 
-/* 側邊欄按鈕 */
 section[data-testid="stSidebar"] button {
-    background-color: #FFFFFF !important; color: #555 !important;
-    border: 1px solid transparent !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important; padding: 12px 0 !important;
-    font-weight: 700 !important; width: 100%; margin-bottom: 10px !important;
+    background-color: var(--color-background-primary) !important;
+    color: var(--color-text-secondary) !important;
+    border: 1px solid transparent !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+    border-radius: 25px !important;
+    padding: 12px 0 !important;
+    font-weight: 700 !important;
+    width: 100%; margin-bottom: 10px !important;
     transition: all 0.3s;
 }
 section[data-testid="stSidebar"] button:hover {
-    transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
-    color: #000 !important; border: 1px solid #ddd !important;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    color: var(--color-text-primary) !important;
+    border: 1px solid var(--color-border-secondary) !important;
 }
 
-/* 首頁標題 */
 .hero-title {
-    font-size: 2.5rem; font-weight: 900; color: #2c3e50;
+    font-size: 2.5rem; font-weight: 900;
+    color: var(--color-text-primary);
     text-align: center; margin-bottom: 10px;
 }
 .hero-subtitle {
-    font-size: 1.2rem; color: #7f8c8d; text-align: center; margin-bottom: 50px;
+    font-size: 1.2rem;
+    color: var(--color-text-secondary);
+    text-align: center; margin-bottom: 50px;
 }
 
-/* --- 服務卡片 (Service Box) --- */
 .service-box {
-    display: flex; 
-    flex-direction: row; 
-    background-color: #F8F9FA; border-radius: 20px;
-    padding: 0; margin-bottom: 30px; overflow: hidden;
-    border: 1px solid #eee; transition: transform 0.3s;
-    min-height: 250px; 
+    display: flex; flex-direction: row;
+    background-color: var(--color-background-secondary);
+    border-radius: 20px; padding: 0; margin-bottom: 30px;
+    overflow: hidden; border: 0.5px solid var(--color-border-tertiary);
+    transition: transform 0.3s; min-height: 250px;
 }
 .service-box:hover {
-    transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
 }
-
 .service-img {
     width: 40%;
     background-size: cover; background-position: center;
     display: flex; align-items: center; justify-content: center;
 }
 .service-content {
-    width: 60%;
-    padding: 30px;
+    width: 60%; padding: 30px;
     display: flex; flex-direction: column; justify-content: center;
 }
 
@@ -101,25 +125,18 @@ section[data-testid="stSidebar"] button:hover {
 }
 
 .service-title { font-size: 1.8rem; font-weight: 900; margin-bottom: 10px; }
-.service-desc { font-size: 1rem; color: #666; line-height: 1.6; margin-bottom: 15px; }
+.service-desc { font-size: 1rem; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 15px; }
 .service-icon-placeholder { font-size: 5rem; }
 
-/* 數據統計樣式 */
-.stats-row {
-    display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;
-}
+.stats-row { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px; }
 .stat-item {
-    background-color: #FFFFFF;
-    border: 1px solid #E0E0E0;
-    border-radius: 10px;
-    padding: 8px 15px;
-    font-size: 0.9rem;
-    color: #444;
-    font-weight: 500;
-    display: flex; align-items: center; gap: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    background-color: var(--color-background-primary);
+    border: 1px solid var(--color-border-tertiary);
+    border-radius: 10px; padding: 8px 15px;
+    font-size: 0.9rem; color: var(--color-text-secondary);
+    font-weight: 500; display: flex; align-items: center; gap: 8px;
 }
-.stat-item b { color: #000; font-size: 1.1rem; margin-left: 5px; }
+.stat-item b { color: var(--color-text-primary); font-size: 1.1rem; margin-left: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -256,12 +273,12 @@ def get_image_as_base64(path):
 # 3) 頁面渲染
 # =========================================================
 with st.sidebar:
-    st.markdown("<h2 style='text-align:center; color:#333; margin-bottom:20px;'>🚀 系統快速入口</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:var(--color-text-primary); margin-bottom:20px;'>🚀 系統快速入口</h2>", unsafe_allow_html=True)
     if st.button("💜 進入 志工管理系統"): st.switch_page("pages/1_volunteer.py")
     if st.button("👴 進入 長輩關懷系統"): st.switch_page("pages/2_elderly.py")
     if st.button("🏠 進入 關懷戶系統"): st.switch_page("pages/3_care.py")
     st.markdown("---")
-    st.markdown("<div style='text-align:center; color:#999; font-size:0.8rem; margin-top:20px;'>福德里辦公處 © 2026</div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center; color:var(--color-text-tertiary); font-size:0.8rem; margin-top:20px;'>福德里辦公處 © 2026</div>", unsafe_allow_html=True)
 
 st.markdown('<div class="hero-title">🏘️ 福德里 - 社區數位管理中樞</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="hero-subtitle">志工調度．長輩照護．弱勢關懷．一站整合 ({datetime.now().year} 年度數據)</div>', unsafe_allow_html=True)
