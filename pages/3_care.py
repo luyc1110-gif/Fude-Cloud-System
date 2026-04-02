@@ -22,6 +22,10 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
 # 2. 頁面狀態初始化
+if "show_referral_dialog" not in st.session_state:
+    st.session_state["show_referral_dialog"] = False
+if "last_referrals" not in st.session_state:
+    st.session_state["last_referrals"] = []
 if 'page' not in st.session_state:
     st.session_state.page = 'home'
 
@@ -762,6 +766,32 @@ elif st.session_state.page == 'health':
     st.markdown("## 🏥 綜合健康評估")
     h_df, m_df = load_data("care_health", COLS_HEALTH), get_care_members()
     
+    # --- 轉介視窗 ---
+if st.session_state.get("show_referral_dialog"):
+    @st.dialog("📋 評估完成 — 建議轉介窗口")
+    def referral_dialog():
+        referrals = st.session_state.get("last_referrals", [])
+        if referrals:
+            st.markdown("根據本次評估結果，建議聯繫以下窗口：")
+            for name, reason in referrals:
+                st.markdown(f"""
+                <div style="background:#EEEDFE; border-left:4px solid #534AB7;
+                    border-radius:0 10px 10px 0; padding:10px 14px; margin-bottom:8px;">
+                    <div style="font-size:14px; font-weight:500; color:#3C3489;">{name}</div>
+                    <div style="font-size:12px; color:#534AB7; margin-top:3px;">{reason}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.success("✅ 本次評估無需轉介，繼續維持現況追蹤。")
+
+        st.markdown("")
+        if st.button("確認關閉", use_container_width=True):
+            st.session_state["show_referral_dialog"] = False
+            st.session_state["last_referrals"] = []
+            st.rerun()
+
+    referral_dialog()
+    
     with st.expander("➕ 新增/更新 評估紀錄 (請依序填寫)", expanded=True):
         sel_n = st.selectbox("選擇關懷戶", m_df['姓名'].tolist() if not m_df.empty else ["無名冊"], index=None, placeholder="請選擇...")
         
@@ -1242,9 +1272,8 @@ elif st.session_state.page == 'health':
                         row_data[f"QOL_{k.replace('Q','')}"] = safe_str(v)
                     
                     if append_data("care_health", row_data, COLS_HEALTH):
-                        st.success("✅ 問卷儲存成功！")
 
-                        # --- 聯絡窗口推薦 ---
+                        # 計算轉介清單
                         referrals = []
                         if not aid_walk and icope_fall == "是":
                             referrals.append(("🦯 輔具資源中心", "未使用行走輔具，且過去一年有跌倒風險"))
@@ -1257,21 +1286,9 @@ elif st.session_state.page == 'health':
                         if bsrs_total >= 10 or (b6 is not None and b6 >= 1):
                             referrals.append(("💚 心理衛生中心", "BSRS 總分達10分以上或有自殺想法"))
 
-                        if referrals:
-                            st.markdown("---")
-                            st.markdown("#### 📋 建議轉介窗口")
-                            for name, reason in referrals:
-                                st.markdown(f"""
-                                <div style="background:#EEEDFE; border-left:4px solid #534AB7;
-                                    border-radius:0 10px 10px 0; padding:10px 14px; margin-bottom:8px;">
-                                    <div style="font-size:14px; font-weight:500; color:#3C3489;">{name}</div>
-                                    <div style="font-size:12px; color:#534AB7; margin-top:3px;">{reason}</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                        else:
-                            st.markdown("---")
-                            st.info("✅ 本次評估無需轉介，繼續維持現況追蹤。")
-
+                        # 存入 session_state，rerun 後由 dialog 接手顯示
+                        st.session_state["last_referrals"] = referrals
+                        st.session_state["show_referral_dialog"] = True
                         st.rerun()
 
     # === 🔥 修改開始：直接抓取資料表「最下方」的 3 筆 ===
