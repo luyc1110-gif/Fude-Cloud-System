@@ -298,7 +298,9 @@ def get_volunteer_members():
     vol_master = vol_master.rename(columns={'出生年月日': '生日'})
     
     # 加上 reset_index(drop=True) 重新整理行號，防止年齡計算時報錯
-    return vol_master.reset_index(drop=True)
+    vol_master = vol_master.rename(columns={'出生年月日': '生日'})
+    vol_master = vol_master.reset_index(drop=True)  # rename 之後再 reset 一次
+    return vol_master
 
 def add_or_update_volunteer_to_master(new_data):
     """直接在 master_residents 進行新增或更新"""
