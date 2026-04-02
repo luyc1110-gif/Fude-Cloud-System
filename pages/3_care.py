@@ -364,7 +364,7 @@ div[data-testid="stSlider"] {{
 .hf-measure-val {{
     font-size: 20px; font-weight: 500; color: var(--color-text-primary);
 }}
-.hf-measure-unit {{ font-size: 11px; color: var(--color-text-secondary); }
+.hf-measure-unit {{ font-size: 11px; color: var(--color-text-secondary); }}
 .hf-score-banner {{
     border-radius: 10px; padding: 12px 16px;
     display: flex; align-items: center;
