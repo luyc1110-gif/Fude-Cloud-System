@@ -396,6 +396,33 @@ div[data-testid="stSlider"] {{
     font-size: 13px; display: flex; justify-content: space-between;
     align-items: center;
 }}
+/* Radio 膠囊化 */
+div[data-testid="stRadio"] > div {{
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+}}
+div[data-testid="stRadio"] label {{
+    background: var(--color-background-secondary) !important;
+    border: 1px solid var(--color-border-secondary) !important;
+    border-radius: 20px !important;
+    padding: 6px 18px !important;
+    font-size: 13px !important;
+    cursor: pointer !important;
+    transition: all 0.15s !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}}
+div[data-testid="stRadio"] label:has(input:checked) {{
+    background: #EEEDFE !important;
+    border-color: #AFA9EC !important;
+    color: #3C3489 !important;
+    font-weight: 500 !important;
+}}
+div[data-testid="stRadio"] label input {{
+    display: none !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
