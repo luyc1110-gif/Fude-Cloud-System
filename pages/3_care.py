@@ -786,6 +786,9 @@ elif st.session_state.page == 'health':
         # 初始化跨分頁變數 (避免未填寫時報錯)
         icope_eat_val = None
         icope_weight_val = None
+        icope_fall_unified = None
+        mna_a_from_icope = None
+        mna_b_from_icope = None
         bmi_val = 0.0
 
         # --- 一、前測問卷及身體狀況 ---
@@ -866,11 +869,16 @@ elif st.session_state.page == 'health':
                 grip_l = g2.number_input("左手握力(kg)", step=0.1, value=None)
                     
                 st.caption("請勾選目前使用的輔具：")
-                aa1, aa2, aa3, aa4 = st.columns(4)
-                aid_walk = aa1.checkbox("7. 使用行走輔具")
-                aid_hear = aa2.checkbox("8. 使用聽力輔具")
-                aid_eye = aa3.checkbox("9. 使用視力輔具(眼鏡)")
-                fall_rec = aa4.radio("10. 最近半年有無跌倒？", ["有", "沒有"], index=None)
+                aa1, aa2, aa3 = st.columns(3)
+                aid_walk = aa1.checkbox("使用行走輔具")
+                aid_hear = aa2.checkbox("使用聽力輔具")
+                aid_eye  = aa3.checkbox("使用視力輔具（眼鏡）")
+
+                fall_rec = st.radio(
+                    "10. 過去一年曾跌倒／擔心跌倒／需扶東西才能從椅子站起？",
+                    ["有", "沒有"], index=None, horizontal=True, key="fall_unified"
+                )
+                icope_fall_unified = "是" if fall_rec == "有" else ("否" if fall_rec == "沒有" else None)
 
             with st.container():
                 st.markdown("**D. 其他習慣**")
@@ -894,14 +902,50 @@ elif st.session_state.page == 'health':
         with t2:
             st.markdown("### 🧠 第二部分：高齡功能 ICOPE")
             
-            c_i1, c_i2 = st.columns(2)
             icope_mem = ui_card_radio("1. 最近一年是否有記憶明顯減退?", ["否", "是"], key="ic_1", index=None)
-            icope_fall = ui_card_radio("2. 過去一年曾跌倒/擔心跌倒/需扶東西才能從椅子站起?", ["否", "是"], key="ic_2", index=None)
-            
+
+            # 跌倒題：從 Tab 一帶入
+            icope_fall = icope_fall_unified
+            _fall_color = "#791F1F" if icope_fall == "是" else ("#27500A" if icope_fall == "否" else "#888780")
+            _fall_text  = icope_fall if icope_fall else "⚠️ 請先至基本資料填寫"
+            st.markdown(f"""
+            <div style="background:var(--color-background-secondary); border-radius:10px;
+                padding:10px 14px; margin:8px 0; font-size:13px; color:var(--color-text-secondary);">
+                2. 過去一年跌倒風險
+                <span style="float:right; font-weight:500; color:{_fall_color};">
+                    {_fall_text}（已於基本資料填寫）
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+
             st.markdown("---")
-            c_i3, c_i4 = st.columns(2)
-            icope_weight_val = ui_card_radio("3. 過去三個月體重減輕>3kg?", ["否", "是"], key="ic_3", index=None)
-            icope_eat_val = ui_card_radio("4. 過去三個月「曾經」食慾不好?", ["否", "是"], key="ic_4", index=None)
+
+            # 體重整合題
+            weight_unified = ui_card_radio(
+                "3. 過去三個月體重下降情況？",
+                ["沒有下降", "下降1-3公斤", "不知道", "下降大於3公斤"],
+                key="ic_weight_unified", index=None
+            )
+            icope_weight_val = "是" if weight_unified == "下降大於3公斤" else ("否" if weight_unified else None)
+            mna_b_from_icope = {
+                "沒有下降":     "3:沒有下降",
+                "下降1-3公斤":  "2:下降1-3公斤",
+                "不知道":       "1:不知道",
+                "下降大於3公斤": "0:下降大於3公斤",
+            }.get(weight_unified, None)
+
+            # 食慾整合題
+            eat_unified = ui_card_radio(
+                "4. 過去三個月食量減少程度？",
+                ["食量沒有改變", "食量中度減少", "食量嚴重減少"],
+                key="ic_eat_unified", index=None
+            )
+            icope_eat_val = "是" if eat_unified in ["食量中度減少", "食量嚴重減少"] else ("否" if eat_unified else None)
+            mna_a_from_icope = {
+                "食量沒有改變": "2:食量沒有改變",
+                "食量中度減少": "1:食量中度減少",
+                "食量嚴重減少": "0:食量嚴重減少",
+            }.get(eat_unified, None)
                 
             st.markdown("---")
             c_i5, c_i6, c_i7 = st.columns(3)
@@ -975,37 +1019,37 @@ elif st.session_state.page == 'health':
             # === 🔥 修改開始：自動帶入但允許修改 ===
             
             # A題：食量
-            st.write("**A. 過去三個月食量減少程度?**")
-            mna_a_opts = ["0:食量嚴重減少", "1:食量中度減少", "2:食量沒有改變"]
-            # 預設索引：如果 ICOPE 食慾(Q4)為否(正常)，預選第 3 個選項(索引2)；否則不預選
-            mna_a_idx = 2 if icope_eat_val == "否" else None
-            
-            mna_a = st.radio(
-                "A題 (請詳實評估)", 
-                mna_a_opts, 
-                index=mna_a_idx, 
-                horizontal=True  # 排版美觀可選
-            )
-            # 提示文字
-            if icope_eat_val == "否":
-                st.caption("💡 系統依 ICOPE 自動建議「食量無改變」，如有誤請手動修正。")
+            # A題：從 ICOPE 食慾整合題自動帶入
+            if mna_a_from_icope:
+                st.markdown(f"""
+                <div style="background:#EAF3DE; border-radius:10px; padding:10px 14px;
+                    margin-bottom:12px; font-size:13px;">
+                    <span style="color:#27500A; font-weight:500;">A. 食量（自動帶入）</span>
+                    <span style="float:right; color:#3B6D11;">{mna_a_from_icope}</span>
+                </div>
+                """, unsafe_allow_html=True)
+                mna_a = mna_a_from_icope
+            else:
+                st.warning("⚠️ 請先至 ICOPE Tab 填寫食量題目")
+                mna_a = None
 
             st.markdown("---")
 
-            # B題：體重
-            st.write("**B. 過去三個月體重下降情況?**")
-            mna_b_opts = ["0:下降大於3公斤", "1:不知道", "2:下降1-3公斤", "3:沒有下降"]
-            # 預設索引：如果 ICOPE 體重(Q3)為否(正常)，預選第 4 個選項(索引3)；否則不預選
-            mna_b_idx = 3 if icope_weight_val == "否" else None
-            
-            mna_b = st.radio(
-                "B題 (請詳實評估)", 
-                mna_b_opts, 
-                index=mna_b_idx, 
-                horizontal=True
-            )
-            if icope_weight_val == "否":
-                st.caption("💡 系統依 ICOPE 自動建議「體重無下降」，如有誤請手動修正。")
+            # B題：從 ICOPE 體重整合題自動帶入
+            if mna_b_from_icope:
+                st.markdown(f"""
+                <div style="background:#EAF3DE; border-radius:10px; padding:10px 14px;
+                    margin-bottom:12px; font-size:13px;">
+                    <span style="color:#27500A; font-weight:500;">B. 體重（自動帶入）</span>
+                    <span style="float:right; color:#3B6D11;">{mna_b_from_icope}</span>
+                </div>
+                """, unsafe_allow_html=True)
+                mna_b = mna_b_from_icope
+            else:
+                st.warning("⚠️ 請先至 ICOPE Tab 填寫體重題目")
+                mna_b = None
+
+            st.markdown("---")
             
             # === 🔥 修改結束 ===
 
@@ -1161,6 +1205,7 @@ elif st.session_state.page == 'health':
                         "Q12_過去疾病史": final_dis_str, 
 
                         "使用行走輔具": aid_walk, "使用聽力輔具": aid_hear, "使用視力輔具": aid_eye, "半年內跌倒紀錄": safe_str(fall_rec),
+                        # ICOPE_2 從整合題帶入,
                         "服用助眠藥": safe_str(med_sleep), "服用心血管藥物": safe_str(med_cv), "喝乳品習慣": safe_str(milk_habit),
                         "使用漏尿墊": safe_str(pad_use), "男性小便斷續": safe_str(male_urine),
                         
@@ -1196,8 +1241,38 @@ elif st.session_state.page == 'health':
                     for k, v in qol_ans.items():
                         row_data[f"QOL_{k.replace('Q','')}"] = safe_str(v)
                     
-                    if append_data("care_health", row_data, COLS_HEALTH): 
-                        st.success("✅ 問卷儲存成功！"); st.rerun()
+                    if append_data("care_health", row_data, COLS_HEALTH):
+                        st.success("✅ 問卷儲存成功！")
+
+                        # --- 聯絡窗口推薦 ---
+                        referrals = []
+                        if not aid_walk and icope_fall == "是":
+                            referrals.append(("🦯 輔具資源中心", "未使用行走輔具，且過去一年有跌倒風險"))
+                        if not aid_hear and icope_hear_res == "是":
+                            referrals.append(("👂 聽力中心", "未使用聽力輔具，且聽力狀況有異常"))
+                        if not aid_eye and icope_opt == "否" and icope_eye == "是":
+                            referrals.append(("👁️ 眼科", "未使用視力輔具、未接受眼睛檢查，且看遠近有困難"))
+                        if icope_teeth == "否":
+                            referrals.append(("🦷 牙科", "過去六個月不曾到牙科洗牙"))
+                        if bsrs_total >= 10 or (b6 is not None and b6 >= 1):
+                            referrals.append(("💚 心理衛生中心", "BSRS 總分達10分以上或有自殺想法"))
+
+                        if referrals:
+                            st.markdown("---")
+                            st.markdown("#### 📋 建議轉介窗口")
+                            for name, reason in referrals:
+                                st.markdown(f"""
+                                <div style="background:#EEEDFE; border-left:4px solid #534AB7;
+                                    border-radius:0 10px 10px 0; padding:10px 14px; margin-bottom:8px;">
+                                    <div style="font-size:14px; font-weight:500; color:#3C3489;">{name}</div>
+                                    <div style="font-size:12px; color:#534AB7; margin-top:3px;">{reason}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.markdown("---")
+                            st.info("✅ 本次評估無需轉介，繼續維持現況追蹤。")
+
+                        st.rerun()
 
     # === 🔥 修改開始：直接抓取資料表「最下方」的 3 筆 ===
     if not h_df.empty:
