@@ -31,118 +31,73 @@ st.markdown(f"""
 
 html, body, [class*="css"], div, p, span, li, ul {{
     font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-    color: {TEXT} !important;
 }}
 
-/* 🔥 1. 整體背景設為淺灰 */
-.stApp {{ background-color: {BG_MAIN} !important; }}
+/* 🔥 1. 基本背景與文字 (移除暴力的全域黑字) */
+.stApp {{ background-color: #F0F2F5 !important; }}
+[data-testid="stWidgetLabel"] p, label p, .stMarkdown p {{ color: #212121 !important; }}
 
-/* 🔥 2. 側邊欄背景 */
-section[data-testid="stSidebar"] {{ background-color: {BG_MAIN}; border-right: none; }}
-
-/* 🔥 3. 主內容區懸浮大卡片 */
-.block-container {{
-    background-color: #FFFFFF;
-    border-radius: 25px;
-    padding: 3rem 3rem !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-top: 2rem; margin-bottom: 2rem;
-    max-width: 95% !important;
-}}
-
-/* Header 設定 */
-header[data-testid="stHeader"] {{ display: block !important; background-color: transparent !important; }}
-header[data-testid="stHeader"] .decoration {{ display: none; }}
-
-/* 側邊欄按鈕 */
+/* 🔥 2. 側邊欄背景與按鈕 (乾淨的獨立設定) */
+section[data-testid="stSidebar"] {{ background-color: #F0F2F5; border-right: none; }}
 section[data-testid="stSidebar"] button {{
-    background-color: #FFFFFF !important; color: #666 !important;
+    background-color: #FFFFFF !important; color: #666666 !important;
     border: 1px solid transparent !important; box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
     border-radius: 25px !important; padding: 10px 0 !important;
     font-weight: 700 !important; width: 100%; margin-bottom: 8px !important; transition: all 0.2s;
 }}
 section[data-testid="stSidebar"] button:hover {{
-    transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important; color: {PRIMARY} !important;
+    transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important; color: #4A148C !important;
 }}
 .nav-active {{
-    background: linear-gradient(135deg, {PRIMARY}, {ACCENT});
+    background: linear-gradient(135deg, #4A148C, #7B1FA2);
     color: white !important; padding: 12px 0; text-align: center; border-radius: 25px;
     font-weight: 900; box-shadow: 0 4px 10px rgba(123, 31, 162, 0.4); margin-bottom: 12px; cursor: default;
 }}
 
-/* --- 📊 數據報表：指標卡片 (Metric Card) --- */
-.metric-box {{
-    background-color: #F8F9FA;
-    border-radius: 15px;
-    padding: 20px;
-    text-align: center;
-    border-bottom: 5px solid {PRIMARY};
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    transition: transform 0.2s;
-}}
+/* 🔥 3. 主內容區卡片與報表 */
+.block-container {{ background-color: #FFFFFF; border-radius: 25px; padding: 3rem 3rem !important; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-top: 2rem; margin-bottom: 2rem; max-width: 95% !important; }}
+header[data-testid="stHeader"] {{ display: block !important; background-color: transparent !important; }}
+header[data-testid="stHeader"] .decoration {{ display: none; }}
+.metric-box {{ background-color: #F8F9FA; border-radius: 15px; padding: 20px; text-align: center; border-bottom: 5px solid #4A148C; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s; }}
 .metric-box:hover {{ transform: translateY(-5px); }}
-.metric-label {{ font-size: 1.1rem; color: #666 !important; font-weight: bold; margin-bottom: 5px; }}
-.metric-value {{ font-size: 2.5rem; color: {PRIMARY} !important; font-weight: 900; }}
-
-/* --- 📋 數據報表：志工明細卡片 (Volunteer Card) --- */
-.vol-card {{
-    background-color: #FFFFFF;
-    border: 1px solid #EEE;
-    border-radius: 15px;
-    padding: 15px;
-    margin-bottom: 15px;
-    border-left: 6px solid {ACCENT};
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    display: flex; justify-content: space-between; align-items: center;
-}}
-.vol-card-name {{ font-size: 1.3rem; font-weight: 900; color: #333; }}
+.metric-label {{ font-size: 1.1rem; color: #666666 !important; font-weight: bold; margin-bottom: 5px; }}
+.metric-value {{ font-size: 2.5rem; color: #4A148C !important; font-weight: 900; }}
+.vol-card {{ background-color: #FFFFFF; border: 1px solid #EEE; border-radius: 15px; padding: 15px; margin-bottom: 15px; border-left: 6px solid #7B1FA2; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }}
+.vol-card-name {{ font-size: 1.3rem; font-weight: 900; color: #333333; }}
 .vol-card-stats {{ text-align: right; }}
-.vol-card-tag {{ background: #F3E5F5; color: {PRIMARY}; padding: 3px 10px; border-radius: 10px; font-size: 0.85rem; font-weight: bold; margin-left: 10px; }}
-.vol-log-card {{
-    background-color: #FAFAFA; border-radius: 12px; padding: 12px; margin-bottom: 10px;
-    border-left: 4px solid #aaa; display: flex; justify-content: space-between; align-items: center;
-}}
-.vol-log-date {{ font-weight: bold; color: #333; }}
+.vol-card-tag {{ background: #F3E5F5; color: #4A148C; padding: 3px 10px; border-radius: 10px; font-size: 0.85rem; font-weight: bold; margin-left: 10px; }}
+.vol-log-card {{ background-color: #FAFAFA; border-radius: 12px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #aaa; display: flex; justify-content: space-between; align-items: center; }}
+.vol-log-date {{ font-weight: bold; color: #333333; }}
 .vol-log-action {{ font-weight: bold; padding: 2px 8px; border-radius: 5px; font-size: 0.9rem; }}
 .action-in {{ background-color: #E8F5E9; color: #2E7D32; }}
 .action-out {{ background-color: #FFEBEE; color: #C62828; }}
 
-/* 輸入框優化 */
+/* 🔥 4. 輸入框與下拉選單 */
 div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input {{
-    background-color: #FFFFFF !important; border: 2px solid #E0E0E0 !important; border-radius: 12px !important; color: #000 !important;
+    background-color: #FFFFFF !important; border: 2px solid #E0E0E0 !important; border-radius: 12px !important; color: #212121 !important;
 }}
-div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{ background-color: #FFFFFF !important; color: #000 !important; }}
+div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{ background-color: #FFFFFF !important; color: #212121 !important; }}
 li[role="option"]:hover {{ background-color: #F3E5F5 !important; }}
+div[data-testid="stTimeInput"] * {{ color: #212121 !important; -webkit-text-fill-color: #212121 !important; }}
 
-/* 🔥 確保時間選擇器裡面的文字絕對是黑色的 */
-div[data-testid="stTimeInput"] * {{
-    color: #000000 !important;
-    -webkit-text-fill-color: #000000 !important;
-}}
+/* 🟢 修正：多選標籤 (志工姓名) 反白看不見的問題 */
+span[data-baseweb="tag"] {{ background-color: #4A148C !important; }}
+span[data-baseweb="tag"] span {{ color: #FFFFFF !important; font-weight: bold !important; font-size: 1rem !important; }}
+span[data-baseweb="tag"] svg {{ fill: #FFFFFF !important; }}
 
-/* 按鈕樣式 */
-div[data-testid="stFormSubmitButton"] > button, div[data-testid="stDownloadButton"] > button, .stButton > button {{
-    background-color: {PRIMARY} !important; color: #FFFFFF !important; border: none !important; border-radius: 12px !important; padding: 10px 20px !important; font-weight: 900 !important;
+/* 🔥 5. 按鈕 (精準鎖定主要按鈕，放過側邊欄與普通按鈕) */
+button[kind="primary"], div[data-testid="stFormSubmitButton"] > button {{
+    background-color: #4A148C !important; color: #FFFFFF !important; border: none !important; border-radius: 12px !important; padding: 10px 20px !important; font-weight: 900 !important;
 }}
-div[data-testid="stFormSubmitButton"] > button:hover, div[data-testid="stDownloadButton"] > button:hover, .stButton > button:hover {{
-    background-color: {ACCENT} !important; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+button[kind="primary"]:hover, div[data-testid="stFormSubmitButton"] > button:hover {{
+    background-color: #7B1FA2 !important; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }}
-div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadButton"] > button *, .stButton > button * {{ color: #FFFFFF !important; }}
+button[kind="primary"] *, div[data-testid="stFormSubmitButton"] > button * {{ color: #FFFFFF !important; }}
 
-/* 日期選單樣式 */
-div[data-baseweb="calendar"] div, div[data-baseweb="calendar"] button, div[data-baseweb="calendar"] h1, div[data-baseweb="calendar"] h2, div[data-baseweb="calendar"] h3, div[data-baseweb="calendar"] h4, div[data-baseweb="calendar"] h5, div[data-baseweb="calendar"] h6 {{ color: #FFFFFF !important; }}
-div[data-baseweb="calendar"] svg {{ fill: #FFFFFF !important; }}
-div[data-baseweb="calendar"] button:hover, div[data-baseweb="calendar"] button[aria-selected="true"] {{ color: #FFFFFF !important; font-weight: bold !important; }}
-div[data-baseweb="calendar"] {{ background-color: #262730 !important; }}
-
-/* --- 修復側邊欄按鈕文字被全域白字吃掉的問題 --- */
-section[data-testid="stSidebar"] .stButton > button * {{
-    color: #666666 !important;
-}}
-section[data-testid="stSidebar"] .stButton > button:hover * {{
-    color: #4A148C !important;
-}}
-
+/* 🔥 6. 日期選單樣式 (改為明亮主題，避免顏色死角) */
+div[data-baseweb="calendar"] {{ background-color: #FFFFFF !important; border: 1px solid #E0E0E0 !important; border-radius: 12px !important; }}
+div[data-baseweb="calendar"] div, div[data-baseweb="calendar"] button, div[data-baseweb="calendar"] h1, div[data-baseweb="calendar"] h2, div[data-baseweb="calendar"] h3 {{ color: #212121 !important; }}
+div[data-baseweb="calendar"] button[aria-selected="true"] {{ background-color: #4A148C !important; color: #FFFFFF !important; font-weight: bold !important; }}
 </style>
 """, unsafe_allow_html=True)
 
