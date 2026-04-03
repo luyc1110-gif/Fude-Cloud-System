@@ -1881,20 +1881,103 @@ elif st.session_state.page == 'visit':
         filtered_mems = mems if sel_tag == "(全部顯示)" else mems[mems['身分別'].str.contains(sel_tag, na=False)]
         target_p = st.selectbox("👤 選擇關懷戶", filtered_mems['姓名'].tolist() if not filtered_mems.empty else [], index=None, placeholder="請點擊此處輸入或選擇姓名...")
 
-    # 編輯拒絕清單
+    # === 💡 新增：個案速寫智慧面板 ===
     current_refuse = ""
     if target_p and not mems.empty:
         p_row_idx = mems[mems['姓名'] == target_p].index[0]
-        current_refuse = str(mems.loc[p_row_idx].get('拒絕物資', ''))
+        p_row = mems.loc[p_row_idx]
+        my_id = str(p_row['身分證字號']).strip()
+        current_refuse = str(p_row.get('拒絕物資', ''))
         
-        # 顯示簡易編輯器
-        with st.expander(f"📝 編輯「{target_p}」的拒絕清單 (目前: {current_refuse})", expanded=False):
-            c_edit, c_btn = st.columns([3, 1])
-            new_refuse_input = c_edit.text_input("拒絕項目 (逗號隔開)", value=current_refuse)
-            if c_btn.button("💾 更新"):
-                mems.at[p_row_idx, '拒絕物資'] = new_refuse_input
-                update_master_fields(mems.loc[p_row_idx, '身分證字號'], {'拒絕物資': new_refuse_input})
-                st.toast("✅ 備註已更新！"); time.sleep(1); st.rerun()
+        h_df = load_data("care_health", COLS_HEALTH) # 確保載入健康資料
+        
+        st.markdown(f"#### 💡 {target_p} 個案速寫 (發放評估參考)")
+        
+        with st.container(border=True):
+            sc1, sc2 = st.columns([1.2, 1])
+            
+            with sc1:
+                # 1. 拒收與飲食禁忌
+                st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#4A4E69; margin-bottom:5px;'>🚫 拒收物資 / 飲食禁忌</div>", unsafe_allow_html=True)
+                with st.expander(f"目前設定: {current_refuse if current_refuse else '無 (點擊修改)'}", expanded=False):
+                    c_edit, c_btn = st.columns([3, 1])
+                    new_refuse_input = c_edit.text_input("拒絕項目 (逗號隔開)", value=current_refuse, label_visibility="collapsed")
+                    if c_btn.button("💾 更新", key="update_refuse"):
+                        mems.at[p_row_idx, '拒絕物資'] = new_refuse_input
+                        update_master_fields(my_id, {'拒絕物資': new_refuse_input})
+                        st.toast("✅ 備註已更新！"); time.sleep(0.5); st.rerun()
+                
+                # 2. 健康狀態重點
+                st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#4A4E69; margin-top:10px; margin-bottom:5px;'>🩺 最新健康狀態摘要</div>", unsafe_allow_html=True)
+                if not h_df.empty:
+                    p_health = h_df[h_df['姓名'] == target_p]
+                    if not p_health.empty:
+                        last_h = p_health.sort_values("評估日期").iloc[-1]
+                        
+                        alerts = []
+                        # 情緒
+                        bsrs_stat = str(last_h.get('BSRS_狀態', ''))
+                        if "重度" in bsrs_stat: alerts.append("<span style='color:#C62828; font-weight:bold;'>🚨 重度情緒困擾</span>")
+                        elif "中度" in bsrs_stat: alerts.append("<span style='color:#EF6C00; font-weight:bold;'>🌧️ 中度情緒困擾</span>")
+                        
+                        # 營養
+                        mna_stat = str(last_h.get('MNA_狀態', ''))
+                        if "不良" in mna_stat or "風險" in mna_stat: alerts.append("<span style='color:#D32F2F; font-weight:bold;'>📉 營養風險/不良</span>")
+                        
+                        # 高齡功能
+                        if str(last_h.get('ICOPE_2_跌倒風險', '')) == "是": alerts.append("🤕 跌倒風險")
+                        if str(last_h.get('ICOPE_1_記憶減退', '')) == "是": alerts.append("🧠 記憶減退")
+                        
+                        # 握力
+                        try:
+                            g_r = float(last_h.get('右手握力', 0) if last_h.get('右手握力') else 0)
+                            g_l = float(last_h.get('左手握力', 0) if last_h.get('左手握力') else 0)
+                            max_g = max(g_r, g_l)
+                            if max_g > 0 and ((last_h.get('Q1_性別')=='男' and max_g<26) or (last_h.get('Q1_性別')=='女' and max_g<18)):
+                                alerts.append("💪 握力不足")
+                        except: pass
+                        
+                        if alerts:
+                            st.markdown(f"<div style='background:#F8F9FA; padding:10px; border-radius:8px;'>{' 、 '.join(alerts)}</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown("<div style='background:#E8F5E9; color:#2E7D32; padding:10px; border-radius:8px; font-weight:bold;'>✅ 無明顯高風險指標</div>", unsafe_allow_html=True)
+                    else:
+                        st.caption("尚無健康評估紀錄")
+                else:
+                    st.caption("尚無健康評估紀錄")
+
+            with sc2:
+                # 3. 近期訪視 (最近 2 筆)
+                st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#4A4E69; margin-bottom:5px;'>🤝 近期訪視紀錄</div>", unsafe_allow_html=True)
+                p_logs = logs[logs['關懷戶姓名'] == target_p].sort_values("發放日期", ascending=False).head(2)
+                if not p_logs.empty:
+                    for _, r in p_logs.iterrows():
+                        is_pure = (r['物資內容'] == "(僅訪視)")
+                        itm = "純訪視" if is_pure else f"{r['物資內容']} x{r['發放數量']}"
+                        st.markdown(f"""
+                        <div style="background:#F5F5F5; padding:8px; border-radius:8px; margin-bottom:6px; font-size:0.85rem;">
+                            <b>{r['發放日期']}</b> | <span style="color:#2E7D32; font-weight:bold;">{itm}</span><br>
+                            <span style="color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">📝 {str(r['訪視紀錄']).strip() or '無備註'}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.caption("尚無近期紀錄")
+
+                # 4. 關係標記 (反感/不合 等警示)
+                bad_rels = []
+                raw_rel = str(p_row.get('人際關係', ''))
+                if raw_rel:
+                    id_to_name = mems.set_index('身分證字號')['姓名'].to_dict()
+                    for item in raw_rel.split(','):
+                        if ':' in item:
+                            r_key, r_type = item.split(':', 1)
+                            if "不合" in r_type or "反感" in r_type or "債務" in r_type:
+                                final_n = id_to_name.get(r_key.strip(), r_key.strip())
+                                bad_rels.append(f"{final_n} ({r_type})")
+                
+                if bad_rels:
+                    st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#D32F2F; margin-top:10px; margin-bottom:5px;'>⚡ 需注意人際對象</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='background:#FFEBEE; color:#C62828; padding:6px 10px; border-radius:8px; font-size:0.85rem;'>迴避：{', '.join(bad_rels)}</div>", unsafe_allow_html=True)
 
     st.markdown("#### 2. 訪視內容與物資")
     
