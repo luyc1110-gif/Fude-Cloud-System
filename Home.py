@@ -439,7 +439,8 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
     if is_care:
         st.markdown("#### 關懷戶資料")
         CARE_TYPES = ["低收入戶", "中低收入戶", "獨居老人", "身心障礙", "特殊境遇家庭", "其他"]
-        r_care_type = st.selectbox("關懷身分別", CARE_TYPES, key="add_care_type")
+        # 改用 multiselect 支援複選，回傳會是一個 List
+        r_care_type = st.multiselect("關懷身分別 (可複選)", CARE_TYPES, key="add_care_type")
         cc1, cc2, cc3 = st.columns(3)
         r_u18   = cc1.number_input("同住 18歲以下", min_value=0, step=1, key="add_u18")
         r_adult = cc2.number_input("同住成人數",    min_value=0, step=1, key="add_adult")
