@@ -1649,128 +1649,94 @@ elif st.session_state.page == 'visit':
     render_nav()
     st.markdown("## 🤝 訪視與物資發放紀錄")
     
+    # --- 新增：專屬卡片標題樣式 ---
+    st.markdown("""
+    <style>
+    .visit-card-title {
+        font-size: 1.3rem; font-weight: 900; color: #2E7D32; 
+        margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #E8F5E9;
+        display: flex; align-items: center; gap: 8px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # 1. 載入必要的資料表
     mems = get_care_members()
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
     
-    # [新增] 跨系統載入據點的報到紀錄，以及「目前活躍的據點長輩名單」
+    # 跨系統載入據點的報到紀錄，以及「目前活躍的據點長輩名單」
     elderly_logs = load_data("elderly_logs", ["姓名", "身分證字號", "日期"]) 
-    active_elders = load_data("master_residents", ["姓名"]) # 👈 關鍵：抓取還沒被結案的長輩
+    active_elders = load_data("master_residents", ["姓名"])
 
     # =========================================================
-    # 🚨 系統自動鉤稽：連續兩次未報到之預警工單
+    # 📇 卡片一：建議訪視名單 (自動預警)
     # =========================================================
-    st.markdown("### 🚨 建議訪視名單")
-    
-    if not elderly_logs.empty and not active_elders.empty:
-        # 1. 確保日期格式正確
-        elderly_logs['日期'] = pd.to_datetime(elderly_logs['日期'], errors='coerce')
+    with st.container(border=True):
+        st.markdown('<div class="visit-card-title">🚨 建議訪視名單</div>', unsafe_allow_html=True)
         
-        # 2. 抓出據點所有的「實際開課日期」，並由新到舊排序
-        valid_dates = elderly_logs['日期'].dropna().dt.date.unique()
-        valid_dates = sorted(valid_dates, reverse=True)
-        
-        if len(valid_dates) >= 2:
-            date_last = pd.to_datetime(valid_dates[0]) # 最近一次上課
-            date_prev = pd.to_datetime(valid_dates[1]) # 倒數第二次上課
+        if not elderly_logs.empty and not active_elders.empty:
+            elderly_logs['日期'] = pd.to_datetime(elderly_logs['日期'], errors='coerce')
+            valid_dates = sorted(elderly_logs['日期'].dropna().dt.date.unique(), reverse=True)
             
-            # 3. 找出每位長輩的最後報到日
-            last_checkin = elderly_logs.groupby('姓名')['日期'].max().reset_index()
-            
-            # 4. 篩選出「最後報到日 < 倒數第二次上課日」的長輩
-            missing_elders = last_checkin[last_checkin['日期'] < date_prev].copy()
-            
-            # 🔴 5. [關鍵修復] 剔除已經結案/過世/退出的長輩
-            active_names = active_elders['姓名'].tolist()
-            missing_elders = missing_elders[missing_elders['姓名'].isin(active_names)]
-            
-            if not missing_elders.empty:
-                # 6. [防呆機制] 檢查志工是否已經去家訪過了
-                pending_tickets = []
+            if len(valid_dates) >= 2:
+                date_last = pd.to_datetime(valid_dates[0]) 
+                date_prev = pd.to_datetime(valid_dates[1]) 
+                last_checkin = elderly_logs.groupby('姓名')['日期'].max().reset_index()
+                missing_elders = last_checkin[last_checkin['日期'] < date_prev].copy()
                 
-                if not logs.empty:
-                    logs['發放日期'] = pd.to_datetime(logs['發放日期'], errors='coerce')
-                    last_visit = logs.groupby('關懷戶姓名')['發放日期'].max().reset_index()
-                else:
-                    last_visit = pd.DataFrame(columns=['關懷戶姓名', '發放日期'])
+                active_names = active_elders['姓名'].tolist()
+                missing_elders = missing_elders[missing_elders['姓名'].isin(active_names)]
+                
+                if not missing_elders.empty:
+                    pending_tickets = []
+                    if not logs.empty:
+                        logs['發放日期'] = pd.to_datetime(logs['發放日期'], errors='coerce')
+                        last_visit = logs.groupby('關懷戶姓名')['發放日期'].max().reset_index()
+                    else:
+                        last_visit = pd.DataFrame(columns=['關懷戶姓名', '發放日期'])
 
-                for _, row in missing_elders.iterrows():
-                    e_name = row['姓名']
-                    last_seen_date = row['日期']
-                    
-                    # 尋找該長輩最近的家訪紀錄
-                    visit_record = last_visit[last_visit['關懷戶姓名'] == e_name]
-                    
-                    needs_visit = True
-                    if not visit_record.empty:
-                        v_date = visit_record.iloc[0]['發放日期']
-                        # 如果家訪日期 >= 倒數第二次開課日，代表志工已經介入處理了，解除警報
-                        if v_date >= date_prev:
-                            needs_visit = False
-                    
-                    if needs_visit:
-                        pending_tickets.append({
-                            "姓名": e_name, 
-                            "最後報到": last_seen_date.strftime('%Y-%m-%d')
-                        })
+                    for _, row in missing_elders.iterrows():
+                        e_name = row['姓名']
+                        last_seen_date = row['日期']
+                        visit_record = last_visit[last_visit['關懷戶姓名'] == e_name]
+                        needs_visit = True
+                        if not visit_record.empty:
+                            v_date = visit_record.iloc[0]['發放日期']
+                            if v_date >= date_prev: needs_visit = False
+                        
+                        if needs_visit:
+                            pending_tickets.append({"姓名": e_name, "最後報到": last_seen_date.strftime('%Y-%m-%d')})
 
-                # 7. 渲染 UI 工單卡片 (含快速結案功能)
-                if pending_tickets:
-                    st.warning(f"⚠️ 偵測到 {len(pending_tickets)} 位活躍長輩連續兩次未至據點，請優先安排關懷訪視或快速結案！")
-                    
-                    cols = st.columns(3)
-                    for idx, ticket in enumerate(pending_tickets):
-                        e_name = ticket['姓名']
-                        with cols[idx % 3]:
-                            with st.container(border=True):
-                                st.markdown(f"""
-                                <div style="font-weight: 900; font-size: 1.2rem; color: #E65100;">{e_name}</div>
-                                <div style="color: #555; font-size: 0.9rem; margin-top: 5px; margin-bottom: 10px;">
-                                    📅 最後現身：{ticket['最後報到']}<br>
-                                    <span style="color: #D32F2F; font-weight: bold;">缺席：{date_prev.strftime('%m/%d')}、{date_last.strftime('%m/%d')}</span>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-                                # ⚡ 快速結案選單
-                                quick_reason = st.selectbox(
-                                    "確認長輩安全狀況", 
-                                    ["路上有看到", "Line/電話有回覆", "有請假 / 家屬告知", "其他 (需手動填寫訪視)"], 
-                                    key=f"qr_{e_name}",
-                                    label_visibility="collapsed"
-                                )
-                                
-                                # 執行快速結案
-                                if st.button("✅ 標記為安全 (結案)", key=f"btn_{e_name}", use_container_width=True):
-                                    if "其他" in quick_reason:
-                                        st.error("請在下方表單填寫完整的訪視紀錄")
-                                    else:
-                                        quick_log = {
-                                            "志工": "系統快速結案", 
-                                            "發放日期": str(date.today()), 
-                                            "關懷戶姓名": e_name,
-                                            "物資內容": "(僅訪視)", 
-                                            "發放數量": 0, 
-                                            "訪視紀錄": f"【快速結案】{quick_reason}"
-                                        }
-                                        if append_data("care_logs", quick_log, COLS_LOG):
-                                            st.toast(f"✅ 已將 {e_name} 標記為安全！")
-                                            time.sleep(0.5)
-                                            st.rerun()
-                else:
-                    st.success("🟢 缺席長輩皆已確認安全或完成家訪追蹤。")
-            else:
-                st.success("🟢 目前所有活躍長輩皆有穩定出席。")
-        else:
-            st.info("據點開課次數不足兩次，尚無法進行缺席判定。")
-    else:
-        st.info("尚無足夠的據點報到與名冊資料可供分析。")
+                    if pending_tickets:
+                        st.warning(f"⚠️ 偵測到 {len(pending_tickets)} 位活躍長輩連續兩次未至據點，請優先安排關懷訪視或快速結案！")
+                        cols = st.columns(3)
+                        for idx, ticket in enumerate(pending_tickets):
+                            e_name = ticket['姓名']
+                            with cols[idx % 3]:
+                                with st.container(border=True):
+                                    st.markdown(f"""
+                                    <div style="font-weight: 900; font-size: 1.2rem; color: #E65100;">{e_name}</div>
+                                    <div style="color: #555; font-size: 0.9rem; margin-top: 5px; margin-bottom: 10px;">
+                                        📅 最後現身：{ticket['最後報到']}<br>
+                                        <span style="color: #D32F2F; font-weight: bold;">缺席：{date_prev.strftime('%m/%d')}、{date_last.strftime('%m/%d')}</span>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    quick_reason = st.selectbox("確認長輩安全狀況", ["路上有看到", "Line/電話有回覆", "有請假 / 家屬告知", "其他 (需手動填寫訪視)"], key=f"qr_{e_name}", label_visibility="collapsed")
+                                    if st.button("✅ 標記為安全 (結案)", key=f"btn_{e_name}", use_container_width=True):
+                                        if "其他" in quick_reason:
+                                            st.error("請在下方表單填寫完整的訪視紀錄")
+                                        else:
+                                            quick_log = {"志工": "系統快速結案", "發放日期": str(date.today()), "關懷戶姓名": e_name, "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": f"【快速結案】{quick_reason}"}
+                                            if append_data("care_logs", quick_log, COLS_LOG):
+                                                st.toast(f"✅ 已將 {e_name} 標記為安全！"); time.sleep(0.5); st.rerun()
+                    else: st.success("🟢 缺席長輩皆已確認安全或完成家訪追蹤。")
+                else: st.success("🟢 目前所有活躍長輩皆有穩定出席。")
+            else: st.info("據點開課次數不足兩次，尚無法進行缺席判定。")
+        else: st.info("尚無足夠的據點報到與名冊資料可供分析。")
         
-    st.markdown("---")
-    
-    # 2. 計算即時庫存與類型
-    stock_map = {}
-    item_type_map = {} # 🟢 新增：用來記錄該庫存的物資類型
+    # 計算即時庫存與類型 (供後續使用)
+    stock_map, item_type_map = {}, {}
     if not inv.empty:
         for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
             total_in = group['總數量'].replace("","0").astype(float).sum()
@@ -1779,18 +1745,13 @@ elif st.session_state.page == 'visit':
             remain = int(total_in - total_out)
             if remain > 0: 
                 stock_map[composite_name] = remain
-                item_type_map[composite_name] = group.iloc[0]['物資類型'] # 🟢 紀錄類型
+                item_type_map[composite_name] = group.iloc[0]['物資類型']
 
-    # =========================================================
-    # ✨ 功能 A：智慧發放建議 (含營養不良加權機制)
-    # =========================================================
-    with st.expander("🤖 優先發放建議", expanded=False):
-        st.caption("💡 系統將根據「弱勢積分」推薦，並過濾「已領過」或「拒收」個案。若發放食物，有營養風險者將獲大幅加分。")
-        
+    # 獨立的展開區域：智慧發放建議
+    with st.expander("🤖 優先發放建議 (依據弱勢積分與營養風險)", expanded=False):
         if not stock_map:
             st.warning("目前無庫存物資可供分析。")
         else:
-            # 🟢 新增：預先找出有營養風險的名單，避免在迴圈內重複計算拖慢速度
             malnutrition_names = set()
             h_df = load_data("care_health", COLS_HEALTH)
             if not h_df.empty:
@@ -1800,12 +1761,11 @@ elif st.session_state.page == 'visit':
                     mna_stat = str(r.get('MNA_狀態', ''))
                     icope_w = str(r.get('ICOPE_3_體重減輕', ''))
                     icope_e = str(r.get('ICOPE_4_食慾不佳', ''))
-                    # 只要符合任何一項營養風險指標，就加入名單
                     if "不良" in mna_stat or "風險" in mna_stat or icope_w == "是" or icope_e == "是":
                         malnutrition_names.add(str(r.get('姓名', '')))
             
             suggest_item = st.selectbox("選擇要評估發放的物資：", list(stock_map.keys()))
-            is_food = (item_type_map.get(suggest_item) == "食物") # 判斷當前物資是否為食物
+            is_food = (item_type_map.get(suggest_item) == "食物")
             
             suggestion_list = []
             for index, row in mems.iterrows():
@@ -1813,11 +1773,9 @@ elif st.session_state.page == 'visit':
                 p_tags = str(row['身分別'])
                 p_refuse = str(row.get('拒絕物資', '')) 
                 
-                # 1. 檢查是否拒收 (呼叫字典判讀)
                 is_conflict, _ = check_conflict(p_refuse, suggest_item)
                 if is_conflict: continue 
 
-                # 2. 檢查是否領過
                 has_received = False
                 if not logs.empty:
                     check_log = logs[(logs['關懷戶姓名'] == p_name) & (logs['物資內容'] == suggest_item)]
@@ -1826,7 +1784,6 @@ elif st.session_state.page == 'visit':
                         if total_rec > 0: has_received = True
                 
                 if not has_received:
-                    # 3. 計算弱勢積分
                     score = 0
                     if "獨居" in p_tags: score += 3
                     if "低收" in p_tags: score += 3
@@ -1837,77 +1794,65 @@ elif st.session_state.page == 'visit':
                         if int(row.get('18歲以下子女', 0)) > 2: score += 2
                     except: pass
                     
-                    # 🟢 新增：營養風險加權機制
                     if is_food and p_name in malnutrition_names:
-                        score += 5  # 高權重加分 (直接加5分，保證名列前茅)
-                        p_tags += " | 🚨需營養補充" # 在畫面上多給一個警示標籤
-                    
+                        score += 5 
+                        p_tags += " | 🚨需營養補充" 
                     suggestion_list.append({"姓名": p_name, "身分別": p_tags, "弱勢積分": score})
             
-            # 顯示結果
             if suggestion_list:
                 df_suggest = pd.DataFrame(suggestion_list).sort_values("弱勢積分", ascending=False).head(5)
                 for _, row in df_suggest.iterrows():
-                    # 🟢 特殊樣式：若觸發營養補充條件，給予醒目的淡紅色背景與紅邊框
                     alert_style = "border-left:5px solid #D32F2F; background:#FFEBEE;" if "需營養補充" in row['身分別'] else "border-left:5px solid #FF7043; background:white;"
-                    
                     st.markdown(f"""
                     <div style="{alert_style} padding:8px; margin-bottom:5px; box-shadow:0 1px 3px rgba(0,0,0,0.1); border-radius: 5px;">
                         <span style="font-weight:bold;">{row['姓名']}</span> 
                         <span style="color:#666; font-size:0.85rem;">(積分: {row['弱勢積分']} | {row['身分別']})</span>
                     </div>
                     """, unsafe_allow_html=True)
-            else:
-                st.info("沒有符合的推薦對象 (大家都領過了，或是不適合該物資)。")
+            else: st.info("沒有符合的推薦對象 (大家都領過了，或是不適合該物資)。")
 
-    st.markdown("---")
+    st.write("") # 空行間距
 
     # =========================================================
-    # ✨ 功能 B：訪視與物資發放 (修復卡片顯示)
+    # 📇 卡片二：訪視對象 (包含個案速寫)
     # =========================================================
-    st.markdown("#### 1. 訪視對象")
-    
-    # 篩選選單
-    all_tags = set()
-    if not mems.empty:
-        for s in mems['身分別'].astype(str):
-            for t in s.split(','):
-                if t.strip(): all_tags.add(t.strip())
-    
-    c_filter, c_person = st.columns([1, 2])
-    with c_filter:
-        sel_tag = st.selectbox("🌪️ 依身分別篩選", ["(全部顯示)"] + sorted(list(all_tags)))
-    with c_person:
-        filtered_mems = mems if sel_tag == "(全部顯示)" else mems[mems['身分別'].str.contains(sel_tag, na=False)]
-        target_p = st.selectbox("👤 選擇關懷戶", filtered_mems['姓名'].tolist() if not filtered_mems.empty else [], index=None, placeholder="請點擊此處輸入或選擇姓名...")
+    with st.container(border=True):
+        st.markdown('<div class="visit-card-title">👤 訪視對象</div>', unsafe_allow_html=True)
+        
+        all_tags = set()
+        if not mems.empty:
+            for s in mems['身分別'].astype(str):
+                for t in s.split(','):
+                    if t.strip(): all_tags.add(t.strip())
+        
+        c_filter, c_person = st.columns([1, 2])
+        with c_filter: sel_tag = st.selectbox("🌪️ 依身分別篩選", ["(全部顯示)"] + sorted(list(all_tags)))
+        with c_person:
+            filtered_mems = mems if sel_tag == "(全部顯示)" else mems[mems['身分別'].str.contains(sel_tag, na=False)]
+            target_p = st.selectbox("選擇關懷戶", filtered_mems['姓名'].tolist() if not filtered_mems.empty else [], index=None, placeholder="請點擊此處輸入或選擇姓名...", label_visibility="collapsed")
 
-    # === 💡 新增：個案速寫智慧面板 ===
-    current_refuse = ""
-    if target_p and not mems.empty:
-        p_row_idx = mems[mems['姓名'] == target_p].index[0]
-        p_row = mems.loc[p_row_idx]
-        my_id = str(p_row['身分證字號']).strip()
-        current_refuse = str(p_row.get('拒絕物資', ''))
-        
-        h_df = load_data("care_health", COLS_HEALTH) # 確保載入健康資料
-        
-        st.markdown(f"#### 💡 {target_p} 個案速寫 (發放評估參考)")
-        
-        with st.container(border=True):
-            sc1, sc2 = st.columns([1.2, 1])
+        # 💡 個案速寫智慧面板
+        current_refuse = ""
+        if target_p and not mems.empty:
+            p_row_idx = mems[mems['姓名'] == target_p].index[0]
+            p_row = mems.loc[p_row_idx]
+            my_id = str(p_row['身分證字號']).strip()
+            current_refuse = str(p_row.get('拒絕物資', ''))
+            h_df = load_data("care_health", COLS_HEALTH)
             
+            st.markdown(f"<div style='margin-top:15px; padding-top:15px; border-top:1px dashed #ccc;'><b style='color:#4A4E69;'>💡 {target_p} 個案速寫 (發放評估參考)</b></div>", unsafe_allow_html=True)
+            
+            sc1, sc2 = st.columns([1.2, 1])
             with sc1:
-                # 1. 拒收與飲食禁忌
                 st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#4A4E69; margin-bottom:5px;'>🚫 拒收物資 / 飲食禁忌</div>", unsafe_allow_html=True)
                 with st.expander(f"目前設定: {current_refuse if current_refuse else '無 (點擊修改)'}", expanded=False):
                     c_edit, c_btn = st.columns([3, 1])
-                    new_refuse_input = c_edit.text_input("拒絕項目 (逗號隔開)", value=current_refuse, label_visibility="collapsed")
+                    new_refuse_input = c_edit.text_input("拒絕項目", value=current_refuse, label_visibility="collapsed")
                     if c_btn.button("💾 更新", key="update_refuse"):
                         mems.at[p_row_idx, '拒絕物資'] = new_refuse_input
                         update_master_fields(my_id, {'拒絕物資': new_refuse_input})
                         st.toast("✅ 備註已更新！"); time.sleep(0.5); st.rerun()
 
-                # --- 🎯 新增：過去疾病史 ---
                 st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#4A4E69; margin-top:10px; margin-bottom:5px;'>🏥 過去疾病史</div>", unsafe_allow_html=True)
                 disease_hist = "無紀錄"
                 if not h_df.empty:
@@ -1915,28 +1860,19 @@ elif st.session_state.page == 'visit':
                     if not p_health.empty:
                         last_h = p_health.sort_values("評估日期").iloc[-1]
                         disease_hist = str(last_h.get('Q12_過去疾病史', '無紀錄')).strip()
-                        if not disease_hist or disease_hist == 'nan': 
-                            disease_hist = "無紀錄"
+                        if not disease_hist or disease_hist == 'nan': disease_hist = "無紀錄"
                 st.markdown(f"<div style='background:#F8F9FA; border: 1px solid #eee; padding:8px 12px; border-radius:8px; font-size:0.9rem; color:#333; font-weight:500;'>{disease_hist}</div>", unsafe_allow_html=True)
                 
-                # 2. 健康狀態重點 (修復：改用 Flex-Wrap 標籤避免超出版面)
                 st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#4A4E69; margin-top:10px; margin-bottom:5px;'>⚠️ 最新健康異常摘要</div>", unsafe_allow_html=True)
                 if not h_df.empty and not p_health.empty:
                     alerts = []
-                    # 情緒
                     bsrs_stat = str(last_h.get('BSRS_狀態', ''))
                     if "重度" in bsrs_stat: alerts.append(("🚨 重度情緒困擾", "#FFEBEE", "#C62828"))
                     elif "中度" in bsrs_stat: alerts.append(("🌧️ 中度情緒困擾", "#FFF3E0", "#EF6C00"))
-                    
-                    # 營養
                     mna_stat = str(last_h.get('MNA_狀態', ''))
                     if "不良" in mna_stat or "風險" in mna_stat: alerts.append(("📉 營養風險/不良", "#FFEBEE", "#D32F2F"))
-                    
-                    # 高齡功能
                     if str(last_h.get('ICOPE_2_跌倒風險', '')) == "是": alerts.append(("🤕 跌倒風險", "#FFF8E1", "#F57F17"))
                     if str(last_h.get('ICOPE_1_記憶減退', '')) == "是": alerts.append(("🧠 記憶減退", "#F3E5F5", "#7B1FA2"))
-                    
-                    # 握力
                     try:
                         g_r = float(last_h.get('右手握力', 0) if last_h.get('右手握力') else 0)
                         g_l = float(last_h.get('左手握力', 0) if last_h.get('左手握力') else 0)
@@ -1946,36 +1882,27 @@ elif st.session_state.page == 'visit':
                     except: pass
                     
                     if alerts:
-                        # 使用 flex-wrap: wrap 讓標籤超過寬度時自動換行
                         tags_html = "".join([f"<div style='background:{bg}; color:{tc}; padding:4px 10px; border-radius:15px; font-size:0.85rem; font-weight:bold;'>{txt}</div>" for txt, bg, tc in alerts])
                         st.markdown(f"<div style='display:flex; flex-wrap:wrap; gap:8px;'>{tags_html}</div>", unsafe_allow_html=True)
-                    else:
-                        st.markdown("<div style='background:#E8F5E9; color:#2E7D32; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:0.9rem;'>✅ 無明顯高風險指標</div>", unsafe_allow_html=True)
-                else:
-                    st.caption("尚無健康評估紀錄")
+                    else: st.markdown("<div style='background:#E8F5E9; color:#2E7D32; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:0.9rem;'>✅ 無明顯高風險指標</div>", unsafe_allow_html=True)
+                else: st.caption("尚無健康評估紀錄")
 
             with sc2:
-                # 3. 近期訪視 (將 head(2) 改為 head(4) 增加顯示筆數)
                 st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#4A4E69; margin-bottom:5px;'>🤝 近期訪視紀錄</div>", unsafe_allow_html=True)
                 p_logs = logs[logs['關懷戶姓名'] == target_p].sort_values("發放日期", ascending=False).head(4)
                 if not p_logs.empty:
                     for _, r in p_logs.iterrows():
                         is_pure = (r['物資內容'] == "(僅訪視)")
                         itm = "純訪視" if is_pure else f"{r['物資內容']} x{r['發放數量']}"
-                        
-                        # 處理日期時間，只顯示到日期，畫面更乾淨
                         display_date = str(r['發放日期']).split(" ")[0] 
-                        
                         st.markdown(f"""
                         <div style="background:#F5F5F5; padding:8px; border-radius:8px; margin-bottom:6px; font-size:0.85rem;">
                             <b>{display_date}</b> | <span style="color:#2E7D32; font-weight:bold;">{itm}</span><br>
                             <span style="color:#666; display:block; margin-top:4px; line-height:1.5; word-wrap:break-word;">📝 {str(r['訪視紀錄']).strip() or '無備註'}</span>
                         </div>
                         """, unsafe_allow_html=True)
-                else:
-                    st.caption("尚無近期紀錄")
+                else: st.caption("尚無近期紀錄")
 
-                # 4. 關係標記 (反感/不合 等警示)
                 bad_rels = []
                 raw_rel = str(p_row.get('人際關係', ''))
                 if raw_rel:
@@ -1986,164 +1913,128 @@ elif st.session_state.page == 'visit':
                             if "不合" in r_type or "反感" in r_type or "債務" in r_type:
                                 final_n = id_to_name.get(r_key.strip(), r_key.strip())
                                 bad_rels.append(f"{final_n} ({r_type})")
-                
                 if bad_rels:
                     st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#D32F2F; margin-top:10px; margin-bottom:5px;'>⚡ 需注意人際對象</div>", unsafe_allow_html=True)
                     st.markdown(f"<div style='background:#FFEBEE; color:#C62828; padding:6px 10px; border-radius:8px; font-size:0.85rem;'>迴避：{', '.join(bad_rels)}</div>", unsafe_allow_html=True)
 
-    st.markdown("#### 2. 訪視內容與物資")
-    
-    # --- [新增程式碼] 鉤稽志工系統名單 ---
-    # 1. 讀取志工名冊 (共用同一個 Spreadsheet，分頁名稱為 'members')
-    vol_df = load_data("master_residents", ["姓名", "志工分類", "身分_志工"])
-    vol_df = vol_df[vol_df['身分_志工'].astype(str).str.upper() == 'TRUE']
-    
-    # 2. 預設名單
-    vol_list = ["呂宜政", "預設志工"]
-    
-    # 3. 篩選：具備志工身分 且 分類包含"關懷據點"
-    if not vol_df.empty:
-        is_vol = vol_df['身分_志工'].astype(str).str.upper() == 'TRUE'
-        mask = vol_df['志工分類'].astype(str).str.contains("關懷據點", na=False)
-        target_vols = vol_df[is_vol & mask]['姓名'].unique().tolist()
-        if target_vols:
-            vol_list = sorted(target_vols)
-    # ------------------------------------
+    st.write("") # 空行間距
 
-    c1, c2 = st.columns(2)
-    visit_who = c1.selectbox("執行志工", vol_list) 
-    visit_date = c2.date_input("日期", value=date.today())
-    
-    st.write("📦 **庫存物資清單 (紅色 = 系統判定不宜)**")
-    
-    quantities = {}
-    warning_msgs = []
-
-    if not stock_map:
-        st.info("💡 目前無庫存。")
-    else:
-        valid_items = sorted(stock_map.items())
+    # =========================================================
+    # 📇 卡片三：訪視內容與物資
+    # =========================================================
+    with st.container(border=True):
+        st.markdown('<div class="visit-card-title">📦 訪視內容與物資</div>', unsafe_allow_html=True)
         
-        for i in range(0, len(valid_items), 3):
-            cols = st.columns(3)
-            for j in range(3):
-                if i + j < len(valid_items):
-                    c_name, c_stock = valid_items[i+j]
-                    
-                    # 判讀是否衝突
-                    is_bad, bad_reason = check_conflict(current_refuse, c_name)
-                    
-                    with cols[j]:
-                        # 準備樣式
-                        if is_bad:
-                            bg = "#FFEBEE"
-                            border = "#D32F2F"
-                            warn_txt = f"<div style='color:#D32F2F; font-weight:bold; font-size:0.85rem; margin-bottom:5px;'>🚫 不宜：{bad_reason}</div>"
-                        else:
-                            bg = "#FFFFFF"
-                            border = "#ddd"
-                            warn_txt = ""
+        vol_df = load_data("master_residents", ["姓名", "志工分類", "身分_志工"])
+        vol_df = vol_df[vol_df['身分_志工'].astype(str).str.upper() == 'TRUE']
+        vol_list = ["呂宜政", "預設志工"]
+        
+        if not vol_df.empty:
+            is_vol = vol_df['身分_志工'].astype(str).str.upper() == 'TRUE'
+            mask = vol_df['志工分類'].astype(str).str.contains("關懷據點", na=False)
+            target_vols = vol_df[is_vol & mask]['姓名'].unique().tolist()
+            if target_vols: vol_list = sorted(target_vols)
 
-                        # --- 🔥 修正重點：使用變數來構建 HTML，解決縮排顯示錯誤的問題 ---
-                        warn_txt = warn_txt or ""
-                        card_html = (
-                            f'<div style="background-color:{bg}; border:2px solid {border}; border-radius:10px; padding:15px;">'
-                            f'{warn_txt}'
-                            f'<div style="font-weight:900; font-size:1.1rem; margin-bottom:5px; color:#333;">{c_name}</div>'
-                            f'<div style="color:#666; font-size:0.9rem; margin-bottom:10px;">庫存: {c_stock}</div>'
-                            f'</div>'
-                        )
-                        st.markdown(card_html, unsafe_allow_html=True)
-                        
-                        # 輸入框
-                        qty = st.number_input(f"數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}")
-                        quantities[c_name] = qty
-                        
-                        if qty > 0 and is_bad:
-                            st.markdown(f"<span style='color:red; font-weight:bold;'>⚠️ 警告：包含{bad_reason}</span>", unsafe_allow_html=True)
-                            warning_msgs.append(f"⚠️ {c_name}：包含個案拒絕的「{bad_reason}」")
+        c1, c2 = st.columns(2)
+        visit_who = c1.selectbox("執行志工", vol_list) 
+        visit_date = c2.date_input("日期", value=date.today())
+        
+        st.write("📦 **庫存物資清單 (紅色 = 系統判定不宜)**")
+        quantities, warning_msgs = {}, []
 
-    # 提交區塊
-    note = st.text_area("訪視紀錄 / 備註", height=100)
-    
-    if warning_msgs:
-        st.error("🚨 請注意：您選擇了個案不宜的物資！")
-        for w in warning_msgs: st.write(w)
-    
-    if st.button("✅ 確認提交紀錄", type="primary"):
-        if not target_p:
-            st.error("❌ 請選擇關懷戶")
+        if not stock_map:
+            st.info("💡 目前無庫存。")
         else:
-            # 1. 收集要寫入的資料
-            items_to_give = [(k, v) for k, v in quantities.items() if v > 0]
-            new_logs = [] # 變數名稱在這裡定義為 new_logs
+            valid_items = sorted(stock_map.items())
+            for i in range(0, len(valid_items), 3):
+                cols = st.columns(3)
+                for j in range(3):
+                    if i + j < len(valid_items):
+                        c_name, c_stock = valid_items[i+j]
+                        is_bad, bad_reason = check_conflict(current_refuse, c_name)
+                        
+                        with cols[j]:
+                            if is_bad:
+                                bg, border = "#FFEBEE", "#D32F2F"
+                                warn_txt = f"<div style='color:#D32F2F; font-weight:bold; font-size:0.85rem; margin-bottom:5px;'>🚫 不宜：{bad_reason}</div>"
+                            else:
+                                bg, border, warn_txt = "#FFFFFF", "#ddd", ""
 
-            if items_to_give:
-                for item_name, amount in items_to_give:
-                    new_logs.append({
-                        "志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p,
-                        "物資內容": item_name, "發放數量": amount, "訪視紀錄": note
-                    })
+                            card_html = (
+                                f'<div style="background-color:{bg}; border:2px solid {border}; border-radius:10px; padding:15px;">'
+                                f'{warn_txt}'
+                                f'<div style="font-weight:900; font-size:1.1rem; margin-bottom:5px; color:#333;">{c_name}</div>'
+                                f'<div style="color:#666; font-size:0.9rem; margin-bottom:10px;">庫存: {c_stock}</div>'
+                                f'</div>'
+                            )
+                            st.markdown(card_html, unsafe_allow_html=True)
+                            qty = st.number_input(f"數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}", label_visibility="collapsed")
+                            quantities[c_name] = qty
+                            
+                            if qty > 0 and is_bad:
+                                st.markdown(f"<span style='color:red; font-weight:bold;'>⚠️ 警告：包含{bad_reason}</span>", unsafe_allow_html=True)
+                                warning_msgs.append(f"⚠️ {c_name}：包含個案拒絕的「{bad_reason}」")
+
+        note = st.text_area("訪視紀錄 / 備註", height=100)
+        
+        if warning_msgs:
+            st.error("🚨 請注意：您選擇了個案不宜的物資！")
+            for w in warning_msgs: st.write(w)
+        
+        if st.button("✅ 確認提交紀錄", type="primary", use_container_width=True):
+            if not target_p:
+                st.error("❌ 請選擇關懷戶")
             else:
-                new_logs.append({
-                    "志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p,
-                    "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note
-                })
-            
-            # 2. 寫入資料庫
-            try:
-                success_count = 0
-                for row_data in new_logs:
-                    # 直接呼叫您原本定義好的 append_data 函式
-                    # 此函式使用的是 sheet.append_row，保證是「追加」
-                    if append_data("care_logs", row_data, COLS_LOG):
-                        success_count += 1
-                
-                if success_count == len(new_logs):
-                    st.success(f"✅ 成功新增 {success_count} 筆紀錄！")
-                    time.sleep(1)
-                    st.rerun()
+                items_to_give = [(k, v) for k, v in quantities.items() if v > 0]
+                new_logs = []
+                if items_to_give:
+                    for item_name, amount in items_to_give:
+                        new_logs.append({"志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p, "物資內容": item_name, "發放數量": amount, "訪視紀錄": note})
                 else:
-                    st.warning(f"⚠️ 部分資料寫入異常，僅成功 {success_count} 筆。")
-                    
-            except Exception as e:
-                st.error(f"儲存失敗: {e}")
+                    new_logs.append({"志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p, "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note})
+                
+                try:
+                    success_count = 0
+                    for row_data in new_logs:
+                        if append_data("care_logs", row_data, COLS_LOG): success_count += 1
+                    if success_count == len(new_logs):
+                        st.success(f"✅ 成功新增 {success_count} 筆紀錄！")
+                        time.sleep(1); st.rerun()
+                    else: st.warning(f"⚠️ 部分資料寫入異常，僅成功 {success_count} 筆。")
+                except Exception as e: st.error(f"儲存失敗: {e}")
 
-    # === 🔥 修改開始：訪視紀錄改為卡片 ===
+    st.write("") # 空行間距
+
+    # =========================================================
+    # 📇 卡片四：最新訪視動態
+    # =========================================================
     if not logs.empty:
-        st.markdown("#### 📝 最新訪視動態 (Top 3)")
-        
-        # 1. 排序並取前 3
-        recent_logs = logs.sort_values('發放日期', ascending=False).head(3)
-        
-        v_cols = st.columns(3)
-        for idx, (i, row) in enumerate(recent_logs.iterrows()):
-            if idx < 3:
-                with v_cols[idx]:
-                    # 判斷是物資還是純訪視，給不同顏色標籤
-                    is_only_visit = (row['物資內容'] == "(僅訪視)")
-                    tag_bg = "#9E9E9E" if is_only_visit else "#8E9775"
-                    item_text = "純訪視" if is_only_visit else f"{row['物資內容']}"
-                    
-                    st.markdown(f"""
-                    <div style="
-                        background: white; 
-                        border-radius: 12px; 
-                        padding: 15px; 
-                        border-right: 5px solid {tag_bg}; 
-                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                            <span style="font-weight:900; font-size:1.1rem; color:#333;">{row['關懷戶姓名']}</span>
-                            <span style="font-size:0.8rem; color:#888;">{row['發放日期']}</span>
+        with st.container(border=True):
+            st.markdown('<div class="visit-card-title">📝 最新訪視動態 (Top 3)</div>', unsafe_allow_html=True)
+            recent_logs = logs.sort_values('發放日期', ascending=False).head(3)
+            
+            v_cols = st.columns(3)
+            for idx, (i, row) in enumerate(recent_logs.iterrows()):
+                if idx < 3:
+                    with v_cols[idx]:
+                        is_pure_visit = (row['物資內容'] == "(僅訪視)")
+                        tag_bg = "#9E9E9E" if is_pure_visit else "#8E9775"
+                        item_text = "純訪視" if is_pure_visit else f"{row['物資內容']}"
+                        
+                        st.markdown(f"""
+                        <div style="background: white; border-radius: 12px; padding: 15px; border-right: 5px solid {tag_bg}; box-shadow: 0 2px 5px rgba(0,0,0,0.05); height: 100%;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                <span style="font-weight:900; font-size:1.1rem; color:#333;">{row['關懷戶姓名']}</span>
+                                <span style="font-size:0.8rem; color:#888;">{str(row['發放日期']).split(" ")[0]}</span>
+                            </div>
+                            <div style="background:{tag_bg}; color:white; font-size:0.8rem; padding:2px 8px; border-radius:4px; display:inline-block; margin-bottom:8px;">
+                                {item_text}
+                            </div>
+                            <div style="font-size:0.9rem; color:#555; display:block; line-height:1.5; word-wrap:break-word;">
+                                {row['訪視紀錄'] if row['訪視紀錄'] else "(無備註)"}
+                            </div>
                         </div>
-                        <div style="background:{tag_bg}; color:white; font-size:0.8rem; padding:2px 8px; border-radius:4px; display:inline-block; margin-bottom:8px;">
-                            {item_text}
-                        </div>
-                        <div style="font-size:0.9rem; color:#555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            {row['訪視紀錄'] if row['訪視紀錄'] else "(無備註)"}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
 
 # =========================================================
 # 🔥 Page: Stats (數據統計與詳細檔案卡片 - 升級版)
