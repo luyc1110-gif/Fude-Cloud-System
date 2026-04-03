@@ -121,16 +121,13 @@ div[data-testid="stTimeInput"] * {{
 }}
 
 /* 按鈕樣式 */
-div[data-testid="stFormSubmitButton"] > button, div[data-testid="stDownloadButton"] > button {{
+div[data-testid="stFormSubmitButton"] > button, div[data-testid="stDownloadButton"] > button, .stButton > button {{
     background-color: {PRIMARY} !important; color: #FFFFFF !important; border: none !important; border-radius: 12px !important; padding: 10px 20px !important; font-weight: 900 !important;
 }}
-div[data-testid="stFormSubmitButton"] > button:hover, div[data-testid="stDownloadButton"] > button:hover {{
+div[data-testid="stFormSubmitButton"] > button:hover, div[data-testid="stDownloadButton"] > button:hover, .stButton > button:hover {{
     background-color: {ACCENT} !important; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }}
-div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadButton"] > button * {{ color: #FFFFFF !important; }}
-
-/* Toast */
-div[data-baseweb="toast"] {{ background-color: #FFFFFF !important; border: 3px solid {PRIMARY} !important; border-radius: 15px !important; padding: 15px !important; }}
+div[data-testid="stFormSubmitButton"] > button *, div[data-testid="stDownloadButton"] > button *, .stButton > button * {{ color: #FFFFFF !important; }}
 
 /* 日期選單樣式 */
 div[data-baseweb="calendar"] div, div[data-baseweb="calendar"] button, div[data-baseweb="calendar"] h1, div[data-baseweb="calendar"] h2, div[data-baseweb="calendar"] h3, div[data-baseweb="calendar"] h4, div[data-baseweb="calendar"] h5, div[data-baseweb="calendar"] h6 {{ color: #FFFFFF !important; }}
