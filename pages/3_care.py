@@ -1969,7 +1969,7 @@ elif st.session_state.page == 'visit':
                         st.markdown(f"""
                         <div style="background:#F5F5F5; padding:8px; border-radius:8px; margin-bottom:6px; font-size:0.85rem;">
                             <b>{display_date}</b> | <span style="color:#2E7D32; font-weight:bold;">{itm}</span><br>
-                            <span style="color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">📝 {str(r['訪視紀錄']).strip() or '無備註'}</span>
+                            <span style="color:#666; display:block; margin-top:4px; line-height:1.5; word-wrap:break-word;">📝 {str(r['訪視紀錄']).strip() or '無備註'}</span>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
