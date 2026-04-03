@@ -616,7 +616,7 @@ elif st.session_state.page == 'checkin':
                     
                     if batch_append_data("logs", new_rows, LOG_COLS):
                         st.success(f"✅ 已成功補登 {len(selected_names)} 筆資料！")
-                        st.session_state.clear_ms_tab2 = True
+                        #st.session_state.clear_ms_tab2 = True
                         time.sleep(1)
                         st.rerun()
 
