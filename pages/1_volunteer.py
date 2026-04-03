@@ -134,6 +134,15 @@ div[data-baseweb="calendar"] div, div[data-baseweb="calendar"] button, div[data-
 div[data-baseweb="calendar"] svg {{ fill: #FFFFFF !important; }}
 div[data-baseweb="calendar"] button:hover, div[data-baseweb="calendar"] button[aria-selected="true"] {{ color: #FFFFFF !important; font-weight: bold !important; }}
 div[data-baseweb="calendar"] {{ background-color: #262730 !important; }}
+
+/* --- 修復側邊欄按鈕文字被全域白字吃掉的問題 --- */
+section[data-testid="stSidebar"] .stButton > button * {
+    color: #666666 !important;
+}
+section[data-testid="stSidebar"] .stButton > button:hover * {
+    color: #4A148C !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
