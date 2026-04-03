@@ -118,6 +118,47 @@ section[data-testid="stSidebar"] button:hover {
     font-weight: 500; display: flex; align-items: center; gap: 8px;
 }
 .stat-item b { color: #212121; font-size: 1.1rem; margin-left: 5px; }
+/* ── 輸入框、選單 ── */
+div[data-baseweb="select"] > div,
+.stTextInput input,
+.stDateInput input,
+.stNumberInput input,
+.stTimeInput input {
+    background-color: #FFFFFF !important;
+    border: 2px solid #E0E0E0 !important;
+    border-radius: 12px !important;
+    color: #212121 !important;
+}
+
+/* 下拉選單選項 */
+div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {
+    background-color: #FFFFFF !important;
+    color: #212121 !important;
+}
+li[role="option"]:hover { background-color: #F3E5F5 !important; }
+
+/* checkbox 文字 */
+.stCheckbox label, .stCheckbox span {
+    color: #212121 !important;
+}
+
+/* label / caption 文字 */
+label, .stTextInput label, .stSelectbox label,
+.stDateInput label, .stNumberInput label,
+[data-testid="stWidgetLabel"] {
+    color: #212121 !important;
+}
+
+/* 確認新增按鈕 */
+div[data-testid="stFormSubmitButton"] > button,
+.stButton > button {
+    background-color: #4A148C !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 900 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
