@@ -585,7 +585,11 @@ elif st.session_state.page == 'checkin':
             d_time = c2.time_input("時間", value=get_tw_time().time(), key="d_time_tab2")
             d_action = c3.selectbox("動作", ["簽到", "簽退"], key="d_action_tab2")
             d_act = c4.selectbox("活動", DEFAULT_ACTIVITIES, key="d_act_tab2")
-            
+            # 在 st.multiselect 之前加這幾行（約第 589 行之前）
+            if st.session_state.get("clear_ms_tab2", False):
+                st.session_state.ms_vols_tab2 = []
+                st.session_state.clear_ms_tab2 = False
+
             st.multiselect(
                 "👤 選擇志工 (可單選或多選)", 
                 options=final_opts,
@@ -612,7 +616,7 @@ elif st.session_state.page == 'checkin':
                     
                     if batch_append_data("logs", new_rows, LOG_COLS):
                         st.success(f"✅ 已成功補登 {len(selected_names)} 筆資料！")
-                        st.session_state.ms_vols_tab2 = []
+                        st.session_state.clear_ms_tab2 = True
                         time.sleep(1)
                         st.rerun()
 
