@@ -481,7 +481,7 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
                 # 長者欄位
                 "長者_加入日期":       str(r_eld_join) if r_eld_join else "",
                 # 關懷戶欄位
-                "關懷_身分別":   r_care_type,
+                "關懷_身分別":   ",".join(r_care_type) if r_care_type else "",
                 "同住_18歲以下": str(r_u18),
                 "同住_成人":     str(r_adult),
                 "同住_65歲以上": str(r_o65),
@@ -516,7 +516,7 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
                     if is_care and str(rec.get("身分_關懷戶","")).upper() != "TRUE":
                         update["身分_關懷戶"] = "TRUE"
                     if is_care:
-                        update["關懷_身分別"]   = r_care_type
+                        update["關懷_身分別"]   = ",".join(r_care_type) if r_care_type else ""
                         update["同住_18歲以下"] = str(r_u18)
                         update["同住_成人"]     = str(r_adult)
                         update["同住_65歲以上"] = str(r_o65)
