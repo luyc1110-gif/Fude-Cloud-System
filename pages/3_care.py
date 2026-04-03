@@ -1961,10 +1961,10 @@ elif st.session_state.page == 'visit':
                                 bg, border, warn_txt = "#FFFFFF", "#ddd", ""
 
                             card_html = (
-                                f'<div style="background-color:{bg}; border:2px solid {border}; border-radius:10px; padding:15px;">'
+                                f'<div style="background-color:{bg}; border:2px solid {border}; border-radius:10px; padding:15px; margin-bottom:12px;">'
                                 f'{warn_txt}'
                                 f'<div style="font-weight:900; font-size:1.1rem; margin-bottom:5px; color:#333;">{c_name}</div>'
-                                f'<div style="color:#666; font-size:0.9rem; margin-bottom:10px;">庫存: {c_stock}</div>'
+                                f'<div style="color:#666; font-size:0.9rem;">庫存: {c_stock}</div>'
                                 f'</div>'
                             )
                             st.markdown(card_html, unsafe_allow_html=True)
