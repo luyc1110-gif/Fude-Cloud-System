@@ -385,7 +385,9 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
 
     c4, c5, c6 = st.columns(3)
     r_dob   = c4.date_input("出生年月日", value=date(1950, 1, 1),
-                             min_value=date(1900, 1, 1), key="add_dob")
+                             min_value=date(1900, 1, 1), 
+                             max_value=date.today(),    # 👈 加上這行，確保年份能選到今年
+                             key="add_dob")
     r_phone = c5.text_input("電話", key="add_phone")
     r_addr  = c6.text_input("地址", key="add_addr")
 
