@@ -49,8 +49,8 @@ header[data-testid="stHeader"] { background-color: transparent !important; }
 header[data-testid="stHeader"] .decoration { display: none; }
 
 section[data-testid="stSidebar"] button {
-    background-color: var(--color-background-primary) !important;
-    color: var(--color-text-secondary) !important;
+    background-color: #FFFFFF !important;
+    color: #666666 !important;
     border: 1px solid transparent !important;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
     border-radius: 25px !important;
@@ -62,26 +62,26 @@ section[data-testid="stSidebar"] button {
 section[data-testid="stSidebar"] button:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
-    color: var(--color-text-primary) !important;
+    color: #4A148C !important;   /* ← 改成固定紫色 */
     border: 1px solid var(--color-border-secondary) !important;
 }
 
 .hero-title {
     font-size: 2.5rem; font-weight: 900;
-    color: var(--color-text-primary);
+    color: #212121;              /* ← 改成固定深色 */
     text-align: center; margin-bottom: 10px;
 }
 .hero-subtitle {
     font-size: 1.2rem;
-    color: var(--color-text-secondary);
+    color: #666666;              /* ← 改成固定灰色 */
     text-align: center; margin-bottom: 50px;
 }
 
 .service-box {
     display: flex; flex-direction: row;
-    background-color: var(--color-background-secondary);
+    background-color: #FFFFFF;   /* ← var(--color-background-secondary) 換掉 */
     border-radius: 20px; padding: 0; margin-bottom: 30px;
-    overflow: hidden; border: 0.5px solid var(--color-border-tertiary);
+    overflow: hidden; border: 0.5px solid #E0E0E0; /* ← var(--color-border-tertiary) 換掉 */
     transition: transform 0.3s; min-height: 250px;
 }
 .service-box:hover {
@@ -106,18 +106,18 @@ section[data-testid="stSidebar"] button:hover {
 }
 
 .service-title { font-size: 1.8rem; font-weight: 900; margin-bottom: 10px; }
-.service-desc { font-size: 1rem; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 15px; }
+.service-desc { font-size: 1rem; color: #666666; line-height: 1.6; margin-bottom: 15px; }
 .service-icon-placeholder { font-size: 5rem; }
 
 .stats-row { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px; }
 .stat-item {
-    background-color: var(--color-background-primary);
-    border: 1px solid var(--color-border-tertiary);
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
     border-radius: 10px; padding: 8px 15px;
-    font-size: 0.9rem; color: var(--color-text-secondary);
+    font-size: 0.9rem; color: #666666;
     font-weight: 500; display: flex; align-items: center; gap: 8px;
 }
-.stat-item b { color: var(--color-text-primary); font-size: 1.1rem; margin-left: 5px; }
+.stat-item b { color: #212121; font-size: 1.1rem; margin-left: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
