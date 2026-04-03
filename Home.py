@@ -26,14 +26,14 @@ html, body, [class*="css"], div, p, span, li, ul {
     font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
 }
 
-.stApp { background-color: var(--color-background-tertiary) !important; }
+.stApp { background-color: #F0F2F5 !important; }
 section[data-testid="stSidebar"] { 
-    background-color: var(--color-background-tertiary); 
+    background-color: #F0F2F5; 
     border-right: none; 
 }
 
 .block-container {
-    background-color: var(--color-background-primary);
+    background-color: #FFFFFF;
     border-radius: 25px;
     padding: 3rem 4rem !important;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
