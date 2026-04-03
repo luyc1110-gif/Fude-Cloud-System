@@ -74,12 +74,15 @@ header[data-testid="stHeader"] .decoration {{ display: none; }}
 
 /* 🔥 4. 輸入框與下拉選單 */
 div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input {{
-    background-color: #FFFFFF !important; border: 2px solid #E0E0E0 !important; border-radius: 12px !important; color: #212121 !important;
+    background-color: #FFFFFF !important; border: 2px solid #E0E0E0 !important; border-radius: 12px !important; color: #212121 !important; -webkit-text-fill-color: #212121 !important;
 }}
 div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{ background-color: #FFFFFF !important; color: #212121 !important; }}
 li[role="option"]:hover {{ background-color: #F3E5F5 !important; }}
-div[data-testid="stTimeInput"] * {{ color: #212121 !important; -webkit-text-fill-color: #212121 !important; }}
-
+div[data-testid="stTimeInput"] input, div[data-testid="stTimeInput"] * {{ 
+    color: #212121 !important; 
+    -webkit-text-fill-color: #212121 !important; 
+    opacity: 1 !important;
+}}
 /* 🟢 修正：多選標籤 (志工姓名) 反白看不見的問題 */
 span[data-baseweb="tag"] {{ background-color: #4A148C !important; }}
 span[data-baseweb="tag"] span {{ color: #FFFFFF !important; font-weight: bold !important; font-size: 1rem !important; }}
