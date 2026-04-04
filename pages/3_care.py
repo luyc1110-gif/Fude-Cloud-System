@@ -897,6 +897,9 @@ elif st.session_state.page == 'health':
     with st.expander("➕ 新增/更新 評估紀錄 (請依序填寫)", expanded=True):
         sel_n = st.selectbox("選擇關懷戶", m_df['姓名'].tolist() if not m_df.empty else ["無名冊"], index=None, placeholder="請選擇...")
         
+        # ✅ 把日期選擇器搬到最前面，讓下面可以抓到變數
+        eval_date = st.date_input("填表日期", value=date.today()) 
+        
         # 0. 預載資料
         p_info = {}
         if sel_n and not m_df.empty:
@@ -923,7 +926,7 @@ elif st.session_state.page == 'health':
             </div>
             """, unsafe_allow_html=True)
 
-        eval_date = st.date_input("填表日期", value=date.today())
+        # (原本在這裡的 eval_date = st.date_input... 請刪除)
 
         # 使用 Tabs，並加上 Emoji 增加辨識度
         t1, t2, t3, t4, t5, t6, t7 = st.tabs([
