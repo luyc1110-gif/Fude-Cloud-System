@@ -73,7 +73,7 @@ header[data-testid="stHeader"] .decoration {{ display: none; }}
 .action-out {{ background-color: #FFEBEE; color: #C62828; }}
 
 /* 🔥 響應式設計：平板與手機版面自動優化 */
-@media (max-width: 992px) {
+@media (max-width: 992px) {{
     /* 1. 縮小平板的左右留白，把空間還給內容 */
     .block-container {{
         padding: 2rem 1rem !important; 
@@ -88,7 +88,7 @@ header[data-testid="stHeader"] .decoration {{ display: none; }}
         min-width: 100% !important;
         margin-bottom: 1rem;
     }}
-}
+}}
 
 /* 🔥 4. 輸入框與下拉選單 */
 div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input {{
