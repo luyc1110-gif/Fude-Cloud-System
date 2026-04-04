@@ -219,33 +219,26 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 .h-card-value {{ font-size: 1.4rem; font-weight: 900; }}
 .h-card-score {{ background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }}
 
-/* 1. 將所有日期選單內的文字強制改為「白色」，確保在深色背景下清晰可見 */
-div[data-baseweb="calendar"] div, 
-div[data-baseweb="calendar"] button, 
-div[data-baseweb="calendar"] h1, 
-div[data-baseweb="calendar"] h2, 
-div[data-baseweb="calendar"] h3, 
-div[data-baseweb="calendar"] h4, 
-div[data-baseweb="calendar"] h5, 
-div[data-baseweb="calendar"] h6 {{
-    color: #FFFFFF !important;
+/* 🔥 6. 日期選單樣式 (強制明亮主題，修復反黑與顏色錯亂) */
+div[data-baseweb="popover"], div[data-baseweb="popover"] > div, div[data-baseweb="calendar"] {{
+    background-color: #FFFFFF !important;
 }}
-
-/* 2. 將月份左右切換的箭頭改為「白色」 */
-div[data-baseweb="calendar"] svg {{
-    fill: #FFFFFF !important;
+div[data-baseweb="calendar"] *, div[data-baseweb="popover"] * {{
+    color: #212121 !important; 
+    fill: #212121 !important; /* 月份切換箭頭顏色 */
 }}
-
-/* 3. 修正「滑鼠移過去」和「被選中」日期的文字顏色 */
-div[data-baseweb="calendar"] button:hover,
-div[data-baseweb="calendar"] button[aria-selected="true"] {{
+/* 選中的日期背景與文字 */
+div[data-baseweb="calendar"] button[aria-selected="true"] {{ 
+    background-color: #4A148C !important; 
+    border-radius: 8px !important;
+}}
+div[data-baseweb="calendar"] button[aria-selected="true"] * {{ 
     color: #FFFFFF !important; 
-    font-weight: bold !important;
 }}
-
-/* 4. 確保選單背景維持深色 (避免半白半黑的狀況) */
-div[data-baseweb="calendar"] {{
-    background-color: #262730 !important;
+/* 滑鼠游標經過的日期背景 */
+div[data-baseweb="calendar"] button:hover {{
+    background-color: #F3E5F5 !important; 
+    border-radius: 8px !important;
 }}
 
 /* 🎨 [可調整] 標籤式單選按鈕 (Radio Tags) */
