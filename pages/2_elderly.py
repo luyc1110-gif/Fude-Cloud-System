@@ -195,6 +195,12 @@ div[data-baseweb="calendar"] button[aria-selected="true"] {{
 div[data-baseweb="calendar"] {{
     background-color: #262730 !important;
 }}
+/* 🔥 日期選單樣式 (強制明亮主題，橘色系) */
+div[data-baseweb="popover"], div[data-baseweb="popover"] > div, div[data-baseweb="calendar"] {{ background-color: #FFFFFF !important; }}
+div[data-baseweb="calendar"] *, div[data-baseweb="popover"] * {{ color: #212121 !important; fill: #212121 !important; }}
+div[data-baseweb="calendar"] button[aria-selected="true"] {{ background-color: #EF6C00 !important; border-radius: 8px !important; }}
+div[data-baseweb="calendar"] button[aria-selected="true"] * {{ color: #FFFFFF !important; }}
+div[data-baseweb="calendar"] button:hover {{ background-color: #FFE0B2 !important; border-radius: 8px !important; }}
 
 </style>
 """, unsafe_allow_html=True)
