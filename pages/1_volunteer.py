@@ -72,6 +72,24 @@ header[data-testid="stHeader"] .decoration {{ display: none; }}
 .action-in {{ background-color: #E8F5E9; color: #2E7D32; }}
 .action-out {{ background-color: #FFEBEE; color: #C62828; }}
 
+/* 🔥 響應式設計：平板與手機版面自動優化 */
+@media (max-width: 992px) {
+    /* 1. 縮小平板的左右留白，把空間還給內容 */
+    .block-container {{
+        padding: 2rem 1rem !important; 
+        max-width: 100% !important;
+    }}
+    /* 2. 強制雙欄排版在平板上改為「上下堆疊」，避免文字被壓成細長條 */
+    div[data-testid="stHorizontalBlock"] {{
+        flex-direction: column !important;
+    }}
+    div[data-testid="column"] {{
+        width: 100% !important;
+        min-width: 100% !important;
+        margin-bottom: 1rem;
+    }}
+}
+
 /* 🔥 4. 輸入框與下拉選單 */
 div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input {{
     background-color: #FFFFFF !important; border: 2px solid #E0E0E0 !important; border-radius: 12px !important; color: #212121 !important; -webkit-text-fill-color: #212121 !important;
@@ -97,10 +115,27 @@ button[kind="primary"]:hover, div[data-testid="stFormSubmitButton"] > button:hov
 }}
 button[kind="primary"] *, div[data-testid="stFormSubmitButton"] > button * {{ color: #FFFFFF !important; }}
 
-/* 🔥 6. 日期選單樣式 (改為明亮主題，避免顏色死角) */
-div[data-baseweb="calendar"] {{ background-color: #FFFFFF !important; border: 1px solid #E0E0E0 !important; border-radius: 12px !important; }}
-div[data-baseweb="calendar"] div, div[data-baseweb="calendar"] button, div[data-baseweb="calendar"] h1, div[data-baseweb="calendar"] h2, div[data-baseweb="calendar"] h3 {{ color: #212121 !important; }}
-div[data-baseweb="calendar"] button[aria-selected="true"] {{ background-color: #4A148C !important; color: #FFFFFF !important; font-weight: bold !important; }}
+/* 🔥 6. 日期選單樣式 (強制明亮主題，修復反黑與顏色錯亂) */
+div[data-baseweb="popover"], div[data-baseweb="popover"] > div, div[data-baseweb="calendar"] {{
+    background-color: #FFFFFF !important;
+}}
+div[data-baseweb="calendar"] *, div[data-baseweb="popover"] * {{
+    color: #212121 !important; 
+    fill: #212121 !important; /* 月份切換箭頭顏色 */
+}}
+/* 選中的日期背景與文字 */
+div[data-baseweb="calendar"] button[aria-selected="true"] {{ 
+    background-color: #4A148C !important; 
+    border-radius: 8px !important;
+}}
+div[data-baseweb="calendar"] button[aria-selected="true"] * {{ 
+    color: #FFFFFF !important; 
+}}
+/* 滑鼠游標經過的日期背景 */
+div[data-baseweb="calendar"] button:hover {{
+    background-color: #F3E5F5 !important; 
+    border-radius: 8px !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
