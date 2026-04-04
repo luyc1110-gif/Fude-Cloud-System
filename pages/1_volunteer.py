@@ -72,21 +72,26 @@ header[data-testid="stHeader"] .decoration {{ display: none; }}
 .action-in {{ background-color: #E8F5E9; color: #2E7D32; }}
 .action-out {{ background-color: #FFEBEE; color: #C62828; }}
 
-/* 🔥 響應式設計：平板與手機版面自動優化 */
-@media (max-width: 992px) {{
-    /* 1. 縮小平板的左右留白，把空間還給內容 */
-    .block-container {{
-        padding: 2rem 1rem !important; 
-        max-width: 100% !important;
+/* ======================================================= */
+/* 🔥 1. 響應式設計：智慧折行 (完美解決平板與手機卡片擠壓) */
+/* ======================================================= */
+@media (max-width: 1200px) {{
+    /* 釋放兩側被吃掉的空白空間 */
+    .block-container {{ 
+        padding: 1.5rem 1rem !important; 
+        max-width: 100% !important; 
     }}
-    /* 2. 強制雙欄排版在平板上改為「上下堆疊」，避免文字被壓成細長條 */
-    div[data-testid="stHorizontalBlock"] {{
-        flex-direction: column !important;
+    /* 允許 st.columns 內的元件在空間不夠時，自動往下掉 (折行) */
+    div[data-testid="stHorizontalBlock"] {{ 
+        flex-wrap: wrap !important; 
     }}
-    div[data-testid="column"] {{
-        width: 100% !important;
-        min-width: 100% !important;
-        margin-bottom: 1rem;
+    /* 強制每個欄位最少要有 280px 的寬度。
+       例如：當平板空間不夠塞 4 張卡片時，會自動變成完美的 2x2 排列，不會再擠成細長條 */
+    div[data-testid="column"] {{ 
+        min-width: 280px !important; 
+        width: auto !important; 
+        flex: 1 1 auto !important; 
+        margin-bottom: 1rem !important;
     }}
 }}
 
