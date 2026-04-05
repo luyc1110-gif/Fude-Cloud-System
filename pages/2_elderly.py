@@ -616,7 +616,7 @@ elif st.session_state.page == 'checkin':
             with st.form("manual_batch_form_new"):
                 c_date, c_time = st.columns(2)
                 back_date = c_date.date_input("選擇補登日期", value=get_tw_time().date())
-                back_time = c_time.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time())
+                back_time = c_time.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time(), step=60)
                 member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
                 selected_members = st.multiselect("選擇補登長輩 (多選)", options=member_options)
                 c_s, c_d, c_p = st.columns(3)
@@ -656,7 +656,15 @@ elif st.session_state.page == 'stats':
     else:
         logs['dt'] = pd.to_datetime(logs['日期'], errors='coerce')
         st.markdown('<div class="dash-card">', unsafe_allow_html=True)
-        d_range = st.date_input("📅 選擇統計區間", value=(date(date.today().year, date.today().month, 1), date.today()))
+        d_range = st.date_input(
+            "📅 選擇統計區間",
+            value=(date(date.today().year, date.today().month, 1), date.today()),
+        )
+
+        # 加上更嚴格的防護，並在 UI 上給提示
+        if not isinstance(d_range, (list, tuple)) or len(d_range) != 2:
+            st.warning("請選擇完整的開始與結束日期。")
+            st.stop()  # ← 強制停止，避免後續元件在不完整狀態下渲染
         st.markdown('</div>', unsafe_allow_html=True)
         if isinstance(d_range, tuple) and len(d_range) == 2:
             f_logs = logs[(logs['dt'].dt.date >= d_range[0]) & (logs['dt'].dt.date <= d_range[1])].copy()
@@ -706,9 +714,8 @@ elif st.session_state.page == 'stats':
                     st.markdown(main_html, unsafe_allow_html=True)
 
                 with c2:
-                    sc1, sc2 = st.columns([1.2, 2])
-                    with sc1: st.markdown("#### 子分類鑽取")
-                    with sc2: sel_m = st.selectbox("請選擇大分類", sorted(main_cts['類別'].unique()), label_visibility="collapsed", key="sel_main_stats")
+                    st.markdown("#### 子分類鑽取")
+                    sel_m = st.selectbox("請選擇大分類", sorted(main_cts['類別'].unique()), label_visibility="collapsed", key="sel_main_stats")
                     
                     sub_cts = unique_sessions[unique_sessions['大分類']==sel_m]['子分類'].value_counts().reset_index()
                     sub_cts.columns = ['子分類', '場次']
