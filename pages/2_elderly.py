@@ -124,6 +124,13 @@ div[data-baseweb="select"] > div {{
     border: 2px solid #E0E0E0 !important; /* 邊框顏色 */
     border-radius: 12px !important;
 }}
+/* 修正多選下拉選單的標籤背景與文字顏色 */
+span[data-baseweb="tag"] {{
+    background-color: #EF6C00 !important; /* 背景改成你的主色調 */
+}}
+span[data-baseweb="tag"] span {{
+    color: #FFFFFF !important; /* 文字強制變白色 */
+}}
 div[data-baseweb="select"] span {{ color: #000000 !important; }}
 ul[data-baseweb="menu"] {{ background-color: #FFFFFF !important; }}
 li[role="option"] {{ color: #000000 !important; background-color: #FFFFFF !important; }}
@@ -242,9 +249,11 @@ def append_data(sheet_name, row_dict, col_order=None):
 def batch_append_data(sheet_name, rows_list, col_order=None):
     try:
         supabase = get_supabase_client()
-        clean_rows = [{k: str(v).strip() for k, v in r.items() if str(v).strip() and str(v).strip() != 'nan'} for r in rows_list]
-        if clean_rows:
-            supabase.table(sheet_name).insert(clean_rows).execute()
+        # 改為逐筆將資料 insert 進資料庫，確保 100% 寫入
+        for r in rows_list:
+            clean_data = {k: str(v).strip() for k, v in r.items() if str(v).strip() and str(v).strip() != 'nan'}
+            if clean_data:
+                supabase.table(sheet_name).insert(clean_data).execute()
         load_data.clear()
         return True
     except Exception as e:
@@ -607,7 +616,7 @@ elif st.session_state.page == 'checkin':
             with st.form("manual_batch_form_new"):
                 c_date, c_time = st.columns(2)
                 back_date = c_date.date_input("選擇補登日期", value=get_tw_time().date())
-                back_time = c_time.time_input("選擇補登時間", value=get_tw_time().time())
+                back_time = c_time.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time())
                 member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
                 selected_members = st.multiselect("選擇補登長輩 (多選)", options=member_options)
                 c_s, c_d, c_p = st.columns(3)
