@@ -514,7 +514,7 @@ elif st.session_state.page == 'checkin':
         elif pulse < 60: alerts.append(f"💓 心跳過慢 ({pulse})")
         return alerts
 
-    def do_checkin(pid, sbp, dbp, pulse):
+    def do_checkin(pid, sbp, dbp, pulse, course_cat, course_name):
         df_m = get_elderly_members()
         df_l = load_data("elderly_logs")
         pid_clean = pid.strip().upper()
@@ -530,7 +530,8 @@ elif st.session_state.page == 'checkin':
         new_log = {
             "姓名": name, "身分證字號": pid_clean,
             "日期": get_tw_time().strftime("%Y-%m-%d"), "時間": get_tw_time().strftime("%H:%M:%S"),
-            "課程分類": final_course_cat, "課程名稱": final_course_name,
+            "課程分類": course_cat,
+            "課程名稱": course_name,
             "收縮壓": sbp, "舒張壓": dbp, "脈搏": pulse
         }
         # --- 修改為 append_data (原本是 save_data) ---
@@ -571,7 +572,7 @@ elif st.session_state.page == 'checkin':
         input_pid = st.text_input("請掃描或輸入身分證字號", key="scan_pid_field")
         if st.button("確認報到 (身分證)", key="btn_do_scan"):
             if input_pid:
-                do_checkin(input_pid, sbp_val, dbp_val, pulse_val)
+                do_checkin(input_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name)
                 st.rerun()
 
     with tab2:
@@ -582,7 +583,7 @@ elif st.session_state.page == 'checkin':
             if st.button("確認報到 (選單)", key="btn_do_select"):
                 if selected_member != "--- 請選擇 ---":
                     sel_pid = selected_member.split("(")[-1].replace(")", "")
-                    do_checkin(sel_pid, sbp_val, dbp_val, pulse_val)
+                    do_checkin(sel_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name)
                     st.rerun()
         else:
             st.warning("名冊中尚無資料")
