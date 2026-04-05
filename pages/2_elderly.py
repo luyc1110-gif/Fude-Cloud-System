@@ -558,9 +558,12 @@ elif st.session_state.page == 'checkin':
     st.markdown("#### 2. 長輩報到與量測輸入")
     
     c_bp1, c_bp2, c_bp3 = st.columns(3)
-    sbp_val = c_bp1.number_input("收縮壓 (高壓)", min_value=50, max_value=250, value=120)
-    dbp_val = c_bp2.number_input("舒張壓 (低壓)", min_value=30, max_value=150, value=80)
-    pulse_val = c_bp3.number_input("脈搏", min_value=30, max_value=200, value=72)
+    with c_bp1:
+        sbp_val = st.number_input("收縮壓 (高壓)", min_value=50, max_value=250, value=120)
+    with c_bp2:
+        dbp_val = st.number_input("舒張壓 (低壓)", min_value=30, max_value=150, value=80)
+    with c_bp3:
+        pulse_val = st.number_input("脈搏", min_value=30, max_value=200, value=72)
 
     tab1, tab2 = st.tabs(["🔍 掃描/輸入身分證", "📋 下拉選單選取"])
     
