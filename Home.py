@@ -52,12 +52,13 @@ section[data-testid="stSidebar"] button {
     background-color: #FFFFFF !important;
     color: #666666 !important;
     border: 1px solid transparent !important;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
     border-radius: 25px !important;
-    padding: 12px 0 !important;
+    padding: 10px 15px !important; /* 👈 把左右留白加回來 */
     font-weight: 700 !important;
-    width: 100%; margin-bottom: 10px !important;
-    transition: all 0.3s;
+    width: 100%;
+    margin-bottom: 8px !important;
+    transition: all 0.2s;
 }
 section[data-testid="stSidebar"] button:hover {
     transform: translateY(-2px);
