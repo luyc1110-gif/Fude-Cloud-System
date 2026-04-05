@@ -615,14 +615,19 @@ elif st.session_state.page == 'checkin':
         else:
             with st.form("manual_batch_form_new"):
                 c_date, c_time = st.columns(2)
-                back_date = c_date.date_input("選擇補登日期", value=get_tw_time().date())
-                back_time = c_time.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time(), step=60)
+                with c_date:
+                    back_date = st.date_input("選擇補登日期", value=get_tw_time().date())
+                with c_time:
+                    back_time = st.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time(), step=60)
                 member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
                 selected_members = st.multiselect("選擇補登長輩 (多選)", options=member_options)
                 c_s, c_d, c_p = st.columns(3)
-                b_sbp = c_s.number_input("補登收縮壓", value=120)
-                b_dbp = c_d.number_input("補登舒張壓", value=80)
-                b_pulse = c_p.number_input("補登脈搏", value=72)
+                with c_s:
+                    b_sbp = st.number_input("補登收縮壓", value=120)
+                with c_d:
+                    b_dbp = st.number_input("補登舒張壓", value=80)
+                with c_p:
+                    b_pulse = st.number_input("補登脈搏", value=72)
                 if st.form_submit_button("🚀 執行補登"):
                     if not selected_members: st.error("請先選擇長輩！")
                     else:
