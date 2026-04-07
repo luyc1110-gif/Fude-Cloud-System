@@ -785,6 +785,43 @@ if st.session_state.page == 'home':
                 "跌倒_高風險": [], "跌倒_中風險": [], "跌倒_低風險": []
             }
             
+            # ===== 跌倒風險評估函式（放在迴圈外面）=====
+            def assess_fall_risk(row, name):
+                risk_score = 0
+                risk_reasons = []
+
+                if str(row.get('ICOPE_2_跌倒風險', '')) == "是":
+                    risk_score += 3
+                    risk_reasons.append("自述跌倒風險")
+
+                gender = str(row.get('性別', ''))
+                grip = pd.to_numeric(row.get('右手握力', 0), errors='coerce')
+                if pd.notna(grip) and grip > 0:
+                    threshold = 28 if gender == '男' else 18
+                    if grip < threshold:
+                        risk_score += 2
+                        risk_reasons.append(f"握力不足({grip}kg)")
+
+                bmi = pd.to_numeric(row.get('BMI', 0), errors='coerce')
+                if pd.notna(bmi) and bmi > 0:
+                    if bmi < 18.5 or bmi >= 27:
+                        risk_score += 1
+                        risk_reasons.append(f"BMI異常({round(bmi,1)})")
+
+                age = calculate_age(str(row.get('生日', '')))
+                if age >= 80:
+                    risk_score += 1
+                    risk_reasons.append(f"{age}歲超高齡")
+
+                label = f"{name}（{'、'.join(risk_reasons)}）" if risk_reasons else name
+                if risk_score >= 3:
+                    return "高風險", label
+                elif risk_score >= 2:
+                    return "中風險", label
+                elif risk_score >= 1:
+                    return "低風險", label
+                return None, None
+
             # 3. 依據您的 COLS_HEALTH 進行精準判定
             for _, row in latest_health.iterrows():
                 name = str(row.get('姓名', '未知'))
@@ -808,46 +845,14 @@ if st.session_state.page == 'home':
                 if icope_mem == "是":
                     alert_lists["認知_異常"].append(name)
                     
-                # --- D. 跌倒風險 (ICOPE) ---
-                def assess_fall_risk(row, name):
-                    risk_score = 0
-                    risk_reasons = []
-    
-    # ICOPE 自述
-                    if str(row.get('ICOPE_2_跌倒風險', '')) == "是":
-                        risk_score += 3
-                        risk_reasons.append("自述跌倒風險")
-    
-    # 握力
-                    gender = str(row.get('性別', ''))
-                    grip = pd.to_numeric(row.get('右手握力', 0), errors='coerce') or 0
-                    grip_threshold = 28 if gender == '男' else 18
-                    if grip > 0 and grip < grip_threshold:
-                        risk_score += 2
-                        risk_reasons.append(f"握力不足({grip}kg)")
-    
-    # BMI
-                    bmi = pd.to_numeric(row.get('BMI', 0), errors='coerce') or 0
-                    if bmi > 0 and (bmi < 18.5 or bmi >= 27):
-                        risk_score += 1
-                        risk_reasons.append(f"BMI異常({bmi})")
-    
-    # 超高齡
-                    age = calculate_age(str(row.get('生日', '')))
-                    if age >= 80:
-                        risk_score += 1
-                        risk_reasons.append(f"{age}歲超高齡")
-    
-    # 分級
-                    label = f"{name}（{'、'.join(risk_reasons)}）"
-                    if risk_score >= 3:
-                        return "高風險", label
-                    elif risk_score >= 2:
-                        return "中風險", label
-                    elif risk_score >= 1:
-                        return "低風險", label
-                    return None, None
-
+                # --- D. 跌倒風險 (多指標整合) ---
+                fall_level, fall_label = assess_fall_risk(row, name)
+                if fall_level == "高風險":
+                    alert_lists["跌倒_高風險"].append(fall_label)
+                elif fall_level == "中風險":
+                    alert_lists["跌倒_中風險"].append(fall_label)
+                elif fall_level == "低風險":
+                    alert_lists["跌倒_低風險"].append(fall_label)
             # 4. 渲染警示看板
             ca1, ca2, ca3 = st.columns(3)
             
@@ -883,35 +888,42 @@ if st.session_state.page == 'home':
                     st.markdown("<span style='color:#2E7D32; font-weight:bold;'>✅ 目前無長輩有營養風險</span>", unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-            # -- 🧠 警示卡 3：認知與防跌 --
+            # -- 🧠 警示卡 3：認知預警 --
             with ca3:
-                st.markdown("""<div style="background:#FCE4EC; border-left:5px solid #C2185B; padding:15px; border-radius:10px; margin-bottom:15px; height:100%; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                    <h4 style="color:#C2185B; margin-top:0; font-weight:900;">🧠 認知與防跌預警</h4>""", unsafe_allow_html=True)
+                st.markdown("""<div style="background:#F3E5F5; border-left:5px solid #7B1FA2; padding:15px; border-radius:10px; margin-bottom:15px; min-height:180px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <h4 style="color:#7B1FA2; margin-top:0; font-weight:900;">🧠 認知功能預警</h4>""", unsafe_allow_html=True)
                 
                 if alert_lists["認知_異常"]:
-                    st.markdown(f"<div style='color:#E65100; font-weight:bold; margin-bottom:5px;'>🤯 記憶明顯減退 ({len(alert_lists['認知_異常'])}人)</div>", unsafe_allow_html=True)
-                    st.markdown(f"{', '.join(alert_lists['認知_異常'])}")
-                    
-                if alert_lists["跌倒_高風險"]:
-                    st.markdown(f"<div style='color:#D32F2F; font-weight:bold; margin-bottom:5px;'>🔴 跌倒高風險 ({len(alert_lists['跌倒_高風險'])}人)</div>", unsafe_allow_html=True)
-                    for item in alert_lists["跌倒_高風險"]:
-                        st.markdown(f"**{item}**")
-
-                if alert_lists["跌倒_中風險"]:
-                    st.markdown(f"<div style='color:#EF6C00; font-weight:bold; margin-top:10px; margin-bottom:5px;'>🟠 跌倒中風險 ({len(alert_lists['跌倒_中風險'])}人)</div>", unsafe_allow_html=True)
-                    for item in alert_lists["跌倒_中風險"]:
-                        st.markdown(f"{item}")
-
-                if alert_lists["跌倒_低風險"]:
-                    st.markdown(f"<div style='color:#F9A825; font-weight:bold; margin-top:10px; margin-bottom:5px;'>🟡 低風險關注 ({len(alert_lists['跌倒_低風險'])}人)</div>", unsafe_allow_html=True)
-                    for item in alert_lists["跌倒_低風險"]:
-                        st.caption(item)
-                    
-                if not alert_lists["認知_異常"] and not alert_lists["跌倒_高風險"]:
-                    st.markdown("<span style='color:#2E7D32; font-weight:bold;'>✅ 目前無認知或跌倒風險</span>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='color:#7B1FA2; font-weight:bold; margin-bottom:5px;'>🤯 記憶明顯減退 ({len(alert_lists['認知_異常'])}人)</div>", unsafe_allow_html=True)
+                    st.markdown(f"**{', '.join(alert_lists['認知_異常'])}**")
+                    st.caption("建議進行失智症篩檢或安排動腦課程。")
+                else:
+                    st.markdown("<span style='color:#2E7D32; font-weight:bold;'>✅ 目前無長輩有認知異常</span>", unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
-                
-            st.markdown("<br>", unsafe_allow_html=True)
+
+            # -- 🚶 警示卡 4：防跌預警 (新增一欄或接在下方) --
+            # 註：若希望橫向並排四個，請將前面的 st.columns(3) 改為 st.columns(4)
+            # 這裡採用的做法是維持 3 欄，但在 ca3 內堆疊或另開新列。建議改為 4 欄排版如下：
+            
+            # (建議將約 555 行的 ca1, ca2, ca3 = st.columns(3) 改為以下 4 欄配置)
+            # ca1, ca2, ca3, ca4 = st.columns(4)
+            
+            # 若維持 3 欄，防跌預警可以放在第四個位置（自動換行）：
+            st.markdown("""<div style="background:#FFFDE7; border-left:5px solid #FBC02D; padding:15px; border-radius:10px; margin-bottom:15px; min-height:180px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <h4 style="color:#F57F17; margin-top:0; font-weight:900;">🚶 防跌與肌力預警</h4>""", unsafe_allow_html=True)
+            
+            if alert_lists["跌倒_高風險"]:
+                st.markdown(f"<div style='color:#D32F2F; font-weight:bold; margin-bottom:5px;'>🔴 高風險 ({len(alert_lists['跌倒_高風險'])}人)</div>", unsafe_allow_html=True)
+                for item in alert_lists["跌倒_高風險"]:
+                    st.markdown(f"<small>{item}</small>", unsafe_allow_html=True)
+
+            if alert_lists["跌倒_中風險"]:
+                st.markdown(f"<div style='color:#EF6C00; font-weight:bold; margin-top:10px; margin-bottom:5px;'>🟠 中風險 ({len(alert_lists['跌倒_中風險'])}人)</div>", unsafe_allow_html=True)
+                st.markdown(f"<small>{', '.join(alert_lists['跌倒_中風險'])}</small>", unsafe_allow_html=True)
+
+            if not alert_lists["跌倒_高風險"] and not alert_lists["跌倒_中風險"]:
+                st.markdown("<span style='color:#2E7D32; font-weight:bold;'>✅ 目前無明顯跌倒風險</span>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.info("尚無健康評估紀錄，累積資料後系統將自動產出高風險預警。")
 
