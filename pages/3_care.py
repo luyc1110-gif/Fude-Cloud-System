@@ -1578,7 +1578,7 @@ elif st.session_state.page == 'inventory':
                     target_model = next((m for m in valid_models if '1.5-flash' in m), 'gemini-1.5-flash')
                     
                     # 使用自動抓到的精確名稱
-                    model = genai.GenerativeModel(target_model)
+                    model = genai.GenerativeModel('gemini-flash-latest')
                     
                     prompt = """
                     請分析圖片中的物品：
