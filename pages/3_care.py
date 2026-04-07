@@ -1569,32 +1569,12 @@ elif st.session_state.page == 'inventory':
         ai_unsuitable = ""
         
         if camera_pic is not None:
-            with st.spinner("🤖 AI 分析與環境檢測中..."):
+            with st.spinner("🤖 AI 分析中，這可能需要幾秒鐘..."):
                 try:
-                    # --- 除錯雷達：檢查環境與模型 ---
-                    import google.generativeai as genai
-                    
-                    # 取得套件版本與可用模型清單
-                    pkg_version = getattr(genai, '__version__', '未知版本')
-                    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                    
-                    st.info(f"🔍 系統套件版本：{pkg_version}")
-                    st.info(f"🔍 可用模型清單：{', '.join(available_models)}")
-                    # --- 除錯雷達結束 ---
-
                     img = Image.open(camera_pic)
                     
-                    # 自動選擇模型：優先用 1.5-flash，找不到就降級用舊版視覺模型 gemini-pro-vision
-                    target_model = 'gemini-1.5-flash'
-                    if 'models/gemini-1.5-flash' not in available_models:
-                        if 'models/gemini-pro-vision' in available_models:
-                            target_model = 'gemini-pro-vision'
-                            st.warning("⚠️ 找不到 1.5-flash 模型，已自動切換為 gemini-pro-vision")
-                        else:
-                            st.error("❌ 你的 API 金鑰沒有支援視覺辨識的模型權限！")
-                            st.stop()
-
-                    model = genai.GenerativeModel(target_model)
+                    # 正式使用 1.5-flash 模型
+                    model = genai.GenerativeModel('gemini-1.5-flash')
                     
                     prompt = """
                     請分析圖片中的物品：
