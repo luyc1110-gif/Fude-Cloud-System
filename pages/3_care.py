@@ -7,6 +7,20 @@ import random
 import time
 import re  # 新增：用於正則表達式提取樓層
 
+# === 以下是為了解決 AI 辨識與 Render 部署新增的套件 ===
+import os
+import google.generativeai as genai
+from PIL import Image
+import json
+
+# 優先嘗試從 Render 環境變數讀取，若無則從本地 st.secrets 讀取
+api_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY")
+
+if api_key:
+    genai.configure(api_key=api_key)
+else:
+    st.error("未設定 GEMINI_API_KEY，請確認 Render 環境變數設定。")
+
 # =========================================================
 # 0) 系統設定
 # =========================================================
@@ -468,7 +482,7 @@ COLS_HEALTH = [
     "QOL_22_朋友支持", "QOL_23_住所", "QOL_24_醫療方便", "QOL_25_交通", "QOL_26_負面感受", "QOL_27_被尊重", "QOL_28_食物"
 ]
 
-COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期"]
+COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期", "不適宜族群"]
 COLS_LOG = ["志工", "發放日期", "關懷戶姓名", "物資內容", "發放數量", "訪視紀錄"]
 # ==========================================
 # 🧠 智慧判讀字典：定義「類別」包含哪些「關鍵字」
@@ -481,14 +495,25 @@ SMART_RULES = {
     "堅果": ["花生", "杏仁", "核桃", "腰果", "芝麻"],
 }
 
-def check_conflict(refuse_str, item_name):
-    """
-    智慧比對函數：
-    1. refuse_str: 關懷戶拒絕的項目 (如 "海鮮, 辣")
-    2. item_name: 物資名稱 (如 "紅燒鯖魚罐頭")
-    回傳: (是否衝突, 衝突的原因關鍵字)
-    """
-    if not refuse_str: return False, None
+def check_conflict_advanced(refuse_str, item_name, user_diseases="", item_unsuitable=""):
+    # 1. 檢查主觀拒絕
+    if refuse_str:
+        refuse_list = [k.strip() for k in refuse_str.split(',') if k.strip()]
+        for r_key in refuse_list:
+            if r_key in item_name: return True, f"長輩拒收：{r_key}"
+            if r_key in SMART_RULES:
+                for word in SMART_RULES[r_key]:
+                    if word in item_name: return True, f"長輩拒收：{r_key}(含{word})"
+
+    # 2. 檢查 AI 判定的疾病禁忌
+    if user_diseases and item_unsuitable and user_diseases != 'nan':
+        disease_list = [d.strip() for d in user_diseases.split(',') if d.strip()]
+        unsuitable_list = [u.strip() for u in item_unsuitable.split(',') if u.strip()]
+        conflict_diseases = set(disease_list).intersection(set(unsuitable_list))
+        if conflict_diseases:
+            return True, f"健康禁忌：患者有 {','.join(conflict_diseases)}"
+
+    return False, None
     
     # 1. 整理拒絕清單
     refuse_list = [k.strip() for k in refuse_str.split(',') if k.strip()]
@@ -1525,52 +1550,63 @@ elif st.session_state.page == 'inventory':
     st.markdown("## 📦 物資庫存管理")
     inv, logs = load_data("care_inventory", COLS_INV), load_data("care_logs", COLS_LOG)
     
-    with st.expander("➕ 新增捐贈物資 / 款項", expanded=False):
+    with st.expander("➕ 新增捐贈物資 (支援 AI 拍照辨識)", expanded=False):
         existing_donors = sorted(list(set(inv['捐贈者'].dropna().unique()))) if not inv.empty else []
         
-        st.markdown(f"<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>⚙️ 步驟 1：設定來源與類型</b></div>", unsafe_allow_html=True)
-        c_mode1, c_mode2 = st.columns(2)
-        with c_mode1:
-            donor_mode = st.radio("👤 捐贈者來源", ["從歷史名單選擇", "輸入新單位"], horizontal=True)
-        with c_mode2:
-            sel_type = st.selectbox("📦 物資類型", ["食物","日用品","輔具","急難救助金","服務"])
-            type_history = []
-            if not inv.empty:
-                type_history = sorted(inv[inv['物資類型'] == sel_type]['物資內容'].unique().tolist())
-            if type_history:
-                item_mode = st.radio(f"📝 {sel_type}名稱來源", ["從歷史紀錄選擇", "輸入新名稱"], horizontal=True)
-            else:
-                st.caption(f"💡 目前「{sel_type}」類尚無紀錄，請直接輸入新名稱。")
-                item_mode = "輸入新名稱"
+        # --- AI 拍照區塊 ---
+        st.markdown("<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>📸 步驟 1：AI 拍照辨識 (選用)</b></div>", unsafe_allow_html=True)
+        camera_pic = st.camera_input("拍下物資外觀，讓 AI 自動解析")
+        ai_item_name = ""
+        ai_unsuitable = ""
+        
+        if camera_pic is not None:
+            with st.spinner("🤖 AI 分析中..."):
+                try:
+                    img = Image.open(camera_pic)
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    prompt = """
+                    請分析圖片中的物品：
+                    1. 這是什麼物資？（精煉簡短名稱，例如：義美小泡芙、鯖魚罐頭）
+                    2. 哪些疾病「不適合」食用此物資？（請從：糖尿病、高血壓、高血脂、腎臟病、痛風 中選擇。若無則填"無"）
+                    嚴格以 JSON 格式回傳：{"item_name": "物品名稱", "unsuitable_for": ["疾病A", "疾病B"]}
+                    """
+                    response = model.generate_content([prompt, img])
+                    clean_json = response.text.replace('```json', '').replace('```', '').strip()
+                    result = json.loads(clean_json)
+                    
+                    ai_item_name = result.get("item_name", "")
+                    ai_unsuitable = ",".join([x for x in result.get("unsuitable_for", []) if x != "無"])
+                    st.success(f"✅ 辨識完成：{ai_item_name} (禁忌: {ai_unsuitable or '無'})")
+                except Exception as e:
+                    st.error(f"AI 辨識失敗：{e}")
 
+        # --- 手動設定區塊 ---
+        st.markdown("<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>⚙️ 步驟 2：設定來源與類型</b></div>", unsafe_allow_html=True)
+        c_mode1, c_mode2 = st.columns(2)
+        with c_mode1: donor_mode = st.radio("👤 捐贈者來源", ["從歷史名單選擇", "輸入新單位"], horizontal=True)
+        with c_mode2: sel_type = st.selectbox("📦 物資類型", ["食物","日用品","輔具","急難救助金","服務"])
+
+        # --- 表單送出區塊 ---
         with st.form("add_inv_form"):
-            st.markdown(f"<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>✍️ 步驟 2：填寫細節</b></div>", unsafe_allow_html=True)
+            st.markdown("<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>✍️ 步驟 3：確認與填寫細節</b></div>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns([1.5, 1.5, 1])
             with c1:
-                if donor_mode == "從歷史名單選擇":
-                    final_donor = st.selectbox("捐贈單位/人", existing_donors) if existing_donors else ""
-                else:
-                    final_donor = st.text_input("輸入新單位/人", placeholder="例如：善心人士張先生")
+                if donor_mode == "從歷史名單選擇": final_donor = st.selectbox("捐贈單位/人", existing_donors) if existing_donors else ""
+                else: final_donor = st.text_input("輸入新單位/人")
             with c2:
-                if item_mode == "從歷史紀錄選擇" and type_history:
-                    final_item_name = st.selectbox(f"選擇{sel_type}品項", type_history)
-                else:
-                    final_item_name = st.text_input(f"輸入{sel_type}名稱", placeholder="例如：白米")
+                final_item_name = st.text_input(f"物資名稱", value=ai_item_name, placeholder="例如：白米")
             with c3:
                 qt = st.number_input("數量/金額", min_value=1)
+                
+            final_unsuitable = st.text_input("不適宜族群 (AI 建議，可修改)", value=ai_unsuitable)
             
             if st.form_submit_button("✅ 錄入庫存"):
-                if not final_donor: st.error("❌ 請填寫捐贈者！")
-                elif not final_item_name: st.error("❌ 請填寫物資名稱！")
+                if not final_donor or not final_item_name: st.error("❌ 捐贈者與物資名稱必填！")
                 else:
-                    new = {
-                        "捐贈者": final_donor, "物資類型": sel_type, 
-                        "物資內容": final_item_name, "總數量": qt, "捐贈日期": str(date.today())
-                    }
+                    new = {"捐贈者": final_donor, "物資類型": sel_type, "物資內容": final_item_name, "總數量": qt, "捐贈日期": str(date.today()), "不適宜族群": final_unsuitable}
                     if append_data("care_inventory", new, COLS_INV): 
-                        st.success(f"已成功錄入：{final_donor} 捐贈 {final_item_name} x {qt}")
-                        time.sleep(1); st.rerun()
-
+                        st.success("已成功錄入庫存")
+                        import time; time.sleep(1); st.rerun()
     if not inv.empty:
         st.markdown("### 📊 庫存概況 (智慧卡片)")
         inv_summary = []
@@ -1732,7 +1768,7 @@ elif st.session_state.page == 'visit':
         else: st.info("尚無足夠的據點報到與名冊資料可供分析。")
         
     # 計算即時庫存與類型 (供後續使用)
-    stock_map, item_type_map = {}, {}
+    stock_map, item_type_map, item_unsuitable_map = {}, {}, {}
     if not inv.empty:
         for (item_name, donor_name), group in inv.groupby(['物資內容', '捐贈者']):
             total_in = group['總數量'].replace("","0").astype(float).sum()
@@ -1742,6 +1778,7 @@ elif st.session_state.page == 'visit':
             if remain > 0: 
                 stock_map[composite_name] = remain
                 item_type_map[composite_name] = group.iloc[0]['物資類型']
+                item_unsuitable_map[composite_name] = str(group.iloc[0].get('不適宜族群', ''))
 
     # 獨立的展開區域：智慧發放建議
     with st.expander("🤖 優先發放建議 (依據弱勢積分與營養風險)", expanded=False):
@@ -1947,7 +1984,14 @@ elif st.session_state.page == 'visit':
                 for j in range(3):
                     if i + j < len(valid_items):
                         c_name, c_stock = valid_items[i+j]
-                        is_bad, bad_reason = check_conflict(current_refuse, c_name)
+                        c_unsuitable = item_unsuitable_map.get(c_name, "")
+
+                        is_bad, bad_reason = check_conflict_advanced(
+                            current_refuse, 
+                            c_name, 
+                            user_diseases=disease_hist, 
+                            item_unsuitable=c_unsuitable
+                        )
                         
                         with cols[j]:
                             if is_bad:
