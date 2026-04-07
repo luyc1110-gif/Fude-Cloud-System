@@ -267,6 +267,8 @@ def load_dashboard_stats():
 
             # --- 關懷戶數據 ---
             df_c = df_m[df_m['身分_關懷戶'].astype(str).str.upper() == 'TRUE']
+            # 排除身分別含「一般戶」的人（與 care.py 統一）
+            df_c = df_c[~df_c['關懷_身分別'].astype(str).str.contains("一般戶", na=False)]
             if not df_c.empty:
                 stats["care_count"] = len(df_c)
                 
