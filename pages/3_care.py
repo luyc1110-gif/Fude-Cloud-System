@@ -1574,7 +1574,7 @@ elif st.session_state.page == 'inventory':
                     img = Image.open(camera_pic)
                     
                     # 修正點：加上 -latest 解決 404 找不到模型的問題
-                    model = genai.GenerativeModel('gemini-1.5-flash') 
+                    model = genai.GenerativeModel('gemini-2.0-flash') 
                     
                     prompt = """
                     請分析圖片中的物品：
