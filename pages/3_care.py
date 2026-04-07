@@ -505,13 +505,22 @@ def check_conflict_advanced(refuse_str, item_name, user_diseases="", item_unsuit
                 for word in SMART_RULES[r_key]:
                     if word in item_name: return True, f"長輩拒收：{r_key}(含{word})"
 
-    # 2. 檢查 AI 判定的疾病禁忌
+    # 2. 檢查 AI 判定的疾病禁忌（支援腎臟病細分標籤）
     if user_diseases and item_unsuitable and user_diseases != 'nan':
         disease_list = [d.strip() for d in user_diseases.split(',') if d.strip()]
         unsuitable_list = [u.strip() for u in item_unsuitable.split(',') if u.strip()]
-        conflict_diseases = set(disease_list).intersection(set(unsuitable_list))
-        if conflict_diseases:
-            return True, f"健康禁忌：患者有 {','.join(conflict_diseases)}"
+        
+        for disease in disease_list:
+            for unsuitable in unsuitable_list:
+                # 完全相符
+                if disease == unsuitable:
+                    return True, f"健康禁忌：{disease}"
+                # 腎臟病患者比對所有腎臟病細分項目（腎臟病_高磷、腎臟病_高鉀等）
+                if disease in ("腎臟病", "慢性腎臟病", "洗腎", "透析") and unsuitable.startswith("腎臟病_"):
+                    return True, f"健康禁忌：{unsuitable.replace('腎臟病_', '腎臟病（')}）"
+                # 反向：細分標籤也能比對到「腎臟病」
+                if unsuitable in ("腎臟病", "慢性腎臟病") and disease in ("腎臟病", "慢性腎臟病", "洗腎", "透析"):
+                    return True, f"健康禁忌：{unsuitable}"
 
     return False, None
     
@@ -1640,10 +1649,30 @@ elif st.session_state.page == 'inventory':
                     model = genai.GenerativeModel('gemini-flash-latest')
                     
                     prompt = """
-                    請分析圖片中的物品：
+                    請分析圖片中的物品，並依照以下規則回答：
+
                     1. 這是什麼物資？（精煉簡短名稱，例如：義美小泡芙、鯖魚罐頭）
-                    2. 哪些疾病「不適合」食用此物資？（請從：糖尿病、高血壓、高血脂、腎臟病、痛風 中選擇。若無則填"無"）
-                    嚴格以 JSON 格式回傳：{"item_name": "物品名稱", "unsuitable_for": ["疾病A", "疾病B"]}
+
+                    2. 哪些疾病「不適合」食用或使用此物資？
+                       請從以下清單中選擇（可複選），若無則填"無"：
+                       - 糖尿病（含糖、高GI食物、精製糖）
+                       - 高血壓（高鈉、加工醃製品、罐頭）
+                       - 高血脂（高油脂、動物性飽和脂肪、反式脂肪）
+                       - 腎臟病_高磷（乳製品、全穀類、堅果、內臟、蛋黃、可樂、汽水、加工食品）
+                       - 腎臟病_高鉀（香蕉、奇異果、哈密瓜、草莓、番茄、咖啡、濃湯、藥膳湯）
+                       - 腎臟病_高鈉（醃製品、罐頭、加工肉品、醬油、味噌、沙茶醬）
+                       - 腎臟病_高蛋白（乾豆類如紅豆綠豆黑豆、麵筋、堅果類）
+                       - 痛風（海鮮、內臟、啤酒、肉湯、菇類）
+   
+                       判斷原則：
+                       - 若為含高磷食材（乳製品、堅果、全穀、內臟、蛋黃、可樂汽水）→ 加入「腎臟病_高磷」
+                       - 若為高鉀水果或飲品（香蕉、奇異果、果汁、咖啡、茶、運動飲料）→ 加入「腎臟病_高鉀」  
+                       - 若為醃製/加工/高鈉食品 → 同時加入「高血壓」與「腎臟病_高鈉」
+                       - 若為乾豆類（紅豆、綠豆、黑豆等）→ 加入「腎臟病_高磷」與「腎臟病_高蛋白」
+                       - 若為堅果類（花生、杏仁、核桃等）→ 加入「腎臟病_高磷」與「高血脂」
+                    
+                    嚴格以 JSON 格式回傳，不要有其他文字：
+                    {"item_name": "物品名稱", "unsuitable_for": ["疾病A", "疾病B"]}
                     """
                     response = model.generate_content([prompt, img])
                     clean_json = response.text.replace('```json', '').replace('```', '').strip()
@@ -1876,14 +1905,29 @@ elif st.session_state.page == 'visit':
             suggest_item = st.selectbox("選擇要評估發放的物資：", list(stock_map.keys()))
             is_food = (item_type_map.get(suggest_item) == "食物")
             
+            # 取得該物資的不適宜族群
+            suggest_item_unsuitable = item_unsuitable_map.get(suggest_item, "")
+
+            # 建立「姓名 -> 疾病史」對照表（從健康資料）
+            person_disease_map = {}
+            if not h_df.empty:
+                h_df['dt'] = pd.to_datetime(h_df['評估日期'], errors='coerce')
+                latest_for_disease = h_df.dropna(subset=['dt']).sort_values('dt').groupby('身分證字號').last().reset_index()
+                for _, r in latest_for_disease.iterrows():
+                    dh = str(r.get('Q12_過去疾病史', '')).strip()
+                    nm = str(r.get('姓名', ''))
+                    if nm and dh and dh != 'nan': person_disease_map[nm] = dh
+
             suggestion_list = []
             for index, row in mems.iterrows():
                 p_name = row['姓名']
                 p_tags = str(row['身分別'])
-                p_refuse = str(row.get('拒絕物資', '')) 
-                
-                is_conflict, _ = check_conflict_advanced(p_refuse, suggest_item)
-                if is_conflict: continue 
+                p_refuse = str(row.get('拒絕物資', ''))
+                p_disease = person_disease_map.get(p_name, "")
+
+                # 同時檢查主觀拒收 + 疾病禁忌（包含 AI 辨識出的不適宜族群）
+                is_conflict, _ = check_conflict_advanced(p_refuse, suggest_item, user_diseases=p_disease, item_unsuitable=suggest_item_unsuitable)
+                if is_conflict: continue
 
                 has_received = False
                 if not logs.empty:
@@ -1942,6 +1986,7 @@ elif st.session_state.page == 'visit':
 
         # 💡 個案速寫智慧面板
         current_refuse = ""
+        disease_hist = "無紀錄"   # ← 新增這行，確保變數在任何情況下都存在
         if target_p and not mems.empty:
             p_row_idx = mems[mems['姓名'] == target_p].index[0]
             p_row = mems.loc[p_row_idx]
@@ -2679,20 +2724,31 @@ elif st.session_state.page == 'stats':
                 st.session_state.filter_group_count += 1; st.rerun()
             if c_btn2.button("🗑️ 重置所有條件"):
                 st.session_state.filter_group_count = 1; st.rerun()
-
+            
             st.markdown("---")
             
             # 收集使用者選中的所有題目
             selected_all_items = []
             
-            # 4. 產生 N 個篩選群組 (依據使用者按新增的次數)
-            for i in range(st.session_state.filter_group_count):
+            # 4. 產生 N 個篩選群組，每組右上角有獨立的「刪除」按鈕
+            i = 0
+            while i < st.session_state.filter_group_count:
                 with st.container(border=True):
-                    c_cat, c_item = st.columns([1, 2])
+                    c_cat, c_item, c_del = st.columns([1, 2, 0.3])
                     cat = c_cat.selectbox(f"📋 選擇問卷類別 (第 {i+1} 組)", list(category_map.keys()), key=f"cat_sel_{i}")
                     items = c_item.multiselect(f"選擇「{cat}」中的題項", category_map[cat], key=f"item_sel_{i}", placeholder="請點此選擇題目...")
+                    # 只有超過1組時才顯示刪除按鈕
+                    if st.session_state.filter_group_count > 1:
+                        if c_del.button("✖", key=f"del_group_{i}", help="刪除此群組"):
+                            st.session_state.filter_group_count -= 1
+                            # 清除被刪除組的 session_state，避免 key 殘留錯位
+                            for suffix in [f"cat_sel_{i}", f"item_sel_{i}"]:
+                                if suffix in st.session_state:
+                                    del st.session_state[suffix]
+                            st.rerun()
                     if items:
                         selected_all_items.extend(items)
+                i += 1
 
             # 5. 動態生成篩選條件設定區塊
             filters = {}
