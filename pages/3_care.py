@@ -1553,17 +1553,29 @@ elif st.session_state.page == 'inventory':
     with st.expander("➕ 新增捐贈物資 (支援 AI 拍照辨識)", expanded=False):
         existing_donors = sorted(list(set(inv['捐贈者'].dropna().unique()))) if not inv.empty else []
         
-        # --- AI 拍照區塊 ---
-        st.markdown("<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>📸 步驟 1：AI 拍照辨識 (選用)</b></div>", unsafe_allow_html=True)
-        camera_pic = st.camera_input("拍下物資外觀，讓 AI 自動解析")
+        # --- AI 拍照與上傳區塊 ---
+        st.markdown("<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>📸 步驟 1：提供物資照片 (選用)</b></div>", unsafe_allow_html=True)
+        
+        # 讓使用者選擇要用瀏覽器直接拍，還是上傳照片 (手機上傳會自動開啟原生後鏡頭)
+        img_source = st.radio("選擇提供照片的方式：", ["上傳照片 (手機建議)", "直接網頁拍照"], horizontal=True, label_visibility="collapsed")
+        
+        camera_pic = None
+        if img_source == "直接網頁拍照":
+            camera_pic = st.camera_input("拍下物資外觀")
+        else:
+            camera_pic = st.file_uploader("點此上傳或開啟相機拍照", type=["jpg", "jpeg", "png"])
+            
         ai_item_name = ""
         ai_unsuitable = ""
         
         if camera_pic is not None:
-            with st.spinner("🤖 AI 分析中..."):
+            with st.spinner("🤖 AI 分析中，這可能需要幾秒鐘..."):
                 try:
                     img = Image.open(camera_pic)
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    
+                    # 修正點：加上 -latest 解決 404 找不到模型的問題
+                    model = genai.GenerativeModel('gemini-1.5-flash-latest') 
+                    
                     prompt = """
                     請分析圖片中的物品：
                     1. 這是什麼物資？（精煉簡短名稱，例如：義美小泡芙、鯖魚罐頭）
