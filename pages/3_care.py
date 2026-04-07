@@ -1806,7 +1806,7 @@ elif st.session_state.page == 'visit':
                 p_tags = str(row['身分別'])
                 p_refuse = str(row.get('拒絕物資', '')) 
                 
-                is_conflict, _ = check_conflict(p_refuse, suggest_item)
+                is_conflict, _ = check_conflict_advanced(p_refuse, suggest_item)
                 if is_conflict: continue 
 
                 has_received = False
