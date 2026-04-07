@@ -444,8 +444,13 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
     if is_care:
         st.markdown("#### 關懷戶資料")
         CARE_TYPES = ["低收入戶", "中低收入戶", "獨居老人", "身心障礙", "特殊境遇家庭", "其他"]
-        # 改用 multiselect 支援複選，回傳會是一個 List
         r_care_type = st.multiselect("關懷身分別 (可複選)", CARE_TYPES, key="add_care_type")
+        
+        # 選了「其他」才顯示手動輸入欄位
+        r_care_other = ""
+        if "其他" in r_care_type:
+            r_care_other = st.text_input("請說明「其他」身分別內容", placeholder="例如：急難救助、新住民...", key="add_care_other")
+        
         cc1, cc2, cc3 = st.columns(3)
         r_u18   = cc1.number_input("同住 18歲以下", min_value=0, step=1, key="add_u18")
         r_adult = cc2.number_input("同住成人數",    min_value=0, step=1, key="add_adult")
@@ -486,7 +491,7 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
                 # 長者欄位
                 "長者_加入日期":       str(r_eld_join) if r_eld_join else "",
                 # 關懷戶欄位
-                "關懷_身分別":   ",".join(r_care_type) if r_care_type else "",
+                "關懷_身分別":   ",".join([r_care_other.strip() if t == "其他" and r_care_other.strip() else t for t in r_care_type]) if r_care_type else "",
                 "同住_18歲以下": str(r_u18),
                 "同住_成人":     str(r_adult),
                 "同住_65歲以上": str(r_o65),
@@ -521,7 +526,7 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
                     if is_care and str(rec.get("身分_關懷戶","")).upper() != "TRUE":
                         update["身分_關懷戶"] = "TRUE"
                     if is_care:
-                        update["關懷_身分別"]   = ",".join(r_care_type) if r_care_type else ""
+                        update["關懷_身分別"] = ",".join([r_care_other.strip() if t == "其他" and r_care_other.strip() else t for t in r_care_type]) if r_care_type else ""
                         update["同住_18歲以下"] = str(r_u18)
                         update["同住_成人"]     = str(r_adult)
                         update["同住_65歲以上"] = str(r_o65)
