@@ -1573,8 +1573,12 @@ elif st.session_state.page == 'inventory':
                 try:
                     img = Image.open(camera_pic)
                     
-                    # 正式使用 1.5-flash 模型
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    # 自動尋找金鑰支援的 1.5-flash 模型精確名稱
+                    valid_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    target_model = next((m for m in valid_models if '1.5-flash' in m), 'gemini-1.5-flash')
+                    
+                    # 使用自動抓到的精確名稱
+                    model = genai.GenerativeModel(target_model)
                     
                     prompt = """
                     請分析圖片中的物品：
