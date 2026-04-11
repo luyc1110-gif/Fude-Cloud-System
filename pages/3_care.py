@@ -483,7 +483,7 @@ COLS_HEALTH = [
 ]
 
 COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期", "不適宜族群", "圖片網址"]
-COLS_LOG = ["志工", "發放日期", "關懷戶姓名", "物資內容", "發放數量", "訪視紀錄"]
+COLS_LOG = ["志工", "發放日期", "關懷戶姓名", "關懷戶身分證字號", "物資內容", "發放數量", "訪視紀錄"]
 # ==========================================
 # 🧠 智慧判讀字典：定義「類別」包含哪些「關鍵字」
 # ==========================================
@@ -2023,17 +2023,22 @@ elif st.session_state.page == 'visit':
         with c_filter: sel_tag = st.selectbox("🌪️ 依身分別篩選", ["(全部顯示)"] + sorted(list(all_tags)))
         with c_person:
             filtered_mems = mems if sel_tag == "(全部顯示)" else mems[mems['身分別'].str.contains(sel_tag, na=False)]
-            target_p = st.selectbox("選擇關懷戶", filtered_mems['姓名'].tolist() if not filtered_mems.empty else [], index=None, placeholder="請點擊此處輸入或選擇姓名...", label_visibility="collapsed")
+            # 讓選單顯示 "姓名 (後四碼)"
+            display_options = filtered_mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-4:]})", axis=1).tolist() if not filtered_mems.empty else []
+            target_sel = st.selectbox("選擇關懷戶", display_options, index=None, placeholder="請點擊此處輸入或選擇姓名...", label_visibility="collapsed")
 
         # 💡 個案速寫智慧面板
         current_refuse = ""
-        disease_hist = "無紀錄"   # ← 新增這行，確保變數在任何情況下都存在
-        if target_p and not mems.empty:
-            p_row_idx = mems[mems['姓名'] == target_p].index[0]
-            p_row = mems.loc[p_row_idx]
+        disease_hist = "無紀錄"   
+        target_p = None
+        my_id = None
+        
+        if target_sel and not mems.empty:
+            # 將選單的文字拆解回 姓名 和 身分證字號
+            target_p = target_sel.split(' (')[0]
+            p_row = filtered_mems[filtered_mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-4:]})", axis=1) == target_sel].iloc[0]
+            p_row_idx = p_row.name
             my_id = str(p_row['身分證字號']).strip()
-            current_refuse = str(p_row.get('拒絕物資', ''))
-            h_df = load_data("care_health", COLS_HEALTH)
             
             st.markdown(f"<div style='margin-top:15px; padding-top:15px; border-top:1px dashed #ccc;'><b style='color:#4A4E69;'>💡 {target_p} 個案速寫 (發放評估參考)</b></div>", unsafe_allow_html=True)
             
@@ -2184,9 +2189,9 @@ elif st.session_state.page == 'visit':
                 new_logs = []
                 if items_to_give:
                     for item_name, amount in items_to_give:
-                        new_logs.append({"志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p, "物資內容": item_name, "發放數量": amount, "訪視紀錄": note})
+                        new_logs.append({"志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p, "關懷戶身分證字號": my_id, "物資內容": item_name, "發放數量": amount, "訪視紀錄": note})
                 else:
-                    new_logs.append({"志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p, "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note})
+                    new_logs.append({"志工": visit_who, "發放日期": str(visit_date), "關懷戶姓名": target_p, "關懷戶身分證字號": my_id, "物資內容": "(僅訪視)", "發放數量": 0, "訪視紀錄": note})
                 
                 try:
                     success_count = 0
