@@ -482,7 +482,7 @@ COLS_HEALTH = [
     "QOL_22_朋友支持", "QOL_23_住所", "QOL_24_醫療方便", "QOL_25_交通", "QOL_26_負面感受", "QOL_27_被尊重", "QOL_28_食物"
 ]
 
-COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期", "不適宜族群"]
+COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期", "不適宜族群", "圖片網址"]
 COLS_LOG = ["志工", "發放日期", "關懷戶姓名", "物資內容", "發放數量", "訪視紀錄"]
 # ==========================================
 # 🧠 智慧判讀字典：定義「類別」包含哪些「關鍵字」
@@ -1627,63 +1627,68 @@ elif st.session_state.page == 'inventory':
         # 讓使用者選擇要用瀏覽器直接拍，還是上傳照片 (手機上傳會自動開啟原生後鏡頭)
         img_source = st.radio("選擇提供照片的方式：", ["上傳照片 (手機建議)", "直接網頁拍照"], horizontal=True, label_visibility="collapsed")
         
+        if "ai_cache" not in st.session_state:
+            st.session_state.ai_cache = {"file_id": None, "name": "", "unsuitable": ""}
+
         camera_pic = None
         if img_source == "直接網頁拍照":
             camera_pic = st.camera_input("拍下物資外觀")
         else:
             camera_pic = st.file_uploader("點此上傳或開啟相機拍照", type=["jpg", "jpeg", "png"])
             
-        ai_item_name = ""
-        ai_unsuitable = ""
-        
         if camera_pic is not None:
-            with st.spinner("🤖 AI 分析中，這可能需要幾秒鐘..."):
-                try:
-                    img = Image.open(camera_pic)
-                    
-                    # 自動尋找金鑰支援的 1.5-flash 模型精確名稱
-                    valid_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                    target_model = next((m for m in valid_models if '1.5-flash' in m), 'gemini-1.5-flash')
-                    
-                    # 使用自動抓到的精確名稱
-                    model = genai.GenerativeModel('gemini-flash-latest')
-                    
-                    prompt = """
-                    請分析圖片中的物品，並依照以下規則回答：
+            if st.session_state.ai_cache["file_id"] != camera_pic.file_id:
+                with st.spinner("🤖 AI 分析中，這可能需要幾秒鐘..."):
+                    try:
+                        img = Image.open(camera_pic)
+                        valid_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                        target_model = next((m for m in valid_models if '1.5-flash' in m), 'gemini-1.5-flash')
+                        model = genai.GenerativeModel('gemini-flash-latest')
+                        
+                        prompt = """
+                        請分析圖片中的物品，並依照以下規則回答：
 
-                    1. 這是什麼物資？（精煉簡短名稱，例如：義美小泡芙、鯖魚罐頭）
+                        1. 這是什麼物資？（精煉簡短名稱，例如：義美小泡芙、鯖魚罐頭）
 
-                    2. 哪些疾病「不適合」食用或使用此物資？
-                       請從以下清單中選擇（可複選），若無則填"無"：
-                       - 糖尿病（含糖、高GI食物、精製糖）
-                       - 高血壓（高鈉、加工醃製品、罐頭）
-                       - 高血脂（高油脂、動物性飽和脂肪、反式脂肪）
-                       - 腎臟病_高磷（乳製品、全穀類、堅果、內臟、蛋黃、可樂、汽水、加工食品）
-                       - 腎臟病_高鉀（香蕉、奇異果、哈密瓜、草莓、番茄、咖啡、濃湯、藥膳湯）
-                       - 腎臟病_高鈉（醃製品、罐頭、加工肉品、醬油、味噌、沙茶醬）
-                       - 腎臟病_高蛋白（乾豆類如紅豆綠豆黑豆、麵筋、堅果類）
-                       - 痛風（海鮮、內臟、啤酒、肉湯、菇類）
-   
-                       判斷原則：
-                       - 若為含高磷食材（乳製品、堅果、全穀、內臟、蛋黃、可樂汽水）→ 加入「腎臟病_高磷」
-                       - 若為高鉀水果或飲品（香蕉、奇異果、果汁、咖啡、茶、運動飲料）→ 加入「腎臟病_高鉀」  
-                       - 若為醃製/加工/高鈉食品 → 同時加入「高血壓」與「腎臟病_高鈉」
-                       - 若為乾豆類（紅豆、綠豆、黑豆等）→ 加入「腎臟病_高磷」與「腎臟病_高蛋白」
-                       - 若為堅果類（花生、杏仁、核桃等）→ 加入「腎臟病_高磷」與「高血脂」
-                    
-                    嚴格以 JSON 格式回傳，不要有其他文字：
-                    {"item_name": "物品名稱", "unsuitable_for": ["疾病A", "疾病B"]}
-                    """
-                    response = model.generate_content([prompt, img])
-                    clean_json = response.text.replace('```json', '').replace('```', '').strip()
-                    result = json.loads(clean_json)
-                    
-                    ai_item_name = result.get("item_name", "")
-                    ai_unsuitable = ",".join([x for x in result.get("unsuitable_for", []) if x != "無"])
-                    st.success(f"✅ 辨識完成：{ai_item_name} (禁忌: {ai_unsuitable or '無'})")
-                    
-                except Exception as e:
-                    st.error(f"AI 辨識失敗：{e}")
+                        2. 哪些疾病「不適合」食用或使用此物資？
+                           請從以下清單中選擇（可複選），若無則填"無"：
+                           - 糖尿病（含糖、高GI食物、精製糖）
+                           - 高血壓（高鈉、加工醃製品、罐頭）
+                           - 高血脂（高油脂、動物性飽和脂肪、反式脂肪）
+                           - 腎臟病_高磷（乳製品、全穀類、堅果、內臟、蛋黃、可樂、汽水、加工食品）
+                           - 腎臟病_高鉀（香蕉、奇異果、哈密瓜、草莓、番茄、咖啡、濃湯、藥膳湯）
+                           - 腎臟病_高鈉（醃製品、罐頭、加工肉品、醬油、味噌、沙茶醬）
+                           - 腎臟病_高蛋白（乾豆類如紅豆綠豆黑豆、麵筋、堅果類）
+                           - 痛風（海鮮、內臟、啤酒、肉湯、菇類）
+       
+                           判斷原則：
+                           - 若為含高磷食材（乳製品、堅果、全穀、內臟、蛋黃、可樂汽水）→ 加入「腎臟病_高磷」
+                           - 若為高鉀水果或飲品（香蕉、奇異果、果汁、咖啡、茶、運動飲料）→ 加入「腎臟病_高鉀」  
+                           - 若為醃製/加工/高鈉食品 → 同時加入「高血壓」與「腎臟病_高鈉」
+                           - 若為乾豆類（紅豆、綠豆、黑豆等）→ 加入「腎臟病_高磷」與「腎臟病_高蛋白」
+                           - 若為堅果類（花生、杏仁、核桃等）→ 加入「腎臟病_高磷」與「高血脂」
+                        
+                        嚴格以 JSON 格式回傳，不要有其他文字：
+                        {"item_name": "物品名稱", "unsuitable_for": ["疾病A", "疾病B"]}
+                        """
+                        response = model.generate_content([prompt, img])
+                        clean_json = response.text.replace('```json', '').replace('```', '').strip()
+                        result = json.loads(clean_json)
+                        
+                        st.session_state.ai_cache["name"] = result.get("item_name", "")
+                        st.session_state.ai_cache["unsuitable"] = ",".join([x for x in result.get("unsuitable_for", []) if x != "無"])
+                        st.session_state.ai_cache["file_id"] = camera_pic.file_id
+                        st.success(f"✅ 辨識完成：{st.session_state.ai_cache['name']} (禁忌: {st.session_state.ai_cache['unsuitable'] or '無'})")
+                        
+                    except Exception as e:
+                        st.error(f"AI 辨識失敗：{e}")
+
+            ai_item_name = st.session_state.ai_cache["name"]
+            ai_unsuitable = st.session_state.ai_cache["unsuitable"]
+        else:
+            st.session_state.ai_cache = {"file_id": None, "name": "", "unsuitable": ""}
+            ai_item_name = ""
+            ai_unsuitable = ""
 
         # --- 手動設定區塊 ---
         st.markdown("<div style='background:#f9f9f9; padding:10px; border-radius:10px; margin-bottom:10px;'><b>⚙️ 步驟 2：設定來源與類型</b></div>", unsafe_allow_html=True)
@@ -1706,11 +1711,47 @@ elif st.session_state.page == 'inventory':
             final_unsuitable = st.text_input("不適宜族群 (AI 建議，可修改)", value=ai_unsuitable)
             
             if st.form_submit_button("✅ 錄入庫存"):
-                if not final_donor or not final_item_name: st.error("❌ 捐贈者與物資名稱必填！")
+                if not final_donor or not final_item_name: 
+                    st.error("❌ 捐贈者與物資名稱必填！")
                 else:
-                    new = {"捐贈者": final_donor, "物資類型": sel_type, "物資內容": final_item_name, "總數量": qt, "捐贈日期": str(date.today()), "不適宜族群": final_unsuitable}
+                    img_url = ""
+                    # 如果使用者有上傳或拍照，就上傳到 Supabase
+                    if camera_pic is not None:
+                        try:
+                            # 隨機產生檔名避免重複 (例如：1712837493_4829.jpg)
+                            file_ext = camera_pic.name.split('.')[-1] if '.' in camera_pic.name else 'jpg'
+                            file_name = f"{int(time.time())}_{random.randint(1000, 9999)}.{file_ext}"
+                            
+                            # 讀取檔案轉換成二進制
+                            file_bytes = camera_pic.getvalue()
+                            
+                            # 呼叫 Supabase Storage 上傳
+                            supabase = get_supabase_client()
+                            supabase.storage.from_("inventory_images").upload(
+                                path=file_name,
+                                file=file_bytes,
+                                file_options={"content-type": camera_pic.type}
+                            )
+                            # 取得圖片的公開連結
+                            img_url = supabase.storage.from_("inventory_images").get_public_url(file_name)
+                        except Exception as e:
+                            st.warning(f"⚠️ 照片上傳失敗，但文字資料仍會儲存：{e}")
+                    
+                    # 將資料(包含剛產生的圖片網址)準備好
+                    new = {
+                        "捐贈者": final_donor, 
+                        "物資類型": sel_type, 
+                        "物資內容": final_item_name, 
+                        "總數量": qt, 
+                        "捐贈日期": str(date.today()), 
+                        "不適宜族群": final_unsuitable,
+                        "圖片網址": img_url
+                    }
+                    
+                    # 存入資料庫
                     if append_data("care_inventory", new, COLS_INV): 
-                        st.success("已成功錄入庫存")
+                        st.session_state.ai_cache = {"file_id": None, "name": "", "unsuitable": ""} # 成功後清空暫存
+                        st.success("✅ 已成功錄入庫存")
                         import time; time.sleep(1); st.rerun()
     if not inv.empty:
         st.markdown("### 📊 庫存概況 (智慧卡片)")
@@ -2115,26 +2156,19 @@ elif st.session_state.page == 'visit':
                         )
                         
                         with cols[j]:
-                            if is_bad:
-                                bg, border = "#FFEBEE", "#D32F2F"
-                                warn_txt = f"<div style='color:#D32F2F; font-weight:bold; font-size:0.85rem; margin-bottom:5px;'>🚫 不宜：{bad_reason}</div>"
-                            else:
-                                bg, border, warn_txt = "#FFFFFF", "#ddd", ""
-
-                            card_html = (
-                                f'<div style="background-color:{bg}; border:2px solid {border}; border-radius:10px; padding:15px; margin-bottom:12px;">'
-                                f'{warn_txt}'
-                                f'<div style="font-weight:900; font-size:1.1rem; margin-bottom:5px; color:#333;">{c_name}</div>'
-                                f'<div style="color:#666; font-size:0.9rem;">庫存: {c_stock}</div>'
-                                f'</div>'
-                            )
-                            st.markdown(card_html, unsafe_allow_html=True)
-                            qty = st.number_input(f"數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}", label_visibility="collapsed")
-                            quantities[c_name] = qty
-                            
-                            if qty > 0 and is_bad:
-                                st.markdown(f"<span style='color:red; font-weight:bold;'>⚠️ 警告：包含{bad_reason}</span>", unsafe_allow_html=True)
-                                warning_msgs.append(f"⚠️ {c_name}：包含個案拒絕的「{bad_reason}」")
+                            with st.container(border=True):
+                                if is_bad:
+                                    st.markdown(f"<div style='color:#D32F2F; font-weight:bold; font-size:0.85rem; margin-bottom:5px;'>🚫 不宜：{bad_reason}</div>", unsafe_allow_html=True)
+                                
+                                st.markdown(f"<div style='font-weight:900; font-size:1.1rem; color:#333; margin-bottom:5px;'>{c_name}</div>", unsafe_allow_html=True)
+                                st.markdown(f"<div style='color:#666; font-size:0.9rem; margin-bottom:10px;'>庫存: {c_stock}</div>", unsafe_allow_html=True)
+                                
+                                qty = st.number_input("數量", min_value=0, max_value=c_stock, step=1, key=f"q_{c_name}", label_visibility="collapsed")
+                                quantities[c_name] = qty
+                                
+                                if qty > 0 and is_bad:
+                                    st.markdown(f"<span style='color:red; font-weight:bold; font-size:0.85rem;'>⚠️ 警告：包含{bad_reason}</span>", unsafe_allow_html=True)
+                                    warning_msgs.append(f"⚠️ {c_name}：包含個案拒絕的「{bad_reason}」")
 
         note = st.text_area("訪視紀錄 / 備註", height=100)
         
