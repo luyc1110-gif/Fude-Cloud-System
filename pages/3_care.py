@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from datetime import datetime, date, timedelta, timezone
 from supabase import create_client, Client
 import plotly.express as px
@@ -783,9 +784,24 @@ if st.session_state.page == 'home':
         h_df = load_data("care_health", COLS_HEALTH)
         
         if not h_df.empty:
-            # 1. 抓取每個人「最新的一筆」紀錄
+            # ===== 👇 替換為以下這段魔法遞延邏輯 =====
             h_df['dt'] = pd.to_datetime(h_df['評估日期'], errors='coerce')
-            latest_health = h_df.dropna(subset=['dt']).sort_values('dt').groupby('身分證字號').last().reset_index()
+            
+            # 1. 把空白、空字串轉成真正的空值 NaN
+            h_df_clean = h_df.replace(r'^\s*$', np.nan, regex=True).replace('nan', np.nan)
+            
+            # 2. 確保依日期排序
+            h_df_clean = h_df_clean.sort_values('dt')
+            
+            # 3. 針對每個長輩向下填補歷史數據
+            h_df_filled = h_df_clean.groupby('身分證字號').ffill()
+            
+            # 4. 補回被作為 index 的身分證字號
+            h_df_filled['身分證字號'] = h_df_clean['身分證字號']
+            
+            # 5. 取得最新、且已拼湊完整的狀態
+            latest_health = h_df_filled.groupby('身分證字號').last().reset_index()
+            # ==========================================
             
             # 2. 建立警示名單容器
             alert_lists = {
@@ -2634,12 +2650,30 @@ elif st.session_state.page == 'stats':
                 # 強制轉數值以免報錯
                 p_history[trend_col] = pd.to_numeric(p_history[trend_col], errors='coerce')
 
-                # 繪製折線圖
-                fig = px.line(p_history, x='評估日期', y=trend_col, markers=True, title=f"{target_name} 的 {trend_col} 歷史變化")
-                fig.update_traces(line_color=GREEN, marker_size=10) # 🎨 可在此調整線條顏色
-                st.plotly_chart(fig, use_container_width=True)
-            elif len(p_history) == 1:
-                st.caption("💡 累積兩次以上評估後，此處將自動顯示趨勢圖。")
+                # === 以下為替換後的安全繪圖邏輯 ===
+            
+                # 1. 強制將選中的指標轉為數值，非數值的（空字串、nan）會變成 NaN
+                p_history[trend_col] = pd.to_numeric(p_history[trend_col], errors='coerce')
+
+                # 2. 【關鍵】過濾掉該指標為空值的紀錄，確保只連線「真的有量測」的點
+                p_history_plot = p_history.dropna(subset=[trend_col])
+
+                # 3. 判斷「過濾後」是否有資料可以畫圖
+                if len(p_history_plot) >= 2:
+                    # 至少有兩點，畫出折線圖
+                    fig = px.line(p_history_plot, x='評估日期', y=trend_col, markers=True, title=f"{target_name} 的 {trend_col} 歷史變化")
+                    fig.update_traces(line_color=GREEN, marker_size=10)
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                elif len(p_history_plot) == 1:
+                    # 只有一點，無法連線，改為顯示提示
+                    st.info(f"💡 目前僅有一筆 {trend_col} 紀錄，累積兩次量測後將自動顯示趨勢圖。")
+                
+                else:
+                    # 完全沒資料
+                    st.caption(f"💡 該個案尚無 {trend_col} 的量測紀錄。")
+                
+            # === 替換結束 ===
 
                 # 機敏資料
                 if not st.session_state.unlock_details:
