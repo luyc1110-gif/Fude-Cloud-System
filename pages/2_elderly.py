@@ -249,11 +249,17 @@ def append_data(sheet_name, row_dict, col_order=None):
 def batch_append_data(sheet_name, rows_list, col_order=None):
     try:
         supabase = get_supabase_client()
-        # 改為逐筆將資料 insert 進資料庫，確保 100% 寫入
+        clean_rows = []
         for r in rows_list:
-            clean_data = {k: str(v).strip() for k, v in r.items() if str(v).strip() and str(v).strip() != 'nan'}
-            if clean_data:
-                supabase.table(sheet_name).insert(clean_data).execute()
+            # 清理單筆資料，排除 nan 或空字串
+            clean_dict = {k: str(v).strip() for k, v in r.items() if str(v).strip() and str(v).strip() != 'nan'}
+            if clean_dict:
+                clean_rows.append(clean_dict)
+                
+        if clean_rows:
+            # 將整理好的多筆資料清單 (List) 一次性寫入資料庫
+            supabase.table(sheet_name).insert(clean_rows).execute()
+            
         load_data.clear()
         return True
     except Exception as e:
