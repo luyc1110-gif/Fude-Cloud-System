@@ -645,6 +645,15 @@ def get_all_members():
     for c in COLS_MEM:
         if c not in df.columns: df[c] = ""
     return df[COLS_MEM].reset_index(drop=True)
+
+def get_care_members():
+    """只回傳身分_關懷戶 == TRUE 的人"""
+    df = get_all_members()
+    if df.empty: return df
+    raw = load_data("master_residents")
+    if '身分_關懷戶' not in raw.columns: return df
+    care_pids = raw[raw['身分_關懷戶'].astype(str).str.upper() == 'TRUE']['身分證字號'].tolist()
+    return df[df['身分證字號'].isin(care_pids)].reset_index(drop=True)
 # ==========================================
 
 def update_master_fields(uid, update_dict):
@@ -728,7 +737,7 @@ def render_nav():
 if st.session_state.page == 'home':
     render_nav()
     st.markdown(f"<h2 style='color: {GREEN};'>📊 關懷戶概況看板</h2>", unsafe_allow_html=True)
-    mems, logs = get_all_members(), load_data("care_logs", COLS_LOG)
+    mems, logs = get_care_members(), load_data("care_logs", COLS_LOG)
     
     if not mems.empty:
         mems['age'] = mems['生日'].apply(calculate_age)
@@ -1856,7 +1865,7 @@ elif st.session_state.page == 'visit':
     """, unsafe_allow_html=True)
 
     # 1. 載入必要的資料表
-    mems = get_all_members()
+    mems = get_care_members()
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
     
