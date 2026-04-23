@@ -630,22 +630,22 @@ def calculate_age(dob_str):
 # =========================================================
 COLS_MASTER = ['姓名', '身分證字號', '性別', '出生年月日', '電話', '地址', '緊急聯絡人', '緊急聯絡電話', '身分_志工', '身分_關懷戶', '身分_據點長輩', '志工分類', '關懷_身分別', '同住_18歲以下', '同住_成人', '同住_65歲以上', '拒絕物資', '人際關係']
 
-def get_care_members():
+# ===== 👇 加入這個新的函式，用來抓取「全名冊」 =====
+def get_all_members():
     df = load_data("master_residents")
     if df.empty: return pd.DataFrame(columns=COLS_MEM)
-    if '身分_關懷戶' not in df.columns: df['身分_關懷戶'] = ""
     
-    care_df = df[df['身分_關懷戶'].astype(str).str.upper() == 'TRUE'].copy()
-    # 統一欄位名稱：master用出生年月日，本頁用生日
-    if '出生年月日' in care_df.columns and '生日' not in care_df.columns:
-        care_df = care_df.rename(columns={'出生年月日': '生日'})
-    care_df = care_df.rename(columns={
-        '出生年月日': '生日', '關懷_身分別': '身分別', '同住_18歲以下': '18歲以下子女', 
+    # 統一轉換欄位名稱，讓它跟關懷戶的格式相容，避免後續報錯
+    if '出生年月日' in df.columns and '生日' not in df.columns:
+        df = df.rename(columns={'出生年月日': '生日'})
+    df = df.rename(columns={
+        '關懷_身分別': '身分別', '同住_18歲以下': '18歲以下子女', 
         '同住_成人': '成人數量', '同住_65歲以上': '65歲以上長者'
     })
     for c in COLS_MEM:
-        if c not in care_df.columns: care_df[c] = ""
-    return care_df[COLS_MEM].reset_index(drop=True)
+        if c not in df.columns: df[c] = ""
+    return df[COLS_MEM].reset_index(drop=True)
+# ==========================================
 
 def update_master_fields(uid, update_dict):
     try:
@@ -958,7 +958,8 @@ if st.session_state.page == 'home':
 elif st.session_state.page == 'health':
     render_nav()
     st.markdown("## 🏥 綜合健康評估")
-    h_df, m_df = load_data("care_health", COLS_HEALTH), get_care_members()
+    # 1. 改呼叫 get_all_members()
+    h_df, m_df = load_data("care_health", COLS_HEALTH), get_all_members()
     
     # --- 轉介視窗 ---
     if st.session_state.get("show_referral_dialog"):
@@ -997,7 +998,7 @@ elif st.session_state.page == 'health':
             st.markdown('<div class="hf-complete-box">✅ 本頁填寫完整</div>',
                         unsafe_allow_html=True)
     with st.expander("➕ 新增/更新 評估紀錄 (請依序填寫)", expanded=True):
-        sel_n = st.selectbox("選擇關懷戶", m_df['姓名'].tolist() if not m_df.empty else ["無名冊"], index=None, placeholder="請選擇...")
+        sel_n = st.selectbox("選擇評估對象 (全體名單)", m_df['姓名'].tolist() if not m_df.empty else ["無名冊"], index=None, placeholder="請點擊此處輸入或選擇姓名...")
         
         # ✅ 把日期選擇器搬到最前面，讓下面可以抓到變數
         eval_date = st.date_input("填表日期", value=date.today()) 
@@ -2258,7 +2259,8 @@ elif st.session_state.page == 'visit':
 elif st.session_state.page == 'stats':
     render_nav()
     st.markdown("## 📊 數據統計與個案查詢")
-    logs, mems = load_data("care_logs", COLS_LOG), get_care_members()
+    # 1. 改呼叫 get_all_members()
+    logs, mems = load_data("care_logs", COLS_LOG), get_all_members()
     h_df = load_data("care_health", COLS_HEALTH)
 
     # 修改：從 2 個分頁變成 3 個分頁
@@ -2271,8 +2273,8 @@ elif st.session_state.page == 'stats':
             # 建立選單用的名單 (顯示: 姓名 + ID末四碼以防重複)
             all_options = mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-4:]})", axis=1).tolist()
             
-            # 選擇主要查看對象
-            sel_label = st.selectbox("請選擇關懷戶", all_options, index=None, placeholder="請點擊此處輸入或選擇姓名...")
+            # 2. 改掉下拉選單的提示文字
+            sel_label = st.selectbox("請選擇查詢對象", all_options, index=None, placeholder="請點擊此處輸入或選擇姓名...")
             
             target_name = None # 初始化變數，避免未選擇時產生 NameError
             
