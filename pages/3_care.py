@@ -728,7 +728,7 @@ def render_nav():
 if st.session_state.page == 'home':
     render_nav()
     st.markdown(f"<h2 style='color: {GREEN};'>📊 關懷戶概況看板</h2>", unsafe_allow_html=True)
-    mems, logs = get_care_members(), load_data("care_logs", COLS_LOG)
+    mems, logs = get_all_members(), load_data("care_logs", COLS_LOG)
     
     if not mems.empty:
         mems['age'] = mems['生日'].apply(calculate_age)
@@ -1856,7 +1856,7 @@ elif st.session_state.page == 'visit':
     """, unsafe_allow_html=True)
 
     # 1. 載入必要的資料表
-    mems = get_care_members()
+    mems = get_all_members()
     inv = load_data("care_inventory", COLS_INV)
     logs = load_data("care_logs", COLS_LOG)
     
