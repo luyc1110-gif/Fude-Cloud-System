@@ -547,6 +547,17 @@ with st.expander("➕ 新增居民 / 志工 / 長者 / 關懷戶", expanded=Fals
                     st.success(f"✅ {r_name} 新增成功！身份：{label}")
 
                 load_dashboard_stats.clear()
+                # ===== 👇 加入以下這段程式碼來清空欄位 =====
+                for key in list(st.session_state.keys()):
+                    if key.startswith("add_"):
+                        del st.session_state[key]
+                import time
+                time.sleep(1)
+                st.rerun()
+                # ==========================================
+
+            except Exception as e:
+                st.error(f"寫入失敗：{e}")
 
             except Exception as e:
                 st.error(f"寫入失敗：{e}")
