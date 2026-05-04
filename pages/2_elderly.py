@@ -209,7 +209,7 @@ COURSE_HIERARCHY = {
     "運動": ["有氧", "毛巾操", "其他運動"], "園藝療癒": ["手作"], "烹飪": ["甜品", "鹹食", "醃漬品"], "歌唱": ["歡唱"]
 }
 M_COLS = ["姓名", "身分證字號", "性別", "出生年月日", "電話", "地址", "備註", "加入日期"]
-L_COLS = ["姓名", "身分證字號", "日期", "時間", "課程分類", "課程名稱", "收縮壓", "舒張壓", "脈搏"]
+L_COLS = ["姓名", "身分證字號", "日期", "時間", "場次時段", "課程分類", "課程名稱", "收縮壓", "舒張壓", "脈搏"]
 
 @st.cache_resource
 def get_supabase_client():
@@ -520,29 +520,29 @@ elif st.session_state.page == 'checkin':
         elif pulse < 60: alerts.append(f"💓 心跳過慢 ({pulse})")
         return alerts
 
-    def do_checkin(pid, sbp, dbp, pulse, course_cat, course_name):
+    def do_checkin(pid, sbp, dbp, pulse, course_cat, course_name, session_period):
         df_m = get_elderly_members()
         df_l = load_data("elderly_logs")
         pid_clean = pid.strip().upper()
         person = df_m[df_m['身分證字號'] == pid_clean]
-        
+    
         if person.empty:
             st.error(f"❌ 查無此人 ({pid_clean})，請先至名冊新增。")
             return
-            
+        
         name = person.iloc[0]['姓名']
         alerts = check_health_alert(sbp, dbp, pulse)
-        
+    
         new_log = {
             "姓名": name, "身分證字號": pid_clean,
             "日期": get_tw_time().strftime("%Y-%m-%d"), "時間": get_tw_time().strftime("%H:%M:%S"),
+            "場次時段": session_period,  # 新增此行
             "課程分類": course_cat,
             "課程名稱": course_name,
             "收縮壓": sbp, "舒張壓": dbp, "脈搏": pulse
         }
-        # --- 修改為 append_data (原本是 save_data) ---
         append_data("elderly_logs", new_log, L_COLS)
-        
+    
         if alerts:
             st.warning(f"✅ {name} 報到成功，但數值異常：{' / '.join(alerts)}")
         else:
@@ -550,13 +550,14 @@ elif st.session_state.page == 'checkin':
 
     st.markdown('<div class="dash-card" style="border-left: 6px solid #FF9800;">', unsafe_allow_html=True)
     st.markdown("#### 1. 今日課程設定")
-    c_main, c_sub, c_name = st.columns([1, 1, 1.5])
+    c_period, c_main, c_sub, c_name = st.columns([1, 1, 1, 1.5])
+    with c_period: session_period = st.selectbox("場次時段", ["上午場", "下午場", "晚上場"])
     with c_main: main_cat = st.selectbox("課程大分類", list(COURSE_HIERARCHY.keys()))
     with c_sub: 
         sub_list = COURSE_HIERARCHY[main_cat]
         sub_cat = st.selectbox("課程子分類", sub_list)
     with c_name: course_name = st.text_input("課程名稱 (選填)", placeholder="例如：端午節香包製作")
-    
+
     final_course_cat = f"{main_cat}-{sub_cat}"
     final_course_name = course_name if course_name.strip() else sub_cat
     st.markdown('</div>', unsafe_allow_html=True)
@@ -578,7 +579,7 @@ elif st.session_state.page == 'checkin':
         input_pid = st.text_input("請掃描或輸入身分證字號", key="scan_pid_field")
         if st.button("確認報到 (身分證)", key="btn_do_scan"):
             if input_pid:
-                do_checkin(input_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name)
+                do_checkin(input_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name, session_period)
                 st.rerun()
 
     with tab2:
@@ -589,7 +590,7 @@ elif st.session_state.page == 'checkin':
             if st.button("確認報到 (選單)", key="btn_do_select"):
                 if selected_member != "--- 請選擇 ---":
                     sel_pid = selected_member.split("(")[-1].replace(")", "")
-                    do_checkin(sel_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name)
+                    do_checkin(sel_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name, session_period)
                     st.rerun()
         else:
             st.warning("名冊中尚無資料")
@@ -604,7 +605,7 @@ elif st.session_state.page == 'checkin':
     if not logs.empty:
         today_logs = logs[logs['日期'] == today_str].copy()
         if not today_logs.empty:
-            edited_df = st.data_editor(today_logs, column_order=['時間', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'], use_container_width=True, num_rows="dynamic", key="today_checkin_editor")
+            edited_df = st.data_editor(today_logs, column_order=['時間', '場次時段', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'], use_container_width=True, num_rows="dynamic", key="today_checkin_editor")
             if st.button("💾 儲存名單修改"):
                 with st.spinner("寫入資料庫..."):
                     supabase = get_supabase_client()
@@ -624,7 +625,9 @@ elif st.session_state.page == 'checkin':
         if df_m.empty: st.warning("目前名冊中無長輩資料。")
         else:
             with st.form("manual_batch_form_new"):
-                c_date, c_time = st.columns(2)
+                c_period, c_date, c_time = st.columns([1, 1, 1])
+                with c_period:
+                    b_period = st.selectbox("補登場次時段", ["上午場", "下午場", "晚上場"])
                 with c_date:
                     back_date = st.date_input("選擇補登日期", value=get_tw_time().date())
                 with c_time:
@@ -649,10 +652,10 @@ elif st.session_state.page == 'checkin':
                         for label in selected_members:
                             target_pid = label.split("(")[-1].replace(")", "")
                             target_name = label.split(". ")[1].split(" (")[0]
-                            # 建立字典
                             new_entries.append({
                                 "姓名": target_name, "身分證字號": target_pid, 
                                 "日期": s_date, "時間": s_time, 
+                                "場次時段": b_period, # 新增此行
                                 "課程分類": final_course_cat, "課程名稱": final_course_name, 
                                 "收縮壓": b_sbp, "舒張壓": b_dbp, "脈搏": b_pulse
                             })
@@ -688,7 +691,7 @@ elif st.session_state.page == 'stats':
                 merged = f_logs.merge(members[['姓名', '性別']], on='姓名', how='left')
                 
                 # 將計算不重複場次的程式碼提前，以便上方卡片使用
-                unique_sessions = merged.drop_duplicates(subset=['日期', '課程名稱', '課程分類']).copy()
+                unique_sessions = merged.drop_duplicates(subset=['日期', '場次時段', '課程名稱', '課程分類']).copy()
                 total_sessions_count = len(unique_sessions)
                 
                 st.markdown("### 1. 參與人次統計")
