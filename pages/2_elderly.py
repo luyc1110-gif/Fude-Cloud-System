@@ -622,8 +622,13 @@ elif st.session_state.page == 'checkin':
     st.markdown("---")
     with st.expander("🕒 批次補登系統 (手動補錄過去資料)", expanded=False):
         df_m = get_elderly_members()
-        if df_m.empty: st.warning("目前名冊中無長輩資料。")
+        if df_m.empty: 
+            st.warning("目前名冊中無長輩資料。")
         else:
+            # 1. 初始化一個 session state 來記錄補登是否成功
+            if "batch_success" not in st.session_state:
+                st.session_state.batch_success = False
+
             with st.form("manual_batch_form_new"):
                 c_period, c_date, c_time = st.columns([1, 1, 1])
                 with c_period:
@@ -632,8 +637,10 @@ elif st.session_state.page == 'checkin':
                     back_date = st.date_input("選擇補登日期", value=get_tw_time().date())
                 with c_time:
                     back_time = st.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time(), step=60)
+                
                 member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
                 selected_members = st.multiselect("選擇補登長輩 (多選)", options=member_options)
+                
                 c_s, c_d, c_p = st.columns(3)
                 with c_s:
                     b_sbp = st.number_input("補登收縮壓", value=120)
@@ -641,29 +648,40 @@ elif st.session_state.page == 'checkin':
                     b_dbp = st.number_input("補登舒張壓", value=80)
                 with c_p:
                     b_pulse = st.number_input("補登脈搏", value=72)
-                if st.form_submit_button("🚀 執行補登"):
-                    if not selected_members: st.error("請先選擇長輩！")
-                    else:
-                        # 準備資料 List
-                        new_entries = []
-                        s_date = back_date.strftime("%Y-%m-%d")
-                        s_time = back_time.strftime("%H:%M:%S")
-                        
-                        for label in selected_members:
-                            target_pid = label.split("(")[-1].replace(")", "")
-                            target_name = label.split(". ")[1].split(" (")[0]
-                            new_entries.append({
-                                "姓名": target_name, "身分證字號": target_pid, 
-                                "日期": s_date, "時間": s_time, 
-                                "場次時段": b_period, # 新增此行
-                                "課程分類": final_course_cat, "課程名稱": final_course_name, 
-                                "收縮壓": b_sbp, "舒張壓": b_dbp, "脈搏": b_pulse
-                            })
-                        
-                        # --- 修改這裡：使用 batch_append_data 一次寫入 ---
-                        # 直接把 list 丟進去，不用讀取舊資料，也不用 concat
-                        if batch_append_data("elderly_logs", new_entries, L_COLS):
-                            st.success(f"✅ 已成功補登 {len(new_entries)} 筆紀錄"); time.sleep(1); st.rerun()
+                
+                submitted = st.form_submit_button("🚀 執行補登")
+
+            # 2. 將提交後的邏輯移出 st.form，並更新 session state
+            if submitted:
+                if not selected_members: 
+                    st.error("請先選擇長輩！")
+                else:
+                    new_entries = []
+                    s_date = back_date.strftime("%Y-%m-%d")
+                    s_time = back_time.strftime("%H:%M:%S")
+                    
+                    for label in selected_members:
+                        target_pid = label.split("(")[-1].replace(")", "")
+                        target_name = label.split(". ")[1].split(" (")[0]
+                        new_entries.append({
+                            "姓名": target_name, "身分證字號": target_pid, 
+                            "日期": s_date, "時間": s_time, 
+                            "場次時段": b_period,
+                            "課程分類": final_course_cat, "課程名稱": final_course_name, 
+                            "收縮壓": b_sbp, "舒張壓": b_dbp, "脈搏": b_pulse
+                        })
+                    
+                    if batch_append_data("elderly_logs", new_entries, L_COLS):
+                        # 成功時，設定狀態為 True
+                        st.session_state.batch_success = True
+
+            # 3. 在表單外部檢查狀態，顯示訊息並執行 rerun
+            if st.session_state.batch_success:
+                st.success("✅ 已成功補登紀錄！")
+                # 重置狀態，避免無限迴圈
+                st.session_state.batch_success = False 
+                time.sleep(1)
+                st.rerun()
 
 # --- [分頁 4：統計 (完全公開)] ---
 elif st.session_state.page == 'stats':
