@@ -592,26 +592,38 @@ elif st.session_state.page == 'checkin':
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown("---")
-        st.write("📋 今日已報到名單 (您可以直接點擊下方格子修改內容)：")
+        st.write("📋 今日已報到名單：")
         logs = load_data("elderly_logs")
         today_str = get_tw_time().strftime("%Y-%m-%d")
         
         if not logs.empty:
             today_logs = logs[logs['日期'] == today_str].copy()
             if not today_logs.empty:
-                edited_df = st.data_editor(today_logs, column_order=['時間', '場次時段', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'], use_container_width=True, num_rows="dynamic", key="today_checkin_editor")
-                if st.button("💾 儲存名單修改"):
-                    with st.spinner("寫入資料庫..."):
-                        supabase = get_supabase_client()
-                        for _, row in edited_df.iterrows():
-                            if 'id' in row and pd.notna(row['id']):
-                                up_data = {k: str(v) for k, v in row.items() if k != 'id' and pd.notna(v)}
-                                supabase.table("elderly_logs").update(up_data).eq("id", int(row['id'])).execute()
-                        load_data.clear()
-                        st.success("✅ 名單已更新")
-                        time.sleep(1); st.rerun()
-            else: st.info("今日尚無報到紀錄。")
-        else: st.info("資料庫目前無任何紀錄。")
+                # 繪製標籤式名單
+                tags_html = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">'
+                checked_in_names = today_logs['姓名'].unique()
+                for name in checked_in_names:
+                    tags_html += f'<span style="background-color: {PRIMARY}; color: white; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.95rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">{name}</span>'
+                tags_html += '</div>'
+                st.markdown(tags_html, unsafe_allow_html=True)
+                
+                # 將原有的資料編輯器收合，維持畫面簡潔
+                with st.expander("✏️ 展開以修改今日報到資料"):
+                    edited_df = st.data_editor(today_logs, column_order=['時間', '場次時段', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'], use_container_width=True, num_rows="dynamic", key="today_checkin_editor")
+                    if st.button("💾 儲存名單修改"):
+                        with st.spinner("寫入資料庫..."):
+                            supabase = get_supabase_client()
+                            for _, row in edited_df.iterrows():
+                                if 'id' in row and pd.notna(row['id']):
+                                    up_data = {k: str(v) for k, v in row.items() if k != 'id' and pd.notna(v)}
+                                    supabase.table("elderly_logs").update(up_data).eq("id", int(row['id'])).execute()
+                            load_data.clear()
+                            st.success("✅ 名單已更新")
+                            time.sleep(1); st.rerun()
+            else: 
+                st.info("今日尚無報到紀錄。")
+        else: 
+            st.info("資料庫目前無任何紀錄。")
 
     # ---------------------------------------------------------
     # 模式 2：批次補登 (無血壓欄位)
@@ -624,24 +636,22 @@ elif st.session_state.page == 'checkin':
             if "batch_success" not in st.session_state:
                 st.session_state.batch_success = False
 
-            with st.form("manual_batch_form_new"):
-                st.markdown("#### a. 課程與時間設定")
-                c_date, c_time = st.columns([1, 1])
-                with c_date: back_date = st.date_input("選擇補登日期", value=get_tw_time().date())
-                with c_time: back_time = st.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time(), step=60)
-                
-                bc_period, bc_main, bc_sub, bc_name = st.columns([1, 1, 1, 1.5])
-                with bc_period: b_period = st.selectbox("場次時段", ["上午場", "下午場", "晚上場"], key="b_period")
-                with bc_main: b_main_cat = st.selectbox("課程大分類", list(COURSE_HIERARCHY.keys()), key="b_main_cat")
-                with bc_sub: b_sub_cat = st.selectbox("課程子分類", COURSE_HIERARCHY[b_main_cat], key="b_sub_cat")
-                with bc_name: b_course_name_input = st.text_input("課程名稱 (選填)", key="b_course_name")
-                
-                st.markdown("#### b. 報到設定")
-                st.info("💡 批次補登代表網路異常，紙本紀錄的血壓等生理數值統一歸檔，此處不再重複登錄。")
-                member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
-                selected_members = st.multiselect("下拉選單選擇長輩 (可多選)", options=member_options, key="b_members")
-                
-                submitted = st.form_submit_button("🚀 執行批次補登")
+            st.markdown("#### a. 課程與時間設定")
+            c_date, c_time = st.columns([1, 1])
+            with c_date: back_date = st.date_input("選擇補登日期", value=get_tw_time().date())
+            with c_time: back_time = st.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time(), step=60)
+            
+            bc_period, bc_main, bc_sub, bc_name = st.columns([1, 1, 1, 1.5])
+            with bc_period: b_period = st.selectbox("場次時段", ["上午場", "下午場", "晚上場"], key="b_period")
+            with bc_main: b_main_cat = st.selectbox("課程大分類", list(COURSE_HIERARCHY.keys()), key="b_main_cat")
+            with bc_sub: b_sub_cat = st.selectbox("課程子分類", COURSE_HIERARCHY[b_main_cat], key="b_sub_cat")
+            with bc_name: b_course_name_input = st.text_input("課程名稱 (選填)", key="b_course_name")
+            
+            st.markdown("#### b. 報到設定")
+            member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
+            selected_members = st.multiselect("下拉選單選擇長輩 (可多選)", options=member_options, key="b_members")
+            
+            submitted = st.button("🚀 執行批次補登", type="primary")
 
             if submitted:
                 if not selected_members: 
@@ -661,7 +671,7 @@ elif st.session_state.page == 'checkin':
                             "日期": s_date, "時間": s_time, 
                             "場次時段": b_period,
                             "課程分類": b_course_cat, "課程名稱": b_course_name, 
-                            "收縮壓": "", "舒張壓": "", "脈搏": ""  # 血壓強制帶空值
+                            "收縮壓": "", "舒張壓": "", "脈搏": ""  
                         })
                     
                     if batch_append_data("elderly_logs", new_entries, L_COLS):
@@ -672,7 +682,6 @@ elif st.session_state.page == 'checkin':
                 st.session_state.batch_success = False 
                 time.sleep(1)
                 st.rerun()
-
 # --- [分頁 4：統計 (完全公開)] ---
 elif st.session_state.page == 'stats':
     render_nav()
