@@ -349,14 +349,7 @@ def render_nav():
             if st.button("🩸 據點報到", key="nav_checkin", use_container_width=True):
                 st.session_state.page = 'checkin'; st.rerun()
 
-        # 3. 長輩名冊
-        if st.session_state.page == 'members':
-            st.markdown('<div class="nav-active">📋 長輩名冊</div>', unsafe_allow_html=True)
-        else:
-            if st.button("📋 長輩名冊管理", key="nav_members", use_container_width=True):
-                st.session_state.page = 'members'; st.rerun()
-
-        # 4. 統計數據
+        # 3. 統計數據 (原名冊按鈕已移除)
         if st.session_state.page == 'stats':
             st.markdown('<div class="nav-active">📈 詳細統計報表</div>', unsafe_allow_html=True)
         else:
@@ -370,7 +363,6 @@ def render_nav():
         
         st.markdown("<br><br><br>", unsafe_allow_html=True)
         st.markdown("<div style='text-align:center; color:#999; font-size:0.8rem;'>Designed for Fude Community</div>", unsafe_allow_html=True)
-
 # =========================================================
 # 4) Pages
 # =========================================================
@@ -522,12 +514,11 @@ elif st.session_state.page == 'checkin':
 
     def do_checkin(pid, sbp, dbp, pulse, course_cat, course_name, session_period):
         df_m = get_elderly_members()
-        df_l = load_data("elderly_logs")
         pid_clean = pid.strip().upper()
         person = df_m[df_m['身分證字號'] == pid_clean]
     
         if person.empty:
-            st.error(f"❌ 查無此人 ({pid_clean})，請先至名冊新增。")
+            st.error(f"❌ 查無此人 ({pid_clean})，請先確認名冊。")
             return
         
         name = person.iloc[0]['姓名']
@@ -536,7 +527,7 @@ elif st.session_state.page == 'checkin':
         new_log = {
             "姓名": name, "身分證字號": pid_clean,
             "日期": get_tw_time().strftime("%Y-%m-%d"), "時間": get_tw_time().strftime("%H:%M:%S"),
-            "場次時段": session_period,  # 新增此行
+            "場次時段": session_period,
             "課程分類": course_cat,
             "課程名稱": course_name,
             "收縮壓": sbp, "舒張壓": dbp, "脈搏": pulse
@@ -548,119 +539,110 @@ elif st.session_state.page == 'checkin':
         else:
             st.success(f"✅ {name} 報到成功！")
 
-    st.markdown('<div class="dash-card" style="border-left: 6px solid #FF9800;">', unsafe_allow_html=True)
-    st.markdown("#### 1. 今日課程設定")
-    c_period, c_main, c_sub, c_name = st.columns([1, 1, 1, 1.5])
-    with c_period: session_period = st.selectbox("場次時段", ["上午場", "下午場", "晚上場"])
-    with c_main: main_cat = st.selectbox("課程大分類", list(COURSE_HIERARCHY.keys()))
-    with c_sub: 
-        sub_list = COURSE_HIERARCHY[main_cat]
-        sub_cat = st.selectbox("課程子分類", sub_list)
-    with c_name: course_name = st.text_input("課程名稱 (選填)", placeholder="例如：端午節香包製作")
+    # 分離兩種報到模式
+    tab_live, tab_batch = st.tabs(["📍 現場報到", "🕒 批次補登"])
 
-    final_course_cat = f"{main_cat}-{sub_cat}"
-    final_course_name = course_name if course_name.strip() else sub_cat
-    st.markdown('</div>', unsafe_allow_html=True)
+    # ---------------------------------------------------------
+    # 模式 1：現場報到
+    # ---------------------------------------------------------
+    with tab_live:
+        st.markdown('<div class="dash-card" style="border-left: 6px solid #FF9800;">', unsafe_allow_html=True)
+        st.markdown("#### a. 課程設定")
+        c_period, c_main, c_sub, c_name = st.columns([1, 1, 1, 1.5])
+        with c_period: session_period = st.selectbox("場次時段", ["上午場", "下午場", "晚上場"], key="live_period")
+        with c_main: main_cat = st.selectbox("課程大分類", list(COURSE_HIERARCHY.keys()), key="live_main")
+        with c_sub: 
+            sub_list = COURSE_HIERARCHY[main_cat]
+            sub_cat = st.selectbox("課程子分類", sub_list, key="live_sub")
+        with c_name: course_name = st.text_input("課程名稱 (選填)", placeholder="例如：端午節香包製作", key="live_name")
 
-    st.markdown('<div class="dash-card">', unsafe_allow_html=True)
-    st.markdown("#### 2. 長輩報到與量測輸入")
-    
-    c_bp1, c_bp2, c_bp3 = st.columns(3)
-    with c_bp1:
-        sbp_val = st.number_input("收縮壓 (高壓)", min_value=50, max_value=250, value=120)
-    with c_bp2:
-        dbp_val = st.number_input("舒張壓 (低壓)", min_value=30, max_value=150, value=80)
-    with c_bp3:
-        pulse_val = st.number_input("脈搏", min_value=30, max_value=200, value=72)
+        final_course_cat = f"{main_cat}-{sub_cat}"
+        final_course_name = course_name if course_name.strip() else sub_cat
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    tab1, tab2 = st.tabs(["🔍 掃描/輸入身分證", "📋 下拉選單選取"])
-    
-    with tab1:
-        input_pid = st.text_input("請掃描或輸入身分證字號", key="scan_pid_field")
-        if st.button("確認報到 (身分證)", key="btn_do_scan"):
-            if input_pid:
-                do_checkin(input_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name, session_period)
-                st.rerun()
+        st.markdown('<div class="dash-card">', unsafe_allow_html=True)
+        st.markdown("#### b. 報到與量測")
+        
+        c_bp1, c_bp2, c_bp3 = st.columns(3)
+        with c_bp1: sbp_val = st.number_input("收縮壓 (高壓)", min_value=50, max_value=250, value=120, key="live_sbp")
+        with c_bp2: dbp_val = st.number_input("舒張壓 (低壓)", min_value=30, max_value=150, value=80, key="live_dbp")
+        with c_bp3: pulse_val = st.number_input("脈搏", min_value=30, max_value=200, value=72, key="live_pulse")
 
-    with tab2:
-        df_m = get_elderly_members()
-        if not df_m.empty:
-            member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
-            selected_member = st.selectbox("請選擇長輩", ["--- 請選擇 ---"] + member_options)
-            if st.button("確認報到 (選單)", key="btn_do_select"):
-                if selected_member != "--- 請選擇 ---":
-                    sel_pid = selected_member.split("(")[-1].replace(")", "")
-                    do_checkin(sel_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name, session_period)
+        sub_tab1, sub_tab2 = st.tabs(["🔍 掃描/輸入身分證", "📋 下拉選單選取"])
+        
+        with sub_tab1:
+            input_pid = st.text_input("請掃描或輸入身分證字號", key="scan_pid_field")
+            if st.button("確認報到 (身分證)", key="btn_do_scan"):
+                if input_pid:
+                    do_checkin(input_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name, session_period)
                     st.rerun()
-        else:
-            st.warning("名冊中尚無資料")
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.write("📋 今日已報到名單 (您可以直接點擊下方格子修改內容)：")
-    
-    logs = load_data("elderly_logs")
-    today_str = get_tw_time().strftime("%Y-%m-%d")
-    
-    if not logs.empty:
-        today_logs = logs[logs['日期'] == today_str].copy()
-        if not today_logs.empty:
-            edited_df = st.data_editor(today_logs, column_order=['時間', '場次時段', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'], use_container_width=True, num_rows="dynamic", key="today_checkin_editor")
-            if st.button("💾 儲存名單修改"):
-                with st.spinner("寫入資料庫..."):
-                    supabase = get_supabase_client()
-                    for _, row in edited_df.iterrows():
-                        if 'id' in row and pd.notna(row['id']):
-                            up_data = {k: str(v) for k, v in row.items() if k != 'id' and pd.notna(v)}
-                            supabase.table("elderly_logs").update(up_data).eq("id", int(row['id'])).execute()
-                    load_data.clear()
-                    st.success("✅ 名單已更新")
-                    time.sleep(1); st.rerun()
-        else: st.info("今日尚無報到紀錄。")
-    else: st.info("資料庫目前無任何紀錄。")
+        with sub_tab2:
+            df_m = get_elderly_members()
+            if not df_m.empty:
+                member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
+                selected_member = st.selectbox("請選擇長輩", ["--- 請選擇 ---"] + member_options, key="live_sel")
+                if st.button("確認報到 (選單)", key="btn_do_select"):
+                    if selected_member != "--- 請選擇 ---":
+                        sel_pid = selected_member.split("(")[-1].replace(")", "")
+                        do_checkin(sel_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name, session_period)
+                        st.rerun()
+            else:
+                st.warning("名單中尚無資料")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    with st.expander("🕒 批次補登系統 (手動補錄過去資料)", expanded=False):
+        st.markdown("---")
+        st.write("📋 今日已報到名單 (您可以直接點擊下方格子修改內容)：")
+        logs = load_data("elderly_logs")
+        today_str = get_tw_time().strftime("%Y-%m-%d")
+        
+        if not logs.empty:
+            today_logs = logs[logs['日期'] == today_str].copy()
+            if not today_logs.empty:
+                edited_df = st.data_editor(today_logs, column_order=['時間', '場次時段', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'], use_container_width=True, num_rows="dynamic", key="today_checkin_editor")
+                if st.button("💾 儲存名單修改"):
+                    with st.spinner("寫入資料庫..."):
+                        supabase = get_supabase_client()
+                        for _, row in edited_df.iterrows():
+                            if 'id' in row and pd.notna(row['id']):
+                                up_data = {k: str(v) for k, v in row.items() if k != 'id' and pd.notna(v)}
+                                supabase.table("elderly_logs").update(up_data).eq("id", int(row['id'])).execute()
+                        load_data.clear()
+                        st.success("✅ 名單已更新")
+                        time.sleep(1); st.rerun()
+            else: st.info("今日尚無報到紀錄。")
+        else: st.info("資料庫目前無任何紀錄。")
+
+    # ---------------------------------------------------------
+    # 模式 2：批次補登 (無血壓欄位)
+    # ---------------------------------------------------------
+    with tab_batch:
         df_m = get_elderly_members()
         if df_m.empty: 
             st.warning("目前名冊中無長輩資料。")
         else:
-            # 1. 初始化一個 session state 來記錄補登是否成功
             if "batch_success" not in st.session_state:
                 st.session_state.batch_success = False
 
             with st.form("manual_batch_form_new"):
-                c_period, c_date, c_time = st.columns([1, 1, 1])
-                with c_period:
-                    b_period = st.selectbox("補登場次時段", ["上午場", "下午場", "晚上場"])
-                with c_date:
-                    back_date = st.date_input("選擇補登日期", value=get_tw_time().date())
-                with c_time:
-                    back_time = st.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time(), step=60)
-                # ✅ 新增這段：補登自己的課程選擇
-                st.markdown("**補登課程設定**")
-                bc_main, bc_sub, bc_name = st.columns([1, 1, 1.5])
-                with bc_main:
-                    b_main_cat = st.selectbox("補登課程大分類", list(COURSE_HIERARCHY.keys()), key="b_main_cat")
-                with bc_sub:
-                    b_sub_cat = st.selectbox("補登課程子分類", COURSE_HIERARCHY[b_main_cat], key="b_sub_cat")
-                with bc_name:
-                    b_course_name_input = st.text_input("補登課程名稱 (選填)", key="b_course_name")
-                    
+                st.markdown("#### a. 課程與時間設定")
+                c_date, c_time = st.columns([1, 1])
+                with c_date: back_date = st.date_input("選擇補登日期", value=get_tw_time().date())
+                with c_time: back_time = st.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time(), step=60)
+                
+                bc_period, bc_main, bc_sub, bc_name = st.columns([1, 1, 1, 1.5])
+                with bc_period: b_period = st.selectbox("場次時段", ["上午場", "下午場", "晚上場"], key="b_period")
+                with bc_main: b_main_cat = st.selectbox("課程大分類", list(COURSE_HIERARCHY.keys()), key="b_main_cat")
+                with bc_sub: b_sub_cat = st.selectbox("課程子分類", COURSE_HIERARCHY[b_main_cat], key="b_sub_cat")
+                with bc_name: b_course_name_input = st.text_input("課程名稱 (選填)", key="b_course_name")
+                
+                st.markdown("#### b. 報到設定")
+                st.info("💡 批次補登代表網路異常，紙本紀錄的血壓等生理數值統一歸檔，此處不再重複登錄。")
                 member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
-                selected_members = st.multiselect("選擇補登長輩 (多選)", options=member_options)
+                selected_members = st.multiselect("下拉選單選擇長輩 (可多選)", options=member_options, key="b_members")
                 
-                c_s, c_d, c_p = st.columns(3)
-                with c_s:
-                    b_sbp = st.number_input("補登收縮壓", value=120)
-                with c_d:
-                    b_dbp = st.number_input("補登舒張壓", value=80)
-                with c_p:
-                    b_pulse = st.number_input("補登脈搏", value=72)
-                
-                submitted = st.form_submit_button("🚀 執行補登")
+                submitted = st.form_submit_button("🚀 執行批次補登")
 
-            # 2. 將提交後的邏輯移出 st.form，並更新 session state
             if submitted:
                 if not selected_members: 
                     st.error("請先選擇長輩！")
@@ -672,7 +654,6 @@ elif st.session_state.page == 'checkin':
                     for label in selected_members:
                         target_pid = label.split("(")[-1].replace(")", "")
                         target_name = label.split(". ")[1].split(" (")[0]
-                        # ✅ 新增這兩行：組合補登自己的課程變數
                         b_course_cat = f"{b_main_cat}-{b_sub_cat}"
                         b_course_name = b_course_name_input.strip() if b_course_name_input.strip() else b_sub_cat
                         new_entries.append({
@@ -680,17 +661,14 @@ elif st.session_state.page == 'checkin':
                             "日期": s_date, "時間": s_time, 
                             "場次時段": b_period,
                             "課程分類": b_course_cat, "課程名稱": b_course_name, 
-                            "收縮壓": b_sbp, "舒張壓": b_dbp, "脈搏": b_pulse
+                            "收縮壓": "", "舒張壓": "", "脈搏": ""  # 血壓強制帶空值
                         })
                     
                     if batch_append_data("elderly_logs", new_entries, L_COLS):
-                        # 成功時，設定狀態為 True
                         st.session_state.batch_success = True
 
-            # 3. 在表單外部檢查狀態，顯示訊息並執行 rerun
             if st.session_state.batch_success:
                 st.success("✅ 已成功補登紀錄！")
-                # 重置狀態，避免無限迴圈
                 st.session_state.batch_success = False 
                 time.sleep(1)
                 st.rerun()
@@ -856,16 +834,3 @@ elif st.session_state.page == 'stats':
                 fig.add_hline(y=140, line_dash="dash", line_color="red", annotation_text="收縮壓過高 (140)")
                 fig.add_hline(y=90, line_dash="dash", line_color="orange", annotation_text="舒張壓過高 (90)")
                 st.plotly_chart(fig, use_container_width=True)
-elif st.session_state.page == 'members':
-    render_nav()
-    st.markdown("## 📋 長輩名冊")
-    members = get_elderly_members()
-    if members.empty:
-        st.info("目前名冊中無長輩資料，請至首頁新增。")
-    else:
-        st.caption(f"共 {len(members)} 位長輩")
-        st.dataframe(
-            members[['姓名', '性別', '出生年月日', '電話', '地址']],
-            use_container_width=True, hide_index=True
-        )
-    st.info("💡 如需新增或退出長輩，請至系統首頁操作。")
