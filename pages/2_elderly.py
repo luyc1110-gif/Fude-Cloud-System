@@ -637,7 +637,16 @@ elif st.session_state.page == 'checkin':
                     back_date = st.date_input("選擇補登日期", value=get_tw_time().date())
                 with c_time:
                     back_time = st.time_input("選擇補登時間", value=get_tw_time().replace(second=0, microsecond=0).time(), step=60)
-                
+                # ✅ 新增這段：補登自己的課程選擇
+                st.markdown("**補登課程設定**")
+                bc_main, bc_sub, bc_name = st.columns([1, 1, 1.5])
+                with bc_main:
+                    b_main_cat = st.selectbox("補登課程大分類", list(COURSE_HIERARCHY.keys()), key="b_main_cat")
+                with bc_sub:
+                    b_sub_cat = st.selectbox("補登課程子分類", COURSE_HIERARCHY[b_main_cat], key="b_sub_cat")
+                with bc_name:
+                    b_course_name_input = st.text_input("補登課程名稱 (選填)", key="b_course_name")
+                    
                 member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
                 selected_members = st.multiselect("選擇補登長輩 (多選)", options=member_options)
                 
@@ -663,11 +672,14 @@ elif st.session_state.page == 'checkin':
                     for label in selected_members:
                         target_pid = label.split("(")[-1].replace(")", "")
                         target_name = label.split(". ")[1].split(" (")[0]
+                        # ✅ 新增這兩行：組合補登自己的課程變數
+                        b_course_cat = f"{b_main_cat}-{b_sub_cat}"
+                        b_course_name = b_course_name_input.strip() if b_course_name_input.strip() else b_sub_cat
                         new_entries.append({
                             "姓名": target_name, "身分證字號": target_pid, 
                             "日期": s_date, "時間": s_time, 
                             "場次時段": b_period,
-                            "課程分類": final_course_cat, "課程名稱": final_course_name, 
+                            "課程分類": b_course_cat, "課程名稱": b_course_name, 
                             "收縮壓": b_sbp, "舒張壓": b_dbp, "脈搏": b_pulse
                         })
                     
@@ -776,7 +788,7 @@ elif st.session_state.page == 'stats':
                 if total_sessions_count > 0:
                     # 計算每位長輩出席的不重複場次數量
                     elder_attendance = merged.groupby('姓名').apply(
-                        lambda x: len(x.drop_duplicates(subset=['日期', '課程名稱', '課程分類']))
+                        lambda x: len(x.drop_duplicates(subset=['日期', '場次時段', '課程名稱', '課程分類']))
                     ).reset_index(name='出席場次')
                     
                     # 篩選出 出席場次 == 總場次 的長輩
