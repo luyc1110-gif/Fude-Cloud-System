@@ -217,7 +217,7 @@ def get_supabase_client():
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
-@st.cache_data(ttl=1)
+@st.cache_data(ttl=60)
 def load_data(sheet_name, target_cols=None):
     try:
         supabase = get_supabase_client()
@@ -608,7 +608,7 @@ elif st.session_state.page == 'checkin':
                 st.markdown(tags_html, unsafe_allow_html=True)
                 
                 # 將原有的資料編輯器收合，維持畫面簡潔
-                with st.expander("✏️ 展開以修改今日報到資料"):
+                if st.toggle("✏️ 開啟資料修改面板", value=False):
                     edited_df = st.data_editor(today_logs, column_order=['時間', '場次時段', '姓名', '收縮壓', '舒張壓', '脈搏', '課程名稱', '課程分類', '身分證字號'], use_container_width=True, num_rows="dynamic", key="today_checkin_editor")
                     if st.button("💾 儲存名單修改"):
                         with st.spinner("寫入資料庫..."):
