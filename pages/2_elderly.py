@@ -50,8 +50,10 @@ html, body, [class*="css"], div, p, span, li, ul {{
 
 /* 🗂️ 2. 側邊欄 (Sidebar) 設定 */
 section[data-testid="stSidebar"] {{
-    background-color: {BG_MAIN}; /* 讓側邊欄跟背景同色，看起來更寬闊 */
+    background-color: {BG_MAIN};  /* 讓側邊欄跟背景同色，看起來更寬闊 */
     border-right: none;           /* 去掉側邊欄右邊那條死板的分隔線 */
+    min-width: 200px !important;  /* 新增：限制最小寬度 */
+    max-width: 220px !important;  /* 新增：限制最大寬度，避免在平板上佔用過多空間 */
 }}
 
 /* ⬜ 3. 【關鍵】主內容區的「懸浮大卡片」樣式 */
