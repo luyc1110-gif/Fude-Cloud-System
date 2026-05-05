@@ -483,6 +483,71 @@ COLS_HEALTH = [
     "QOL_22_朋友支持", "QOL_23_住所", "QOL_24_醫療方便", "QOL_25_交通", "QOL_26_負面感受", "QOL_27_被尊重", "QOL_28_食物"
 ]
 
+
+# =========================================================
+# 分離式問卷欄位定義（各問卷獨立資料表）
+# =========================================================
+COLS_HEALTH_BASIC = [
+    "姓名", "身分證字號", "評估日期",
+    "收縮壓", "舒張壓", "心跳", "身高", "體重", "BMI", "右手握力", "左手握力",
+    "Q1_性別", "Q2_出生年月日", "Q3_年齡",
+    "Q4_教育程度", "Q5_婚姻狀況", "Q6_居住狀況", "Q7_居住樓層", "Q8_信仰",
+    "Q9_工作狀態", "Q10_經濟狀況", "Q11_主要照顧者", "Q12_過去疾病史",
+    "使用行走輔具", "使用聽力輔具", "使用視力輔具", "半年內跌倒紀錄",
+    "服用助眠藥", "服用心血管藥物", "喝乳品習慣", "使用漏尿墊", "男性小便斷續",
+]
+COLS_HEALTH_ICOPE = [
+    "姓名", "身分證字號", "評估日期",
+    "ICOPE_1_記憶減退", "ICOPE_2_跌倒風險", "ICOPE_3_體重減輕", "ICOPE_4_食慾不佳",
+    "ICOPE_5_視力困難", "ICOPE_6_曾驗光", "ICOPE_7_曾洗牙",
+    "ICOPE_8_聽力困擾", "ICOPE_9_心情低落", "ICOPE_10_減少社交",
+]
+COLS_HEALTH_BSRS = [
+    "姓名", "身分證字號", "評估日期",
+    "BSRS_1_睡眠", "BSRS_2_緊張", "BSRS_3_動怒", "BSRS_4_憂鬱", "BSRS_5_自卑",
+    "BSRS_6_自殺", "BSRS_總分", "BSRS_狀態",
+]
+COLS_HEALTH_MNA = [
+    "姓名", "身分證字號", "評估日期",
+    "MNA_A_食量", "MNA_B_體重", "MNA_C_活動", "MNA_D_創傷", "MNA_E_精神", "MNA_F_BMI",
+    "MNA_篩檢分數", "MNA_狀態",
+]
+COLS_HEALTH_WHO5 = [
+    "姓名", "身分證字號", "評估日期",
+    "WHO5_1_開朗", "WHO5_2_平靜", "WHO5_3_活力", "WHO5_4_休息", "WHO5_5_興趣",
+    "WHO5_總分",
+]
+COLS_HEALTH_BLADDER = [
+    "姓名", "身分證字號", "評估日期",
+    "膀胱_1_頻尿", "膀胱_2_尿急", "膀胱_3_用力漏尿", "膀胱_4_少量漏尿",
+    "膀胱_5_解尿困難", "膀胱_6_下腹痛",
+    "IIQ7_1_家事", "IIQ7_2_健身", "IIQ7_3_娛樂", "IIQ7_4_開車搭車",
+    "IIQ7_5_社交", "IIQ7_6_情緒", "IIQ7_7_挫折",
+]
+COLS_HEALTH_WHOQOL = (
+    ["姓名", "身分證字號", "評估日期"] +
+    [f"QOL_{k[1:]}_{v}" for k, v in {
+        "Q1":"生活品質","Q2":"健康滿意","Q3":"疼痛妨礙","Q4":"醫療依賴",
+        "Q5":"享受生活","Q6":"生命意義","Q7":"集中精神","Q8":"安全感",
+        "Q9":"環境健康","Q10":"精力","Q11":"外表","Q12":"金錢","Q13":"資訊",
+        "Q14":"休閒","Q15":"行動能力","Q16":"睡眠","Q17":"日常活動",
+        "Q18":"工作能力","Q19":"自我滿意","Q20":"人際關係","Q21":"性生活",
+        "Q22":"朋友支持","Q23":"住所","Q24":"醫療方便","Q25":"交通",
+        "Q26":"負面感受","Q27":"被尊重","Q28":"食物",
+    }.items()]
+)
+
+# 問卷資料表對應（用於季度完成度查詢）
+QUESTIONNAIRE_TABLES = {
+    "care_health_basic":   ("🟢 基本資料＆身體狀況", COLS_HEALTH_BASIC),
+    "care_health_icope":   ("🔵 ICOPE 高齡功能篩檢", COLS_HEALTH_ICOPE),
+    "care_health_bsrs":    ("🟡 BSRS-5 心情溫度計",  COLS_HEALTH_BSRS),
+    "care_health_mna":     ("🟠 MNA 營養評估",        COLS_HEALTH_MNA),
+    "care_health_who5":    ("🔴 WHO-5 幸福指標",      COLS_HEALTH_WHO5),
+    "care_health_bladder": ("🟣 膀胱症狀評估",        COLS_HEALTH_BLADDER),
+    "care_health_whoqol":  ("⚪ WHOQOL-BREF 生活品質",COLS_HEALTH_WHOQOL),
+}
+
 COLS_INV = ["捐贈者", "物資類型", "物資內容", "總數量", "捐贈日期", "不適宜族群", "圖片網址"]
 COLS_LOG = ["志工", "發放日期", "關懷戶姓名", "關懷戶身分證字號", "物資內容", "發放數量", "訪視紀錄"]
 # ==========================================
@@ -625,6 +690,102 @@ def calculate_age(dob_str):
         bd = datetime.strptime(str(dob_str).strip(), "%Y-%m-%d").date()
         today = date.today(); return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
     except: return 0
+
+# =========================================================
+# 🔧 問卷輔助函式
+# =========================================================
+
+def get_last_basic_record(uid):
+    """取得指定長輩最新一筆「基本資料」，用於預填表單。
+    優先從新表 care_health_basic 讀取，若無則 fallback 到舊表 care_health。
+    回傳一個 dict，沒資料則回傳 {}。"""
+    # 新表
+    df = load_data("care_health_basic", COLS_HEALTH_BASIC)
+    if not df.empty and "身分證字號" in df.columns:
+        person = df[df["身分證字號"] == uid].copy()
+        if not person.empty:
+            person["_dt"] = pd.to_datetime(person["評估日期"], errors="coerce")
+            return person.sort_values("_dt").drop(columns=["_dt"]).iloc[-1].to_dict()
+    # Fallback：舊的合併資料表
+    df_old = load_data("care_health", COLS_HEALTH)
+    if not df_old.empty and "身分證字號" in df_old.columns:
+        person = df_old[df_old["身分證字號"] == uid].copy()
+        if not person.empty:
+            person["_dt"] = pd.to_datetime(person["評估日期"], errors="coerce")
+            row = person.sort_values("_dt").iloc[-1]
+            # 只回傳 BASIC 欄位
+            return {c: row[c] for c in COLS_HEALTH_BASIC if c in row.index}
+    return {}
+
+
+def get_quarterly_status(uid, ref_date):
+    """
+    回傳本季每份問卷的完成狀態。
+    ref_date: date 物件，用來判斷本季範圍。
+    回傳 dict: { 顯示名稱: date or None }
+    """
+    from datetime import date as _date
+    q_month = (ref_date.month - 1) // 3 * 3 + 1
+    q_start = _date(ref_date.year, q_month, 1)
+    # 季末（下一季第一天 - 1天）
+    if q_month <= 9:
+        q_end = _date(ref_date.year, q_month + 3, 1) - timedelta(days=1)
+    else:
+        q_end = _date(ref_date.year + 1, 1, 1) - timedelta(days=1)
+
+    status = {}
+    for table_name, (display_name, cols) in QUESTIONNAIRE_TABLES.items():
+        df = load_data(table_name, cols)
+        filled_date = None
+        if not df.empty and "身分證字號" in df.columns:
+            person = df[df["身分證字號"] == uid].copy()
+            if not person.empty:
+                person["_dt"] = pd.to_datetime(person["評估日期"], errors="coerce")
+                in_q = person[
+                    (person["_dt"].dt.date >= q_start) &
+                    (person["_dt"].dt.date <= q_end)
+                ]
+                if not in_q.empty:
+                    filled_date = in_q["_dt"].max().date()
+        status[display_name] = filled_date
+    return status, q_start, q_end
+
+
+def get_latest_merged_health():
+    """
+    跨所有問卷資料表，取得每位長輩最新的合併健康資料（用於首頁預警看板）。
+    若新分表有資料，優先用新分表；否則 fallback 到舊的 care_health。
+    """
+    all_data = {}  # uid -> merged row dict
+
+    # 先讀舊表作為 baseline（向後相容）
+    old_df = load_data("care_health", COLS_HEALTH)
+    if not old_df.empty and "身分證字號" in old_df.columns:
+        old_df["_dt"] = pd.to_datetime(old_df["評估日期"], errors="coerce")
+        for uid, grp in old_df.groupby("身分證字號"):
+            latest = grp.sort_values("_dt").iloc[-1].to_dict()
+            latest.pop("_dt", None)
+            all_data[uid] = latest
+
+    # 再用新分表覆蓋（各問卷最新值覆寫舊值）
+    for table_name, (_, cols) in QUESTIONNAIRE_TABLES.items():
+        df = load_data(table_name, cols)
+        if df.empty or "身分證字號" not in df.columns:
+            continue
+        df["_dt"] = pd.to_datetime(df["評估日期"], errors="coerce")
+        for uid, grp in df.groupby("身分證字號"):
+            latest = grp.sort_values("_dt").iloc[-1].to_dict()
+            latest.pop("_dt", None)
+            if uid not in all_data:
+                all_data[uid] = latest
+            else:
+                all_data[uid].update(latest)
+
+    if not all_data:
+        return pd.DataFrame()
+    return pd.DataFrame(list(all_data.values()))
+
+
 # =========================================================
 # 🌟 主檔 (Master Data) 橋接邏輯 (單一真實來源版)
 # =========================================================
@@ -790,27 +951,10 @@ if st.session_state.page == 'home':
         st.markdown("---")
         st.markdown(f"<h3 style='color: {PRIMARY};'>🚨 智慧高風險預警雷達</h3>", unsafe_allow_html=True)
         
-        h_df = load_data("care_health", COLS_HEALTH)
-        
-        if not h_df.empty:
-            # ===== 👇 替換為以下這段魔法遞延邏輯 =====
-            h_df['dt'] = pd.to_datetime(h_df['評估日期'], errors='coerce')
-            
-            # 1. 把空白、空字串轉成真正的空值 NaN
-            h_df_clean = h_df.replace(r'^\s*$', np.nan, regex=True).replace('nan', np.nan)
-            
-            # 2. 確保依日期排序
-            h_df_clean = h_df_clean.sort_values('dt')
-            
-            # 3. 針對每個長輩向下填補歷史數據
-            h_df_filled = h_df_clean.groupby('身分證字號').ffill()
-            
-            # 4. 補回被作為 index 的身分證字號
-            h_df_filled['身分證字號'] = h_df_clean['身分證字號']
-            
-            # 5. 取得最新、且已拼湊完整的狀態
-            latest_health = h_df_filled.groupby('身分證字號').last().reset_index()
-            # ==========================================
+        # 跨所有問卷分表取得最新合併健康資料（新表優先，fallback 舊表）
+        latest_health = get_latest_merged_health()
+
+        if not latest_health.empty:
             
             # 2. 建立警示名單容器
             alert_lists = {
@@ -968,8 +1112,9 @@ elif st.session_state.page == 'health':
     render_nav()
     st.markdown("## 🏥 綜合健康評估")
     # 1. 改呼叫 get_all_members()
-    h_df, m_df = load_data("care_health", COLS_HEALTH), get_all_members()
-    
+    h_df     = load_data("care_health", COLS_HEALTH)   # 向後相容讀取
+    m_df     = get_all_members()
+
     # --- 轉介視窗 ---
     if st.session_state.get("show_referral_dialog"):
         @st.dialog("📋 評估完成 — 建議轉介窗口")
@@ -1007,20 +1152,28 @@ elif st.session_state.page == 'health':
             st.markdown('<div class="hf-complete-box">✅ 本頁填寫完整</div>',
                         unsafe_allow_html=True)
     with st.expander("➕ 新增/更新 評估紀錄 (請依序填寫)", expanded=True):
-        sel_n = st.selectbox("選擇評估對象 (全體名單)", m_df['姓名'].tolist() if not m_df.empty else ["無名冊"], index=None, placeholder="請點擊此處輸入或選擇姓名...")
-        
-        # ✅ 把日期選擇器搬到最前面，讓下面可以抓到變數
-        eval_date = st.date_input("填表日期", value=date.today()) 
-        
-        # 0. 預載資料
+        sel_n = st.selectbox(
+            "選擇評估對象 (全體名單)",
+            m_df['姓名'].tolist() if not m_df.empty else ["無名冊"],
+            index=None, placeholder="請點擊此處輸入或選擇姓名..."
+        )
+        eval_date = st.date_input("填表日期", value=date.today())
+
+        # 0. 預載資料（基本資料 + 預填）
         p_info = {}
+        prev_basic = {}   # 上次填寫的基本資料（供預填表單用）
+        p_row = None
         if sel_n and not m_df.empty:
-            p_row = m_df[m_df['姓名'] == sel_n].iloc[0]
-            p_info['gender'] = p_row['性別']
-            p_info['dob'] = p_row['生日']
-            p_info['age'] = calculate_age(p_row['生日'])
-            p_info['floor'] = extract_floor(p_row['地址'])
-            
+            _rows = m_df[m_df['姓名'] == sel_n]
+            if not _rows.empty:
+                p_row = _rows.iloc[0]
+                p_info['gender'] = p_row['性別']
+                p_info['dob']    = p_row['生日']
+                p_info['age']    = calculate_age(p_row['生日'])
+                p_info['floor']  = extract_floor(p_row['地址'])
+                uid_for_lookup   = str(p_row['身分證字號']).strip()
+                prev_basic       = get_last_basic_record(uid_for_lookup)
+
             initials = sel_n[0] if sel_n else "？"
             st.markdown(f"""
             <div class="hf-person-card">
@@ -1029,8 +1182,8 @@ elif st.session_state.page == 'health':
                     <div style="font-size:15px; font-weight:500;
                         color:var(--color-text-primary); margin-bottom:3px;">{sel_n}</div>
                     <div style="font-size:12px; color:var(--color-text-secondary);">
-                        {p_info['gender']}性 ・ {p_info['age']} 歲 ・
-                        {p_info['dob']} ・ 推測住 {p_info['floor']}
+                        {p_info.get('gender','?')}性 ・ {p_info.get('age','?')} 歲 ・
+                        {p_info.get('dob','?')} ・ 推測住 {p_info.get('floor','?')}
                     </div>
                 </div>
                 <div style="margin-left:auto; font-size:12px;
@@ -1038,7 +1191,55 @@ elif st.session_state.page == 'health':
             </div>
             """, unsafe_allow_html=True)
 
-        # (原本在這裡的 eval_date = st.date_input... 請刪除)
+            # ── 季度完成狀態面板 ──────────────────────────────────────
+            q_status, q_start, q_end = get_quarterly_status(uid_for_lookup, eval_date)
+            filled   = [(k, v) for k, v in q_status.items() if v is not None]
+            unfilled = [(k, v) for k, v in q_status.items() if v is None]
+
+            st.markdown(f"""
+            <div style="border-radius:12px; background:#F0F4FF; padding:14px 18px; margin:10px 0 14px;">
+                <div style="font-size:13px; font-weight:700; color:#3C3489; margin-bottom:8px;">
+                    📅 本季問卷完成度（{q_start.strftime('%Y/%m/%d')} ~ {q_end.strftime('%Y/%m/%d')}）
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            """, unsafe_allow_html=True)
+
+            for name, filled_date in filled:
+                st.markdown(
+                    f'<span style="background:#27AE60; color:white; border-radius:20px; '
+                    f'padding:4px 12px; font-size:12px; font-weight:600;">'
+                    f'✅ {name}（{filled_date.strftime("%m/%d")}）</span>',
+                    unsafe_allow_html=True
+                )
+            for name, _ in unfilled:
+                st.markdown(
+                    f'<span style="background:#F0F0F0; color:#888; border-radius:20px; '
+                    f'padding:4px 12px; font-size:12px;">⬜ {name}</span>',
+                    unsafe_allow_html=True
+                )
+
+            if unfilled:
+                st.markdown(
+                    f'<div style="margin-top:8px; font-size:11px; color:#E65100;">'
+                    f'⚠️ 本季尚有 {len(unfilled)} 份問卷未填寫，可個別完成後按各分頁的「儲存此問卷」。</div>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    '<div style="margin-top:8px; font-size:11px; color:#27AE60;">'
+                    '🎉 本季所有問卷均已完成！</div>',
+                    unsafe_allow_html=True
+                )
+
+            st.markdown("</div></div>", unsafe_allow_html=True)
+
+            if prev_basic:
+                st.markdown(
+                    f'<div style="background:#EAF6FF; border-radius:8px; padding:8px 14px; '
+                    f'font-size:12px; color:#1A6EA8; margin-bottom:8px;">'
+                    f'ℹ️ 已自動帶入 <b>{prev_basic.get("評估日期","上次")}</b> 的基本資料，如有變更請直接修改。</div>',
+                    unsafe_allow_html=True
+                )
 
         # 使用 Tabs，並加上 Emoji 增加辨識度
         t1, t2, t3, t4, t5, t6, t7 = st.tabs([
@@ -1053,16 +1254,35 @@ elif st.session_state.page == 'health':
         mna_b_from_icope = None
         bmi_val = 0.0
 
+        # ── 預填輔助函式（Tab-1 使用）──────────────────────────
+        def _prev_idx(options, key):
+            """從 prev_basic 查出對應欄位值並回傳 options 中的 index；找不到回傳 None。"""
+            val = str(prev_basic.get(key, "")).strip()
+            if val and val not in ("", "nan", "None"):
+                try: return options.index(val)
+                except ValueError: pass
+            return None
+
+        def _prev_val(key, default=None):
+            """從 prev_basic 取出數值欄位；找不到回傳 default。"""
+            val = prev_basic.get(key, None)
+            if val is None or str(val).strip() in ("", "nan", "None"):
+                return default
+            try: return type(default)(val) if default is not None else val
+            except: return default
+
         # --- 一、前測問卷及身體狀況 ---
         with t1:
             st.markdown("### 📝 第一部分：基本資料與身體狀況")
-                
+
             # Q1~Q3 已自動帶入
             st.caption("1.性別, 2.生日, 3.年齡 已自動帶入")
 
             c1, c2, c3 = st.columns(3)
-            edu = ui_card_radio("4. 您的教育程度是？", ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"], key="q4_edu", index=None)
-            marry = ui_card_radio("5. 您的婚姻狀況是？", ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"], key="q5_marry", index=None)
+            _edu_opts   = ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"]
+            _marry_opts = ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"]
+            edu   = ui_card_radio("4. 您的教育程度是？", _edu_opts,   key="q4_edu",   index=_prev_idx(_edu_opts,   "Q4_教育程度"))
+            marry = ui_card_radio("5. 您的婚姻狀況是？", _marry_opts, key="q5_marry", index=_prev_idx(_marry_opts, "Q5_婚姻狀況"))
                 
             if p_info.get('floor', '無法推斷') == '無法推斷':
                 floor_final = ui_card_radio("7. 您目前住幾樓？", ["一樓", "二樓以上無電梯", "二樓以上有電梯"], key="q7_floor", index=None)
@@ -1071,13 +1291,21 @@ elif st.session_state.page == 'health':
                 c3.success(f"7. 住幾樓：{floor_final} (已帶入)")
                     
             c4, c5 = st.columns(2)
-            live_st = ui_card_radio("6. 您目前居住狀況是？", ["獨居", "榮家", "僅與配偶居", "與家人居(含配偶)", "與家人居(不含配偶)", "與親友居", "機構", "其他"], key="q6_live", index=None)
-            relig = ui_card_radio("8. 您的信仰是？", ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"], key="q8_relig", index=None)
-                
+            _live_opts = ["獨居", "榮家", "僅與配偶居", "與家人居(含配偶)", "與家人居(不含配偶)", "與親友居", "機構", "其他"]
+            _rel_opts  = ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"]
+            _work_opts = ["退休", "家管", "目前有工作", "待業中"]
+            _econ_opts = ["富裕", "小康", "貧窮", "其他"]
+            live_st   = ui_card_radio("6. 您目前居住狀況是？", _live_opts, key="q6_live",   index=_prev_idx(_live_opts, "Q6_居住狀況"))
+            relig     = ui_card_radio("8. 您的信仰是？",        _rel_opts,  key="q8_relig",  index=_prev_idx(_rel_opts,  "Q8_信仰"))
+
             c6, c7, c8 = st.columns(3)
-            work = ui_card_radio("9. 您目前是否有工作？", ["退休", "家管", "目前有工作", "待業中"], key="q9_work", index=None)
-            econ = ui_card_radio("10. 您的經濟狀況是？", ["富裕", "小康", "貧窮", "其他"], key="q10_econ", index=None)
-            caregiver = c8.multiselect("11. 誰是主要照顧您的人？(可複選)", ["自己", "配偶", "子女", "看護", "其他"])
+            work      = ui_card_radio("9. 您目前是否有工作？",  _work_opts, key="q9_work",   index=_prev_idx(_work_opts, "Q9_工作狀態"))
+            econ      = ui_card_radio("10. 您的經濟狀況是？",   _econ_opts, key="q10_econ",  index=_prev_idx(_econ_opts, "Q10_經濟狀況"))
+
+            # 主要照顧者：從 prev_basic 取上次的預設值
+            _prev_caregiver = [x.strip() for x in str(prev_basic.get("Q11_主要照顧者","")).split(",") if x.strip()]
+            caregiver = c8.multiselect("11. 誰是主要照顧您的人？(可複選)", ["自己", "配偶", "子女", "看護", "其他"],
+                                       default=_prev_caregiver if _prev_caregiver else [])
                 
                 # === 🔥 修改開始：動態疾病選項邏輯 ===
                 # 1. 定義系統預設的基本選項
@@ -1092,7 +1320,10 @@ elif st.session_state.page == 'health':
             if "其他" in all_options: all_options.remove("其他")
             all_options.append("其他")
 
-            dis_hist = st.multiselect("12. 您過去是否有以下疾病？(可複選)", all_options)
+            _prev_dis = [x.strip() for x in str(prev_basic.get("Q12_過去疾病史","")).split(",")
+                         if x.strip() and x.strip() in all_options]
+            dis_hist = st.multiselect("12. 您過去是否有以下疾病？(可複選)", all_options,
+                                      default=_prev_dis if _prev_dis else [])
 
 # 初始化變數 (這行很重要，避免沒選其他時報錯)
             other_disease_text = "" 
@@ -1108,15 +1339,20 @@ elif st.session_state.page == 'health':
             with st.container():
                 st.markdown("**A. 生命徵象**")
                 bp1, bp2, hr = st.columns(3)
-                sys_p = bp1.number_input("血壓(收縮壓)", min_value=0, step=1, value=None)
-                dia_p = bp2.number_input("血壓(舒張壓)", min_value=0, step=1, value=None)
-                hr_p = hr.number_input("心跳數", min_value=0, step=1, value=None)
+                sys_p = bp1.number_input("血壓(收縮壓)", min_value=0, step=1,
+                    value=_prev_val("收縮壓", None) and int(float(_prev_val("收縮壓", 0))) or None)
+                dia_p = bp2.number_input("血壓(舒張壓)", min_value=0, step=1,
+                    value=_prev_val("舒張壓", None) and int(float(_prev_val("舒張壓", 0))) or None)
+                hr_p  = hr.number_input("心跳數", min_value=0, step=1,
+                    value=_prev_val("心跳", None) and int(float(_prev_val("心跳", 0))) or None)
 
             with st.container():
                 st.markdown("**B. 體位測量 (即時計算BMI)**")
                 h1, w1, b_res = st.columns(3)
-                h_v = h1.number_input("身高(cm)", min_value=0.0, step=0.1, value=None)
-                w_v = w1.number_input("體重(kg)", min_value=0.0, step=0.1, value=None)
+                h_v = h1.number_input("身高(cm)", min_value=0.0, step=0.1,
+                    value=_prev_val("身高", None) and float(_prev_val("身高", 0)) or None)
+                w_v = w1.number_input("體重(kg)", min_value=0.0, step=0.1,
+                    value=_prev_val("體重", None) and float(_prev_val("體重", 0)) or None)
                     
                 if h_v and w_v and h_v > 0:
                     bmi_val = round(w_v/((h_v/100)**2), 1)
@@ -1127,8 +1363,10 @@ elif st.session_state.page == 'health':
             with st.container():
                 st.markdown("**C. 握力與輔具**")
                 g1, g2 = st.columns(2)
-                grip_r = g1.number_input("右手握力(kg)", step=0.1, value=None)
-                grip_l = g2.number_input("左手握力(kg)", step=0.1, value=None)
+                grip_r = g1.number_input("右手握力(kg)", step=0.1,
+                    value=_prev_val("右手握力", None) and float(_prev_val("右手握力", 0)) or None)
+                grip_l = g2.number_input("左手握力(kg)", step=0.1,
+                    value=_prev_val("左手握力", None) and float(_prev_val("左手握力", 0)) or None)
                     
                 st.caption("請勾選目前使用的輔具：")
                 aa1, aa2, aa3 = st.columns(3)
@@ -1181,6 +1419,40 @@ elif st.session_state.page == 'health':
             if med_cv is None:       t1_missing.append("第12題：心血管藥")
             if milk_habit is None:   t1_missing.append("第13題：乳品習慣")
             render_tab_status(t1_missing)
+
+            st.markdown("---")
+            if st.button("💾 儲存基本資料與身體狀況", key="save_basic", type="primary",
+                         help="只儲存第一部分，其他問卷可稍後個別填寫"):
+                if not sel_n or p_row is None:
+                    st.error("❌ 尚未選擇評估對象！")
+                else:
+                    def safe_str(val): return str(val) if val is not None else ""
+                    final_dis_list = list(dis_hist)
+                    if "其他" in final_dis_list:
+                        final_dis_list.remove("其他")
+                        if other_disease_text.strip():
+                            final_dis_list.append(other_disease_text.strip())
+                    basic_row = {
+                        "姓名": sel_n, "身分證字號": p_row['身分證字號'], "評估日期": str(eval_date),
+                        "收縮壓": safe_str(sys_p), "舒張壓": safe_str(dia_p), "心跳": safe_str(hr_p),
+                        "身高": safe_str(h_v), "體重": safe_str(w_v), "BMI": str(bmi_val),
+                        "右手握力": safe_str(grip_r), "左手握力": safe_str(grip_l),
+                        "Q1_性別": p_info.get('gender',''), "Q2_出生年月日": str(p_info.get('dob','')),
+                        "Q3_年齡": str(p_info.get('age','')),
+                        "Q4_教育程度": safe_str(edu), "Q5_婚姻狀況": safe_str(marry),
+                        "Q6_居住狀況": safe_str(live_st), "Q7_居住樓層": safe_str(floor_final),
+                        "Q8_信仰": safe_str(relig), "Q9_工作狀態": safe_str(work),
+                        "Q10_經濟狀況": safe_str(econ), "Q11_主要照顧者": ",".join(caregiver),
+                        "Q12_過去疾病史": ",".join(final_dis_list),
+                        "使用行走輔具": aid_walk, "使用聽力輔具": aid_hear, "使用視力輔具": aid_eye,
+                        "半年內跌倒紀錄": safe_str(fall_rec),
+                        "服用助眠藥": safe_str(med_sleep), "服用心血管藥物": safe_str(med_cv),
+                        "喝乳品習慣": safe_str(milk_habit), "使用漏尿墊": safe_str(pad_use),
+                        "男性小便斷續": safe_str(male_urine),
+                    }
+                    if append_data("care_health_basic", basic_row, COLS_HEALTH_BASIC):
+                        st.success("✅ 基本資料已儲存！")
+                        time.sleep(0.8); st.rerun()
 
             # --- 二、ICOPE ---
         with t2:
@@ -1277,6 +1549,31 @@ elif st.session_state.page == 'health':
             if icope_soc is None:          t2_missing.append("第10題：減少社交")
             render_tab_status(t2_missing)
 
+            st.markdown("---")
+            if st.button("💾 儲存 ICOPE 問卷", key="save_icope", type="primary"):
+                if not sel_n or p_row is None:
+                    st.error("❌ 尚未選擇評估對象！")
+                elif t2_missing:
+                    st.warning(f"⚠️ 尚有 {len(t2_missing)} 項未填：{'、'.join(t2_missing)}")
+                else:
+                    def safe_str(val): return str(val) if val is not None else ""
+                    icope_row = {
+                        "姓名": sel_n, "身分證字號": p_row['身分證字號'], "評估日期": str(eval_date),
+                        "ICOPE_1_記憶減退": safe_str(icope_mem),
+                        "ICOPE_2_跌倒風險": safe_str(icope_fall_unified),
+                        "ICOPE_3_體重減輕": safe_str(icope_weight_val),
+                        "ICOPE_4_食慾不佳": safe_str(icope_eat_val),
+                        "ICOPE_5_視力困難": safe_str(icope_eye),
+                        "ICOPE_6_曾驗光":   safe_str(icope_opt),
+                        "ICOPE_7_曾洗牙":   safe_str(icope_teeth),
+                        "ICOPE_8_聽力困擾": icope_hear_res,
+                        "ICOPE_9_心情低落": safe_str(icope_mood),
+                        "ICOPE_10_減少社交": safe_str(icope_soc),
+                    }
+                    if append_data("care_health_icope", icope_row, COLS_HEALTH_ICOPE):
+                        st.success("✅ ICOPE 問卷已儲存！")
+                        time.sleep(0.8); st.rerun()
+
             # --- 三、BSRS-5 (使用滑桿卡片) ---
         with t3:
             st.markdown("### 🌡️ BSRS-5 心情溫度計")
@@ -1315,6 +1612,25 @@ elif st.session_state.page == 'health':
             if b5 is None: t3_missing.append("第5題：比不上別人")
             if b6 is None: t3_missing.append("第6題：自殺想法")
             render_tab_status(t3_missing)
+
+            st.markdown("---")
+            if st.button("💾 儲存 BSRS-5 心情溫度計", key="save_bsrs", type="primary"):
+                if not sel_n or p_row is None:
+                    st.error("❌ 尚未選擇評估對象！")
+                elif t3_missing:
+                    st.warning(f"⚠️ 尚有 {len(t3_missing)} 項未填：{'、'.join(t3_missing)}")
+                else:
+                    def safe_str(val): return str(val) if val is not None else ""
+                    bsrs_row = {
+                        "姓名": sel_n, "身分證字號": p_row['身分證字號'], "評估日期": str(eval_date),
+                        "BSRS_1_睡眠": safe_str(b1), "BSRS_2_緊張": safe_str(b2),
+                        "BSRS_3_動怒": safe_str(b3), "BSRS_4_憂鬱": safe_str(b4),
+                        "BSRS_5_自卑": safe_str(b5), "BSRS_6_自殺": safe_str(b6),
+                        "BSRS_總分": bsrs_total, "BSRS_狀態": bsrs_stat,
+                    }
+                    if append_data("care_health_bsrs", bsrs_row, COLS_HEALTH_BSRS):
+                        st.success("✅ BSRS-5 心情溫度計已儲存！")
+                        time.sleep(0.8); st.rerun()
 
             # --- 四、MNA ---
         # --- 四、MNA ---
@@ -1396,6 +1712,25 @@ elif st.session_state.page == 'health':
             if bmi_val == 0:  t4_missing.append("F題：BMI（請先填身高體重）")
             render_tab_status(t4_missing)
 
+            st.markdown("---")
+            if st.button("💾 儲存 MNA 營養評估", key="save_mna", type="primary"):
+                if not sel_n or p_row is None:
+                    st.error("❌ 尚未選擇評估對象！")
+                elif t4_missing:
+                    st.warning(f"⚠️ 尚有 {len(t4_missing)} 項未填：{'、'.join(t4_missing)}")
+                else:
+                    def safe_str(val): return str(val) if val is not None else ""
+                    mna_row = {
+                        "姓名": sel_n, "身分證字號": p_row['身分證字號'], "評估日期": str(eval_date),
+                        "MNA_A_食量": safe_str(mna_a), "MNA_B_體重": safe_str(mna_b),
+                        "MNA_C_活動": safe_str(mna_c), "MNA_D_創傷": safe_str(mna_d),
+                        "MNA_E_精神": safe_str(mna_e), "MNA_F_BMI": mna_bmi_score,
+                        "MNA_篩檢分數": ms, "MNA_狀態": m_stat,
+                    }
+                    if append_data("care_health_mna", mna_row, COLS_HEALTH_MNA):
+                        st.success("✅ MNA 營養評估已儲存！")
+                        time.sleep(0.8); st.rerun()
+
             # --- 五、WHO-5 ---
         with t5:
             st.markdown("### 😊 第五部分：WHO-5 幸福指標")
@@ -1421,6 +1756,24 @@ elif st.session_state.page == 'health':
             if w4 is None: t5_missing.append("第4題")
             if w5 is None: t5_missing.append("第5題")
             render_tab_status(t5_missing)
+
+            st.markdown("---")
+            if st.button("💾 儲存 WHO-5 幸福指標", key="save_who5", type="primary"):
+                if not sel_n or p_row is None:
+                    st.error("❌ 尚未選擇評估對象！")
+                elif t5_missing:
+                    st.warning(f"⚠️ 尚有 {len(t5_missing)} 項未填：{'、'.join(t5_missing)}")
+                else:
+                    def safe_str(val): return str(val) if val is not None else ""
+                    who5_row = {
+                        "姓名": sel_n, "身分證字號": p_row['身分證字號'], "評估日期": str(eval_date),
+                        "WHO5_1_開朗": safe_str(w1), "WHO5_2_平靜": safe_str(w2),
+                        "WHO5_3_活力": safe_str(w3), "WHO5_4_休息": safe_str(w4),
+                        "WHO5_5_興趣": safe_str(w5), "WHO5_總分": who_total,
+                    }
+                    if append_data("care_health_who5", who5_row, COLS_HEALTH_WHO5):
+                        st.success("✅ WHO-5 幸福指標已儲存！")
+                        time.sleep(0.8); st.rerun()
 
             # --- 六、膀胱 ---
         with t6:
@@ -1461,6 +1814,28 @@ elif st.session_state.page == 'health':
             if iq6 is None: t6_missing.append("IIQ第6題：情緒")
             if iq7 is None: t6_missing.append("IIQ第7題：挫折感")
             render_tab_status(t6_missing)
+
+            st.markdown("---")
+            if st.button("💾 儲存膀胱症狀評估（IIQ-7）", key="save_bladder", type="primary"):
+                if not sel_n or p_row is None:
+                    st.error("❌ 尚未選擇評估對象！")
+                elif t6_missing:
+                    st.warning(f"⚠️ 尚有 {len(t6_missing)} 項未填：{'、'.join(t6_missing)}")
+                else:
+                    def safe_str(val): return str(val) if val is not None else ""
+                    bladder_row = {
+                        "姓名": sel_n, "身分證字號": p_row['身分證字號'], "評估日期": str(eval_date),
+                        "膀胱_1_頻尿": safe_str(bq1), "膀胱_2_尿急": safe_str(bq2),
+                        "膀胱_3_用力漏尿": safe_str(bq3), "膀胱_4_少量漏尿": safe_str(bq4),
+                        "膀胱_5_解尿困難": safe_str(bq5), "膀胱_6_下腹痛": safe_str(bq6),
+                        "IIQ7_1_家事": safe_str(iq1), "IIQ7_2_健身": safe_str(iq2),
+                        "IIQ7_3_娛樂": safe_str(iq3), "IIQ7_4_開車搭車": safe_str(iq4),
+                        "IIQ7_5_社交": safe_str(iq5), "IIQ7_6_情緒": safe_str(iq6),
+                        "IIQ7_7_挫折": safe_str(iq7),
+                    }
+                    if append_data("care_health_bladder", bladder_row, COLS_HEALTH_BLADDER):
+                        st.success("✅ 膀胱症狀評估已儲存！")
+                        time.sleep(0.8); st.rerun()
 
             # --- 七、WHOQOL ---
         with t7:
@@ -1508,9 +1883,28 @@ elif st.session_state.page == 'health':
             t7_missing = [k for k, v in qol_ans.items() if v is None]
             render_tab_status(t7_missing)
 
-            # --- 提交 ---
             st.markdown("---")
-            if st.button("💾 儲存完整問卷資料", type="primary"):
+            if st.button("💾 儲存 WHOQOL-BREF 生活品質", key="save_whoqol", type="primary"):
+                if not sel_n or p_row is None:
+                    st.error("❌ 尚未選擇評估對象！")
+                elif t7_missing:
+                    st.warning(f"⚠️ 尚有 {len(t7_missing)} 項未填：{'、'.join(t7_missing)}")
+                else:
+                    def safe_str(val): return str(val) if val is not None else ""
+                    whoqol_row = {
+                        "姓名": sel_n, "身分證字號": p_row['身分證字號'], "評估日期": str(eval_date),
+                    }
+                    for k, v in qol_ans.items():
+                        whoqol_row[f"QOL_{k.replace('Q','')}"] = safe_str(v)
+                    if append_data("care_health_whoqol", whoqol_row, COLS_HEALTH_WHOQOL):
+                        st.success("✅ WHOQOL-BREF 生活品質已儲存！")
+                        time.sleep(0.8); st.rerun()
+
+            # --- 舊版整合儲存（保留向後相容） ---
+            st.markdown("---")
+            with st.expander("📦 一次儲存所有已填問卷（整合存檔）", expanded=False):
+                st.caption("若所有分頁皆已填妥，可用此按鈕一次儲存至舊版合併資料表（care_health）。")
+            if st.button("💾 儲存完整問卷資料（整合版）", key="save_full", type="secondary"):
                 # 簡單的防呆檢查
                 if not sel_n:
                     st.error("❌ 尚未選擇關懷戶！")
@@ -1958,11 +2352,9 @@ elif st.session_state.page == 'visit':
             st.warning("目前無庫存物資可供分析。")
         else:
             malnutrition_names = set()
-            h_df = load_data("care_health", COLS_HEALTH)
-            if not h_df.empty:
-                h_df['dt'] = pd.to_datetime(h_df['評估日期'], errors='coerce')
-                latest_health = h_df.dropna(subset=['dt']).sort_values('dt').groupby('身分證字號').last().reset_index()
-                for _, r in latest_health.iterrows():
+            _lh = get_latest_merged_health()
+            if not _lh.empty:
+                for _, r in _lh.iterrows():
                     mna_stat = str(r.get('MNA_狀態', ''))
                     icope_w = str(r.get('ICOPE_3_體重減輕', ''))
                     icope_e = str(r.get('ICOPE_4_食慾不佳', ''))
@@ -1977,10 +2369,9 @@ elif st.session_state.page == 'visit':
 
             # 建立「姓名 -> 疾病史」對照表（從健康資料）
             person_disease_map = {}
-            if not h_df.empty:
-                h_df['dt'] = pd.to_datetime(h_df['評估日期'], errors='coerce')
-                latest_for_disease = h_df.dropna(subset=['dt']).sort_values('dt').groupby('身分證字號').last().reset_index()
-                for _, r in latest_for_disease.iterrows():
+            _lh2 = get_latest_merged_health()
+            if not _lh2.empty:
+                for _, r in _lh2.iterrows():
                     dh = str(r.get('Q12_過去疾病史', '')).strip()
                     nm = str(r.get('姓名', ''))
                     if nm and dh and dh != 'nan': person_disease_map[nm] = dh
@@ -2081,16 +2472,20 @@ elif st.session_state.page == 'visit':
 
                 st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#4A4E69; margin-top:10px; margin-bottom:5px;'>🏥 過去疾病史</div>", unsafe_allow_html=True)
                 disease_hist = "無紀錄"
-                if not h_df.empty:
-                    p_health = h_df[h_df['姓名'] == target_p]
-                    if not p_health.empty:
-                        last_h = p_health.sort_values("評估日期").iloc[-1]
+                _visit_h = get_latest_merged_health()
+                p_health = pd.DataFrame()
+                last_h = {}
+                if not _visit_h.empty and '姓名' in _visit_h.columns:
+                    _ph = _visit_h[_visit_h['姓名'] == target_p]
+                    if not _ph.empty:
+                        last_h = _ph.iloc[0].to_dict()
+                        p_health = _ph
                         disease_hist = str(last_h.get('Q12_過去疾病史', '無紀錄')).strip()
                         if not disease_hist or disease_hist == 'nan': disease_hist = "無紀錄"
                 st.markdown(f"<div style='background:#F8F9FA; border: 1px solid #eee; padding:8px 12px; border-radius:8px; font-size:0.9rem; color:#333; font-weight:500;'>{disease_hist}</div>", unsafe_allow_html=True)
-                
+
                 st.markdown("<div style='font-size:0.95rem; font-weight:bold; color:#4A4E69; margin-top:10px; margin-bottom:5px;'>⚠️ 最新健康異常摘要</div>", unsafe_allow_html=True)
-                if not h_df.empty and not p_health.empty:
+                if not p_health.empty:
                     alerts = []
                     bsrs_stat = str(last_h.get('BSRS_狀態', ''))
                     if "重度" in bsrs_stat: alerts.append(("🚨 重度情緒困擾", "#FFEBEE", "#C62828"))
