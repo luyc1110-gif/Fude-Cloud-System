@@ -368,16 +368,26 @@ def render_nav():
 # =========================================================
 
 # --- [分頁 0：首頁 (完全公開)] ---
+# --- [分頁 0：首頁 (完全公開)] ---
 if st.session_state.page == 'home':
     render_nav()
     st.markdown(f"<h2 style='color: {PRIMARY};'>📊 據點關懷概況</h2>", unsafe_allow_html=True)
     
     logs, members = load_data("elderly_logs"), get_elderly_members()
     this_year = get_tw_time().year
-    today_str = get_tw_time().strftime("%Y-%m-%d")
     
-    year_count = len(logs[pd.to_datetime(logs['日期'], errors='coerce').dt.year == this_year]) if not logs.empty else 0
-    today_count = len(logs[logs['日期'] == today_str]) if not logs.empty else 0
+    if not logs.empty:
+        # 計算年度總人次
+        logs['dt_year'] = pd.to_datetime(logs['日期'], errors='coerce').dt.year
+        this_year_logs = logs[logs['dt_year'] == this_year]
+        year_count = len(this_year_logs)
+        
+        # 計算今年已服務場次 (以日期、時段、課程作去重)
+        unique_sessions = this_year_logs.drop_duplicates(subset=['日期', '場次時段', '課程名稱', '課程分類'])
+        year_session_count = len(unique_sessions)
+    else:
+        year_count = 0
+        year_session_count = 0
     
     # 總體平均年齡
     avg_age = round(members['出生年月日'].apply(calculate_age).mean(), 1) if not members.empty else 0
@@ -392,7 +402,7 @@ if st.session_state.page == 'home':
     
     total_members = len(members)
 
-    # 頂部看板
+    # 頂部看板 (替換右側看板為場次統計)
     st.markdown(f"""
     <div style="display: flex; gap: 20px;">
         <div style="flex: 1; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); padding: 30px; border-radius: 20px; color: white; text-align: center; box-shadow: 0 10px 25px rgba(245, 124, 0, 0.3);">
@@ -402,44 +412,14 @@ if st.session_state.page == 'home':
             </div>
         </div>
         <div style="flex: 1; background: linear-gradient(135deg, #7E57C2 0%, #512DA8 100%); padding: 30px; border-radius: 20px; color: white; text-align: center; box-shadow: 0 10px 25px rgba(126, 87, 194, 0.3);">
-            <div style="font-size: 1.2rem; opacity: 0.9; color: white !important;">☀️ 今日服務人次</div>
+            <div style="font-size: 1.2rem; opacity: 0.9; color: white !important;">🎯 今年已服務場次</div>
             <div style="font-size: 3.5rem; font-weight: 900; margin: 10px 0; color: white !important;">
-                {today_count} <span style="font-size: 1.5rem; color: white !important;">人次</span>
+                {year_session_count} <span style="font-size: 1.5rem; color: white !important;">場</span>
             </div>
         </div>
     </div>
     <br>
     """, unsafe_allow_html=True)
-    
-    c1, c2, c3 = st.columns(3)
-    
-    with c1:
-        st.markdown(f"""
-        <div class="dash-card">
-            <div class="dash-label">👥 長輩總數 / 平均年齡</div>
-            <div class="dash-value">{total_members} <span style="font-size:1rem;color:#888;">人</span></div>
-            <div class="dash-sub">全體平均：{avg_age} 歲</div>
-        </div>""", unsafe_allow_html=True)
-        
-    with c2:
-        st.markdown(f"""
-        <div class="dash-card">
-            <div class="dash-label">♂ 男性長輩</div>
-            <div class="dash-value">{male_count} <span style="font-size:1rem;color:#888;">人</span></div>
-            <div class="dash-sub">
-                <span style="color:#1E88E5; font-weight:bold;">平均 {male_avg_age} 歲</span>
-            </div>
-        </div>""", unsafe_allow_html=True)
-        
-    with c3:
-        st.markdown(f"""
-        <div class="dash-card">
-            <div class="dash-label">♀ 女性長輩</div>
-            <div class="dash-value">{female_count} <span style="font-size:1rem;color:#888;">人</span></div>
-            <div class="dash-sub">
-                <span style="color:#E91E63; font-weight:bold;">平均 {female_avg_age} 歲</span>
-            </div>
-        </div>""", unsafe_allow_html=True)
 
     # 🔴 2. [新增] 退出/結案功能 (將長輩移出名單)
     with st.expander("📤 長輩退出/結案 (移除名單)", expanded=False):
@@ -561,12 +541,25 @@ elif st.session_state.page == 'checkin':
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="dash-card">', unsafe_allow_html=True)
-        st.markdown("#### b. 報到與量測")
+        st.markdown("#### 🩺 b. 報到與健康量測")
+        
+        # 加入一個自訂的 UI 容器包覆量測區塊
+        st.markdown("""
+        <div style="background-color: #FAFAFA; border: 2px solid #E0E0E0; border-radius: 15px; padding: 15px 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        """, unsafe_allow_html=True)
         
         c_bp1, c_bp2, c_bp3 = st.columns(3)
-        with c_bp1: sbp_val = st.number_input("收縮壓 (高壓)", min_value=50, max_value=250, value=120, key="live_sbp")
-        with c_bp2: dbp_val = st.number_input("舒張壓 (低壓)", min_value=30, max_value=150, value=80, key="live_dbp")
-        with c_bp3: pulse_val = st.number_input("脈搏", min_value=30, max_value=200, value=72, key="live_pulse")
+        with c_bp1: 
+            st.markdown("<div style='color:#D32F2F; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>🔴 收縮壓 (高壓)</div>", unsafe_allow_html=True)
+            sbp_val = st.number_input("建議標準: 90~140", min_value=50, max_value=250, value=120, key="live_sbp", label_visibility="collapsed")
+        with c_bp2: 
+            st.markdown("<div style='color:#1976D2; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>🔵 舒張壓 (低壓)</div>", unsafe_allow_html=True)
+            dbp_val = st.number_input("建議標準: 60~90", min_value=30, max_value=150, value=80, key="live_dbp", label_visibility="collapsed")
+        with c_bp3: 
+            st.markdown("<div style='color:#388E3C; font-weight:900; margin-bottom:5px; font-size:1.05rem;'>💚 脈搏 (心跳)</div>", unsafe_allow_html=True)
+            pulse_val = st.number_input("建議標準: 60~100", min_value=30, max_value=200, value=72, key="live_pulse", label_visibility="collapsed")
+            
+        st.markdown("</div>", unsafe_allow_html=True)
 
         sub_tab1, sub_tab2 = st.tabs(["🔍 掃描/輸入身分證", "📋 下拉選單選取"])
         
