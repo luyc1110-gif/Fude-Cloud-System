@@ -545,7 +545,7 @@ elif st.session_state.page == 'checkin':
         
         # 加入一個自訂的 UI 容器包覆量測區塊
         st.markdown("""
-        <div style="background-color: #FAFAFA; border: 2px solid #E0E0E0; border-radius: 15px; padding: 15px 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <div style="background-color: #FAFAFA; border: 2px solid #E0E0E0; border-radius: 15px; padding: 15px 20px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
         """, unsafe_allow_html=True)
         
         c_bp1, c_bp2, c_bp3 = st.columns(3)
@@ -561,6 +561,18 @@ elif st.session_state.page == 'checkin':
             
         st.markdown("</div>", unsafe_allow_html=True)
 
+        # --- 新增：即時異常數值提示 ---
+        realtime_alerts = []
+        if sbp_val >= 140 or dbp_val >= 90: realtime_alerts.append(f"血壓偏高 ({sbp_val}/{dbp_val})")
+        elif sbp_val <= 90 or dbp_val <= 60: realtime_alerts.append(f"血壓偏低 ({sbp_val}/{dbp_val})")
+        
+        if pulse_val > 100: realtime_alerts.append(f"心跳過快 ({pulse_val})")
+        elif pulse_val < 60: realtime_alerts.append(f"心跳過慢 ({pulse_val})")
+        
+        if realtime_alerts:
+            st.error(f"🚨 **量測數值異常：** {' / '.join(realtime_alerts)}。請留意長輩狀況！", icon="⚠️")
+        else:
+            st.write("") # 若無異常，維持排版間距
         sub_tab1, sub_tab2 = st.tabs(["🔍 掃描/輸入身分證", "📋 下拉選單選取"])
         
         with sub_tab1:
