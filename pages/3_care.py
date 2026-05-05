@@ -644,7 +644,7 @@ def ui_card_radio(label, options, key=None, help_text=None, index=None):
         st.markdown(f'<div class="hf-q-text">{label}</div>', unsafe_allow_html=True)
         if help_text:
             st.markdown(f'<span class="q-help" style="font-size:11px; color:var(--color-text-tertiary);">{help_text}</span>', unsafe_allow_html=True)
-        return st.radio(label, options, key=key, index=index, horizontal=True, label_visibility="collapsed")
+        return st.radio("", options, key=key, index=index, horizontal=True, label_visibility="collapsed")
 
 # 🔥 [新增] 卡片式滑桿題目 (含程度註記)
 def ui_card_slider(label, min_v, max_v, key=None, help_text=None, annotations=None):
@@ -1182,6 +1182,48 @@ elif st.session_state.page == 'health':
             index=None, placeholder="請點擊此處輸入或選擇姓名..."
         )
         eval_date = st.date_input("填表日期", value=date.today())
+
+        # ── 未選人：顯示最近填寫紀錄，並停止渲染問卷 ──────────────
+        if not sel_n:
+            st.markdown("""
+            <div style="background:#F8F9FA; border-radius:12px; border:1px solid #E0E0E0;
+                        padding:14px 18px; margin:10px 0;">
+                <div style="font-size:13px; font-weight:700; color:#555; margin-bottom:10px;">
+                    📋 最近填寫紀錄（所有人）
+                </div>
+            """, unsafe_allow_html=True)
+
+            # 收集所有問卷表的最近20筆
+            _all_rows = []
+            for _tbl, (_dname, _cols) in QUESTIONNAIRE_TABLES.items():
+                _df_r = load_data(_tbl, _cols)
+                if not _df_r.empty and "姓名" in _df_r.columns and "評估日期" in _df_r.columns:
+                    for _, _row in _df_r[["姓名", "評估日期"]].dropna().iterrows():
+                        _all_rows.append({
+                            "問卷": _dname,
+                            "姓名": str(_row["姓名"]).strip(),
+                            "填寫日期": str(_row["評估日期"]).strip(),
+                        })
+
+            if _all_rows:
+                _rec_df = pd.DataFrame(_all_rows)
+                _rec_df["_sort"] = pd.to_datetime(_rec_df["填寫日期"], errors="coerce")
+                _rec_df = _rec_df.sort_values("_sort", ascending=False).drop(columns=["_sort"]).head(30)
+                st.dataframe(
+                    _rec_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "問卷":   st.column_config.TextColumn("問卷", width=160),
+                        "姓名":   st.column_config.TextColumn("姓名", width=80),
+                        "填寫日期": st.column_config.TextColumn("填寫日期", width=100),
+                    }
+                )
+            else:
+                st.caption("目前尚無任何填寫紀錄")
+
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.stop()
 
         # 0. 預載資料（基本資料 + 預填）
         p_info = {}
