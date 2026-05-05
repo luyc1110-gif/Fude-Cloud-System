@@ -585,11 +585,13 @@ elif st.session_state.page == 'checkin':
         with sub_tab2:
             df_m = get_elderly_members()
             if not df_m.empty:
-                member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
+                member_options = [f"{idx}. {row.姓名}" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
                 selected_member = st.selectbox("請選擇長輩", ["--- 請選擇 ---"] + member_options, key="live_sel")
                 if st.button("確認報到 (選單)", key="btn_do_select"):
                     if selected_member != "--- 請選擇 ---":
-                        sel_pid = selected_member.split("(")[-1].replace(")", "")
+                        sel_name = selected_member.split(". ")[1] 
+                        sel_pid = df_m[df_m['姓名'] == sel_name].iloc[0]['身分證字號']
+                        
                         do_checkin(sel_pid, sbp_val, dbp_val, pulse_val, final_course_cat, final_course_name, session_period)
                         st.rerun()
             else:
