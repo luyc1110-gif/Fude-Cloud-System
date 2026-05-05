@@ -256,29 +256,33 @@ div[data-baseweb="calendar"] button:hover {{
     border-radius: 8px !important;
 }}
 
-/* 🎨 [可調整] 標籤式單選按鈕 (Radio Tags) */
+/* ✅ Radio 統一樣式：未選灰底深字，Hover 淺綠，選中綠底白字 */
 div[role="radiogroup"] {{
-    gap: 10px;
+    gap: 8px;
     display: flex;
     flex-wrap: wrap;
 }}
 div[role="radiogroup"] label {{
-    background-color: #FFFFFF;    /* 🎨 未選中時的背景顏色 */
-    border: 1px solid #aaa;       /* 🎨 邊框顏色 */
-    border-radius: 50px !important; /* 🔥 變成橢圓形的關鍵 (原本是矩形) */
-    padding: 5px 20px !important;   /* 🔥 調整標籤的大小 (內距) */
+    background-color: #F1F3F4 !important;
+    border: 1px solid #D0D0D0 !important;
+    border-radius: 20px !important;
+    padding: 6px 18px !important;
+    color: #333333 !important;
+    font-weight: 500 !important;
     transition: all 0.2s;
-    margin-right: 8px;
+    cursor: pointer;
 }}
 div[role="radiogroup"] label:hover {{
-    border-color: {GREEN};
-    background-color: #F1F8E9;
+    border-color: {GREEN} !important;
+    background-color: #E8F5E9 !important;
+    color: #333333 !important;
 }}
 div[role="radiogroup"] label[data-checked="true"] {{
-    background-color: {GREEN} !important; /* 🎨 選中時的背景顏色 (綠色) */
-    color: white !important;              /* 🎨 選中時的文字顏色 */
+    background-color: {GREEN} !important;
     border-color: {GREEN} !important;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(142,151,117,0.4);
 }}
 
 /* 題目文字樣式 */
@@ -293,29 +297,6 @@ div[role="radiogroup"] label[data-checked="true"] {{
     font-size: 0.85rem;
     color: #666;
     margin-bottom: 5px;
-}}
-
-/* 🎨 可調整：優化 Streamlit 的 Radio Button 變成按鈕標籤狀 */
-/* 注意：這會影響全域的橫向 radio，若只想影響特定區域需更精細的 CSS selector，但在此範例中統一風格較佳 */
-div[data-testid="stRadio"] > div {{
-    gap: 10px;
-}}
-div[role="radiogroup"] label {{
-    background-color: #F1F3F4;
-    padding: 8px 16px;
-    border-radius: 20px;
-    border: 1px solid transparent;
-    transition: all 0.2s;
-}}
-div[role="radiogroup"] label[data-checked="true"] {{
-    background-color: {GREEN} !important; /* 🎨 可調整：選中時的背景色 */
-    color: white !important;
-    font-weight: bold;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}}
-div[role="radiogroup"] label:hover {{
-    border-color: {GREEN};
-    background-color: #E8F5E9;
 }}
 
 /* 🎨 [可調整] 分頁籤 (Tabs) 樣式 */
@@ -404,32 +385,58 @@ div[data-testid="stSlider"] {{
     font-size: 13px; display: flex; justify-content: space-between;
     align-items: center;
 }}
-/* Radio 膠囊化 */
+/* Radio 膠囊化（統一：未選灰底深字，選中綠底白字） */
 div[data-testid="stRadio"] > div {{
     display: flex !important;
     flex-wrap: wrap !important;
     gap: 8px !important;
 }}
 div[data-testid="stRadio"] label {{
-    background: var(--color-background-secondary) !important;
-    border: 1px solid var(--color-border-secondary) !important;
+    background: #F1F3F4 !important;
+    border: 1px solid #D0D0D0 !important;
     border-radius: 20px !important;
     padding: 6px 18px !important;
     font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #333333 !important;
     cursor: pointer !important;
     transition: all 0.15s !important;
     display: flex !important;
     align-items: center !important;
     gap: 6px !important;
 }}
+div[data-testid="stRadio"] label:hover {{
+    border-color: {GREEN} !important;
+    background: #E8F5E9 !important;
+    color: #333333 !important;
+}}
 div[data-testid="stRadio"] label:has(input:checked) {{
-    background: #EEEDFE !important;
-    border-color: #AFA9EC !important;
-    color: #3C3489 !important;
-    font-weight: 500 !important;
+    background: {GREEN} !important;
+    border-color: {GREEN} !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(142,151,117,0.4) !important;
 }}
 div[data-testid="stRadio"] label input {{
     display: none !important;
+}}
+/* Multiselect 已選標籤：綠底白字 */
+span[data-baseweb="tag"] {{
+    background-color: {GREEN} !important;
+    border-color: {GREEN} !important;
+}}
+span[data-baseweb="tag"] span[data-testid="stMultiSelectOption"] {{
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+}}
+span[data-baseweb="tag"] span {{
+    color: #FFFFFF !important;
+}}
+/* Multiselect 刪除按鈕也要白色 */
+span[data-baseweb="tag"] button,
+span[data-baseweb="tag"] svg {{
+    color: #FFFFFF !important;
+    fill: #FFFFFF !important;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -661,14 +668,31 @@ def ui_card_slider(label, min_v, max_v, key=None, help_text=None, annotations=No
     return val
 
 def append_data(sheet_name, row_dict, col_order=None):
+    """
+    智慧存檔：同一長輩在同一天的同一資料表已有紀錄時，
+    自動改為「更新（update）」而非重複新增，避免重複儲存。
+    """
     try:
         supabase = get_supabase_client()
-        clean_data = {k: str(v).strip() for k, v in row_dict.items() if str(v).strip() and str(v).strip() != 'nan'}
+        clean_data = {k: str(v).strip() for k, v in row_dict.items()
+                      if str(v).strip() and str(v).strip() != 'nan' and v is not None}
+
+        uid = clean_data.get('身分證字號')
+        dt  = clean_data.get('評估日期')
+
+        if uid and dt:
+            existing = supabase.table(sheet_name).select("id")                 .eq("身分證字號", uid).eq("評估日期", dt).execute()
+            if existing.data:
+                record_id = existing.data[0]['id']
+                supabase.table(sheet_name).update(clean_data).eq("id", record_id).execute()
+                load_data.clear()
+                return True   # 已更新
+
         supabase.table(sheet_name).insert(clean_data).execute()
         load_data.clear()
         return True
     except Exception as e:
-        st.error(f"新增失敗：{e}")
+        st.error(f"儲存失敗：{e}")
         return False
 
 # 🔥 新增函數：從地址推斷樓層
@@ -1191,47 +1215,57 @@ elif st.session_state.page == 'health':
             </div>
             """, unsafe_allow_html=True)
 
-            # ── 季度完成狀態面板 ──────────────────────────────────────
-            q_status, q_start, q_end = get_quarterly_status(uid_for_lookup, eval_date)
-            filled   = [(k, v) for k, v in q_status.items() if v is not None]
-            unfilled = [(k, v) for k, v in q_status.items() if v is None]
+            # ── 各問卷填寫統計面板 ────────────────────────────────────
+            # 計算每份問卷的填寫次數與最近填寫日期
+            _q_stats = []
+            for _tbl, (_dname, _cols) in QUESTIONNAIRE_TABLES.items():
+                _df_q = load_data(_tbl, _cols)
+                _count = 0
+                _last_date = None
+                if not _df_q.empty and "身分證字號" in _df_q.columns:
+                    _person_q = _df_q[_df_q["身分證字號"] == uid_for_lookup].copy()
+                    if not _person_q.empty:
+                        _count = len(_person_q)
+                        _person_q["_dt"] = pd.to_datetime(_person_q["評估日期"], errors="coerce")
+                        _last_date = _person_q["_dt"].max()
+                        if pd.isna(_last_date):
+                            _last_date = None
+                _q_stats.append((_dname, _count, _last_date))
 
-            st.markdown(f"""
-            <div style="border-radius:12px; background:#F0F4FF; padding:14px 18px; margin:10px 0 14px;">
-                <div style="font-size:13px; font-weight:700; color:#3C3489; margin-bottom:8px;">
-                    📅 本季問卷完成度（{q_start.strftime('%Y/%m/%d')} ~ {q_end.strftime('%Y/%m/%d')}）
+            # 渲染統計卡片
+            st.markdown("""
+            <div style="border-radius:12px; background:#F8F9FA; border:1px solid #E0E0E0;
+                        padding:14px 18px; margin:10px 0 14px;">
+                <div style="font-size:13px; font-weight:700; color:#444; margin-bottom:10px;">
+                    📋 各問卷填寫紀錄
                 </div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;">
             """, unsafe_allow_html=True)
 
-            for name, filled_date in filled:
-                st.markdown(
-                    f'<span style="background:#27AE60; color:white; border-radius:20px; '
-                    f'padding:4px 12px; font-size:12px; font-weight:600;">'
-                    f'✅ {name}（{filled_date.strftime("%m/%d")}）</span>',
-                    unsafe_allow_html=True
-                )
-            for name, _ in unfilled:
-                st.markdown(
-                    f'<span style="background:#F0F0F0; color:#888; border-radius:20px; '
-                    f'padding:4px 12px; font-size:12px;">⬜ {name}</span>',
-                    unsafe_allow_html=True
-                )
+            # 用 columns 排成 2 列
+            _stat_cols = st.columns(2)
+            for _idx, (_dname, _count, _last_dt) in enumerate(_q_stats):
+                _col = _stat_cols[_idx % 2]
+                if _count > 0:
+                    _date_str = _last_dt.strftime("%Y/%m/%d") if _last_dt else "？"
+                    _col.markdown(
+                        f'<div style="background:#E8F5E9; border-radius:8px; padding:8px 12px; '
+                        f'margin-bottom:6px; font-size:12px;">'
+                        f'<span style="font-weight:700; color:#2E7D32;">{_dname}</span><br>'
+                        f'<span style="color:#555;">共 <b>{_count}</b> 筆　最近：{_date_str}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    _col.markdown(
+                        f'<div style="background:#F5F5F5; border-radius:8px; padding:8px 12px; '
+                        f'margin-bottom:6px; font-size:12px;">'
+                        f'<span style="font-weight:700; color:#9E9E9E;">{_dname}</span><br>'
+                        f'<span style="color:#BDBDBD;">尚無填寫紀錄</span>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
 
-            if unfilled:
-                st.markdown(
-                    f'<div style="margin-top:8px; font-size:11px; color:#E65100;">'
-                    f'⚠️ 本季尚有 {len(unfilled)} 份問卷未填寫，可個別完成後按各分頁的「儲存此問卷」。</div>',
-                    unsafe_allow_html=True
-                )
-            else:
-                st.markdown(
-                    '<div style="margin-top:8px; font-size:11px; color:#27AE60;">'
-                    '🎉 本季所有問卷均已完成！</div>',
-                    unsafe_allow_html=True
-                )
-
-            st.markdown("</div></div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
             if prev_basic:
                 st.markdown(
@@ -1255,21 +1289,65 @@ elif st.session_state.page == 'health':
         bmi_val = 0.0
 
         # ── 預填輔助函式（Tab-1 使用）──────────────────────────
-        def _prev_idx(options, key):
-            """從 prev_basic 查出對應欄位值並回傳 options 中的 index；找不到回傳 None。"""
-            val = str(prev_basic.get(key, "")).strip()
+        # 關鍵：key 加入 uid，換人時 session_state key 不同，Streamlit 才會套用 index= 預設值
+        _uid_key = uid_for_lookup if uid_for_lookup else "none"
+
+        def _prev_idx(options, field_key):
+            """從 prev_basic 回傳對應 index；找不到或換人時回傳 None。"""
+            val = str(prev_basic.get(field_key, "")).strip()
             if val and val not in ("", "nan", "None"):
                 try: return options.index(val)
                 except ValueError: pass
             return None
 
-        def _prev_val(key, default=None):
-            """從 prev_basic 取出數值欄位；找不到回傳 default。"""
-            val = prev_basic.get(key, None)
+        def _prev_num(field_key):
+            """從 prev_basic 取出數值；空值或 0 回傳 None（讓欄位顯示空白）。"""
+            val = prev_basic.get(field_key, None)
             if val is None or str(val).strip() in ("", "nan", "None"):
-                return default
-            try: return type(default)(val) if default is not None else val
-            except: return default
+                return None
+            try:
+                f = float(str(val).strip())
+                return f if f > 0 else None
+            except:
+                return None
+
+        # ── 強制預填：只在此 uid 第一次載入時，將歷史值寫入 session_state ──
+        # 之後使用者自行修改的值不會被覆蓋（因為 _init_{_uid_key} 已存在）
+        _init_key = f"_init_{_uid_key}"
+        if prev_basic and _init_key not in st.session_state:
+            st.session_state[_init_key] = True
+
+            def _set_ss(key, options, field_key):
+                val = str(prev_basic.get(field_key, "")).strip()
+                if val and val not in ("", "nan", "None") and val in options:
+                    st.session_state[key] = val
+
+            _edu_o   = ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"]
+            _mar_o   = ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"]
+            _live_o  = ["獨居", "榮家", "僅與配偶居", "與家人居(含配偶)", "與家人居(不含配偶)", "與親友居", "機構", "其他"]
+            _rel_o   = ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"]
+            _work_o  = ["退休", "家管", "目前有工作", "待業中"]
+            _econ_o  = ["富裕", "小康", "貧窮", "其他"]
+            _yn_o    = ["有", "沒有"]
+
+            _set_ss(f"q4_edu_{_uid_key}",   _edu_o,  "Q4_教育程度")
+            _set_ss(f"q5_marry_{_uid_key}",  _mar_o,  "Q5_婚姻狀況")
+            _set_ss(f"q6_live_{_uid_key}",   _live_o, "Q6_居住狀況")
+            _set_ss(f"q8_relig_{_uid_key}",  _rel_o,  "Q8_信仰")
+            _set_ss(f"q9_work_{_uid_key}",   _work_o, "Q9_工作狀態")
+            _set_ss(f"q10_econ_{_uid_key}",  _econ_o, "Q10_經濟狀況")
+            _set_ss(f"med_sleep_{_uid_key}", _yn_o,   "服用助眠藥")
+            _set_ss(f"med_cv_{_uid_key}",    _yn_o,   "服用心血管藥物")
+            _set_ss(f"milk_{_uid_key}",      _yn_o,   "喝乳品習慣")
+            _set_ss(f"pad_{_uid_key}",       _yn_o,   "使用漏尿墊")
+            _set_ss(f"male_uri_{_uid_key}",  _yn_o,   "男性小便斷續")
+
+            # 跌倒紀錄：特殊對應
+            _fall_raw = str(prev_basic.get("半年內跌倒紀錄", "")).strip()
+            if _fall_raw in ("有", "是"):
+                st.session_state[f"fall_unified_{_uid_key}"] = "有"
+            elif _fall_raw in ("沒有", "否"):
+                st.session_state[f"fall_unified_{_uid_key}"] = "沒有"
 
         # --- 一、前測問卷及身體狀況 ---
         with t1:
@@ -1281,8 +1359,8 @@ elif st.session_state.page == 'health':
             c1, c2, c3 = st.columns(3)
             _edu_opts   = ["不識字", "識字未就學", "國小", "國中", "高中", "大專以上"]
             _marry_opts = ["未婚", "已婚", "鰥寡", "分居", "離異", "其他"]
-            edu   = ui_card_radio("4. 您的教育程度是？", _edu_opts,   key="q4_edu",   index=_prev_idx(_edu_opts,   "Q4_教育程度"))
-            marry = ui_card_radio("5. 您的婚姻狀況是？", _marry_opts, key="q5_marry", index=_prev_idx(_marry_opts, "Q5_婚姻狀況"))
+            edu   = ui_card_radio("4. 您的教育程度是？", _edu_opts,   key=f"q4_edu_{_uid_key}",   index=_prev_idx(_edu_opts,   "Q4_教育程度"))
+            marry = ui_card_radio("5. 您的婚姻狀況是？", _marry_opts, key=f"q5_marry_{_uid_key}", index=_prev_idx(_marry_opts, "Q5_婚姻狀況"))
                 
             if p_info.get('floor', '無法推斷') == '無法推斷':
                 floor_final = ui_card_radio("7. 您目前住幾樓？", ["一樓", "二樓以上無電梯", "二樓以上有電梯"], key="q7_floor", index=None)
@@ -1295,12 +1373,12 @@ elif st.session_state.page == 'health':
             _rel_opts  = ["無", "佛教", "道教", "基督教", "回教", "天主教", "其他"]
             _work_opts = ["退休", "家管", "目前有工作", "待業中"]
             _econ_opts = ["富裕", "小康", "貧窮", "其他"]
-            live_st   = ui_card_radio("6. 您目前居住狀況是？", _live_opts, key="q6_live",   index=_prev_idx(_live_opts, "Q6_居住狀況"))
-            relig     = ui_card_radio("8. 您的信仰是？",        _rel_opts,  key="q8_relig",  index=_prev_idx(_rel_opts,  "Q8_信仰"))
+            live_st   = ui_card_radio("6. 您目前居住狀況是？", _live_opts, key=f"q6_live_{_uid_key}",   index=_prev_idx(_live_opts, "Q6_居住狀況"))
+            relig     = ui_card_radio("8. 您的信仰是？",        _rel_opts,  key=f"q8_relig_{_uid_key}",  index=_prev_idx(_rel_opts,  "Q8_信仰"))
 
             c6, c7, c8 = st.columns(3)
-            work      = ui_card_radio("9. 您目前是否有工作？",  _work_opts, key="q9_work",   index=_prev_idx(_work_opts, "Q9_工作狀態"))
-            econ      = ui_card_radio("10. 您的經濟狀況是？",   _econ_opts, key="q10_econ",  index=_prev_idx(_econ_opts, "Q10_經濟狀況"))
+            work      = ui_card_radio("9. 您目前是否有工作？",  _work_opts, key=f"q9_work_{_uid_key}",   index=_prev_idx(_work_opts, "Q9_工作狀態"))
+            econ      = ui_card_radio("10. 您的經濟狀況是？",   _econ_opts, key=f"q10_econ_{_uid_key}",  index=_prev_idx(_econ_opts, "Q10_經濟狀況"))
 
             # 主要照顧者：從 prev_basic 取上次的預設值
             _prev_caregiver = [x.strip() for x in str(prev_basic.get("Q11_主要照顧者","")).split(",") if x.strip()]
@@ -1339,20 +1417,16 @@ elif st.session_state.page == 'health':
             with st.container():
                 st.markdown("**A. 生命徵象**")
                 bp1, bp2, hr = st.columns(3)
-                sys_p = bp1.number_input("血壓(收縮壓)", min_value=0, step=1,
-                    value=_prev_val("收縮壓", None) and int(float(_prev_val("收縮壓", 0))) or None)
-                dia_p = bp2.number_input("血壓(舒張壓)", min_value=0, step=1,
-                    value=_prev_val("舒張壓", None) and int(float(_prev_val("舒張壓", 0))) or None)
-                hr_p  = hr.number_input("心跳數", min_value=0, step=1,
-                    value=_prev_val("心跳", None) and int(float(_prev_val("心跳", 0))) or None)
+                _pn = _prev_num  # 短別名
+                sys_p = bp1.number_input("血壓(收縮壓)", min_value=0, step=1, value=int(_pn("收縮壓")) if _pn("收縮壓") else None)
+                dia_p = bp2.number_input("血壓(舒張壓)", min_value=0, step=1, value=int(_pn("舒張壓")) if _pn("舒張壓") else None)
+                hr_p  = hr.number_input("心跳數",         min_value=0, step=1, value=int(_pn("心跳"))   if _pn("心跳")   else None)
 
             with st.container():
                 st.markdown("**B. 體位測量 (即時計算BMI)**")
                 h1, w1, b_res = st.columns(3)
-                h_v = h1.number_input("身高(cm)", min_value=0.0, step=0.1,
-                    value=_prev_val("身高", None) and float(_prev_val("身高", 0)) or None)
-                w_v = w1.number_input("體重(kg)", min_value=0.0, step=0.1,
-                    value=_prev_val("體重", None) and float(_prev_val("體重", 0)) or None)
+                h_v = h1.number_input("身高(cm)", min_value=0.0, step=0.1, value=_pn("身高"))
+                w_v = w1.number_input("體重(kg)", min_value=0.0, step=0.1, value=_pn("體重"))
                     
                 if h_v and w_v and h_v > 0:
                     bmi_val = round(w_v/((h_v/100)**2), 1)
@@ -1363,10 +1437,8 @@ elif st.session_state.page == 'health':
             with st.container():
                 st.markdown("**C. 握力與輔具**")
                 g1, g2 = st.columns(2)
-                grip_r = g1.number_input("右手握力(kg)", step=0.1,
-                    value=_prev_val("右手握力", None) and float(_prev_val("右手握力", 0)) or None)
-                grip_l = g2.number_input("左手握力(kg)", step=0.1,
-                    value=_prev_val("左手握力", None) and float(_prev_val("左手握力", 0)) or None)
+                grip_r = g1.number_input("右手握力(kg)", step=0.1, value=_pn("右手握力"))
+                grip_l = g2.number_input("左手握力(kg)", step=0.1, value=_pn("左手握力"))
                     
                 st.caption("請勾選目前使用的輔具：")
                 aa1, aa2, aa3 = st.columns(3)
@@ -1374,28 +1446,33 @@ elif st.session_state.page == 'health':
                 aid_hear = aa2.checkbox("使用聽力輔具")
                 aid_eye  = aa3.checkbox("使用視力輔具（眼鏡）")
 
+                _fall_prev = "有" if str(prev_basic.get("半年內跌倒紀錄","")).strip() in ("有","是") else                               ("沒有" if str(prev_basic.get("半年內跌倒紀錄","")).strip() in ("沒有","否") else None)
+                _fall_idx  = ["有","沒有"].index(_fall_prev) if _fall_prev else None
                 fall_rec = st.radio(
                     "10. 過去一年曾跌倒／擔心跌倒／需扶東西才能從椅子站起？",
-                    ["有", "沒有"], index=None, horizontal=True, key="fall_unified"
+                    ["有", "沒有"], index=_fall_idx, horizontal=True, key=f"fall_unified_{_uid_key}"
                 )
                 icope_fall_unified = "是" if fall_rec == "有" else ("否" if fall_rec == "沒有" else None)
 
             with st.container():
                 st.markdown("**D. 其他習慣**")
                 d1, d2, d3 = st.columns(3)
-                med_sleep = ui_card_radio("11. 服用助眠藥?", ["有", "沒有"], index=None)
-                med_cv = ui_card_radio("12. 服用心血管藥?", ["有", "沒有"], index=None)
-                milk_habit = ui_card_radio("13. 喝乳品習慣?", ["有", "沒有"], index=None)
+                _yn = ["有", "沒有"]
+                med_sleep  = ui_card_radio("11. 服用助眠藥?",   _yn, key=f"med_sleep_{_uid_key}",  index=_prev_idx(_yn, "服用助眠藥"))
+                med_cv     = ui_card_radio("12. 服用心血管藥?", _yn, key=f"med_cv_{_uid_key}",     index=_prev_idx(_yn, "服用心血管藥物"))
+                milk_habit = ui_card_radio("13. 喝乳品習慣?",   _yn, key=f"milk_{_uid_key}",       index=_prev_idx(_yn, "喝乳品習慣"))
 
                     # 性別邏輯題
                 if p_info.get('gender') == '女':
-                    pad_use = ui_card_radio("14. (女性) 使用漏尿墊/護墊?", ["有", "沒有"], index=None)
+                    pad_use    = ui_card_radio("14. (女性) 使用漏尿墊/護墊?", _yn,
+                                              key=f"pad_{_uid_key}", index=_prev_idx(_yn, "使用漏尿墊"))
                     male_urine = "不適用"
                 elif p_info.get('gender') == '男':
-                    male_urine = ui_card_radio("15. (男性) 小便斷續不連貫?", ["有", "沒有"], index=None)
-                    pad_use = "不適用"
+                    male_urine = ui_card_radio("15. (男性) 小便斷續不連貫?", _yn,
+                                              key=f"male_uri_{_uid_key}", index=_prev_idx(_yn, "男性小便斷續"))
+                    pad_use    = "不適用"
                 else:
-                    pad_use = "未填"
+                    pad_use    = "未填"
                     male_urine = "未填"
                     # --- Tab 一 即時漏填提示 ---
             t1_missing = []
