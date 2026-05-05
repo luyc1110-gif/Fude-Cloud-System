@@ -1187,6 +1187,7 @@ elif st.session_state.page == 'health':
         p_info = {}
         prev_basic = {}   # 上次填寫的基本資料（供預填表單用）
         p_row = None
+        uid_for_lookup = None   # 避免未選人時 NameError
         if sel_n and not m_df.empty:
             _rows = m_df[m_df['姓名'] == sel_n]
             if not _rows.empty:
