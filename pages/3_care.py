@@ -640,31 +640,39 @@ def load_data(sheet_name, target_cols=None):
 
 # 🔥 [新增] 卡片式標籤題目 (完全符合草圖需求)
 def ui_card_radio(label, options, key=None, help_text=None, index=None):
-    with st.container(border=True):
-        st.markdown(f'<div class="hf-q-text">{label}</div>', unsafe_allow_html=True)
-        if help_text:
-            st.markdown(f'<span class="q-help" style="font-size:11px; color:var(--color-text-tertiary);">{help_text}</span>', unsafe_allow_html=True)
-        return st.radio(label, options, key=key, index=index, horizontal=True, label_visibility="collapsed")
+    st.markdown(
+        f'<div style="border:1px solid #D8D8D8; border-radius:10px; '
+        f'padding:10px 16px 2px; margin-bottom:8px; background:#FAFAFA;">'
+        f'<div class="hf-q-text">{label}</div>'
+        + (f'<div style="font-size:11px;color:#999;margin-bottom:6px;">{help_text}</div>' if help_text else '')
+        + '</div>',
+        unsafe_allow_html=True
+    )
+    return st.radio("", options, key=key, index=index, horizontal=True, label_visibility="collapsed")
 
 # 🔥 [新增] 卡片式滑桿題目 (含程度註記)
 def ui_card_slider(label, min_v, max_v, key=None, help_text=None, annotations=None):
-    with st.container(border=True):
-        st.markdown(f'<div class="hf-q-text">{label}</div>', unsafe_allow_html=True)
-        if help_text:
-            st.markdown(f'<span style="font-size:11px; color:var(--color-text-tertiary);">{help_text}</span>', unsafe_allow_html=True)
-        val = st.slider(label, min_v, max_v, key=key, label_visibility="collapsed")
-        if annotations:
-            current_anno = annotations.get(val, f"{val} 分")
-            cols = st.columns(len(annotations))
-            for i, (score, text) in enumerate(annotations.items()):
-                is_current = (score == val)
-                bg = "#EEEDFE" if is_current else "transparent"
-                color = "#3C3489" if is_current else "var(--color-text-tertiary)"
-                cols[i].markdown(
-                    f'<div style="text-align:center; font-size:11px; background:{bg}; '
-                    f'color:{color}; border-radius:6px; padding:2px 4px;">{text}</div>',
-                    unsafe_allow_html=True
-                )
+    st.markdown(
+        f'<div style="border:1px solid #D8D8D8; border-radius:10px; '
+        f'padding:10px 16px 2px; margin-bottom:8px; background:#FAFAFA;">'
+        f'<div class="hf-q-text">{label}</div>'
+        + (f'<div style="font-size:11px;color:#999;margin-bottom:6px;">{help_text}</div>' if help_text else '')
+        + '</div>',
+        unsafe_allow_html=True
+    )
+    val = st.slider("", min_v, max_v, key=key, label_visibility="collapsed")
+    if annotations:
+        current_anno = annotations.get(val, f"{val} 分")
+        cols = st.columns(len(annotations))
+        for i, (score, text) in enumerate(annotations.items()):
+            is_current = (score == val)
+            bg = "#EEEDFE" if is_current else "transparent"
+            color = "#3C3489" if is_current else "var(--color-text-tertiary)"
+            cols[i].markdown(
+                f'<div style="text-align:center; font-size:11px; background:{bg}; '
+                f'color:{color}; border-radius:6px; padding:2px 4px;">{text}</div>',
+                unsafe_allow_html=True
+            )
     return val
 
 def append_data(sheet_name, row_dict, col_order=None):
