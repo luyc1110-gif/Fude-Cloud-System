@@ -1187,7 +1187,6 @@ elif st.session_state.page == 'health':
         p_info = {}
         prev_basic = {}   # 上次填寫的基本資料（供預填表單用）
         p_row = None
-        uid_for_lookup = None   # 避免未選人時 NameError
         if sel_n and not m_df.empty:
             _rows = m_df[m_df['姓名'] == sel_n]
             if not _rows.empty:
@@ -1650,6 +1649,24 @@ elif st.session_state.page == 'health':
                     }
                     if append_data("care_health_icope", icope_row, COLS_HEALTH_ICOPE):
                         st.success("✅ ICOPE 問卷已儲存！")
+                        _ref = []
+                        if icope_mem == "是":
+                            _ref.append(("🧠 失智症共同照護中心", "記憶明顯減退，建議至失智共照中心做進一步評估"))
+                        if icope_fall_unified == "是" and not aid_walk:
+                            _ref.append(("🦯 輔具資源中心", "有跌倒風險但未使用行走輔具，建議評估輔具需求"))
+                        if icope_weight_val == "是" or icope_eat_val == "是":
+                            _ref.append(("🥗 社區營養師", "體重下降或食量明顯減少，建議營養評估（請同步完成 MNA）"))
+                        if icope_eye == "是" and icope_opt == "否" and not aid_eye:
+                            _ref.append(("👁️ 眼科", "視力有困難、未驗光且未使用視力輔具，建議眼科檢查"))
+                        if icope_teeth == "否":
+                            _ref.append(("🦷 牙科", "過去六個月未洗牙，建議安排牙科潔牙"))
+                        if icope_hear_res == "是" and not aid_hear:
+                            _ref.append(("👂 耳鼻喉科／聽力中心", "有聽力困擾但未使用助聽輔具，建議聽力檢查"))
+                        if icope_mood == "是" or icope_soc == "是":
+                            _ref.append(("💚 心理衛生中心", "有心情低落或社交退縮，建議同步完成 BSRS-5 並視情況轉介"))
+                        if _ref:
+                            st.session_state["last_referrals"] = _ref
+                            st.session_state["show_referral_dialog"] = True
                         time.sleep(0.8); st.rerun()
 
             # --- 三、BSRS-5 (使用滑桿卡片) ---
@@ -1708,6 +1725,16 @@ elif st.session_state.page == 'health':
                     }
                     if append_data("care_health_bsrs", bsrs_row, COLS_HEALTH_BSRS):
                         st.success("✅ BSRS-5 心情溫度計已儲存！")
+                        _ref = []
+                        if b6 is not None and b6 >= 1:
+                            _ref.append(("⚠️ 緊急！自殺防治專線 1925", f"第6題有自殺想法（{b6}分），請立即關懷並轉介心理衛生中心"))
+                        if bsrs_total >= 10:
+                            _ref.append(("💚 心理衛生中心（建議轉介）", f"BSRS 總分 {bsrs_total} 分（{bsrs_stat}），建議轉介心理衛生中心"))
+                        elif bsrs_total >= 6:
+                            _ref.append(("💚 心理衛生中心（追蹤關懷）", f"BSRS 總分 {bsrs_total} 分（{bsrs_stat}），建議持續追蹤並關懷"))
+                        if _ref:
+                            st.session_state["last_referrals"] = _ref
+                            st.session_state["show_referral_dialog"] = True
                         time.sleep(0.8); st.rerun()
 
             # --- 四、MNA ---
@@ -1807,6 +1834,14 @@ elif st.session_state.page == 'health':
                     }
                     if append_data("care_health_mna", mna_row, COLS_HEALTH_MNA):
                         st.success("✅ MNA 營養評估已儲存！")
+                        _ref = []
+                        if ms > 0 and ms <= 7:
+                            _ref.append(("🏥 醫院營養科", f"MNA 總分 {ms} 分（營養不良），建議轉介醫院營養科進行詳細評估"))
+                        elif ms >= 8 and ms <= 11:
+                            _ref.append(("🥗 社區營養諮詢／送餐服務", f"MNA 總分 {ms} 分（有營養不良風險），建議社區營養諮詢或安排送餐服務"))
+                        if _ref:
+                            st.session_state["last_referrals"] = _ref
+                            st.session_state["show_referral_dialog"] = True
                         time.sleep(0.8); st.rerun()
 
             # --- 五、WHO-5 ---
@@ -1851,6 +1886,14 @@ elif st.session_state.page == 'health':
                     }
                     if append_data("care_health_who5", who5_row, COLS_HEALTH_WHO5):
                         st.success("✅ WHO-5 幸福指標已儲存！")
+                        _ref = []
+                        if who_total <= 28:
+                            _ref.append(("💚 心理衛生中心／加強關懷訪視", f"WHO-5 幸福指數 {who_total} 分（偏低），可能有憂鬱傾向，建議轉介或加強訪視"))
+                        elif who_total <= 50:
+                            _ref.append(("🤝 關懷訪視加強", f"WHO-5 幸福指數 {who_total} 分（略低），建議增加關懷訪視頻率"))
+                        if _ref:
+                            st.session_state["last_referrals"] = _ref
+                            st.session_state["show_referral_dialog"] = True
                         time.sleep(0.8); st.rerun()
 
             # --- 六、膀胱 ---
@@ -1913,6 +1956,17 @@ elif st.session_state.page == 'health':
                     }
                     if append_data("care_health_bladder", bladder_row, COLS_HEALTH_BLADDER):
                         st.success("✅ 膀胱症狀評估已儲存！")
+                        _ref = []
+                        _leak = [bq2, bq3, bq4]
+                        if any(v and v != "不會" for v in _leak):
+                            _ref.append(("🏥 泌尿科／骨盆底物理治療", "有尿失禁症狀（尿急漏尿、用力漏尿或少量漏尿），建議至泌尿科或接受骨盆底復健"))
+                        if bq5 and bq5 != "不會":
+                            _ref.append(("🏥 泌尿科", "有解尿困難症狀，建議至泌尿科評估"))
+                        if bq6 and bq6 != "不會":
+                            _ref.append(("🏥 婦科／泌尿科", "有下腹部或外陰疼痛，建議至婦科或泌尿科檢查"))
+                        if _ref:
+                            st.session_state["last_referrals"] = _ref
+                            st.session_state["show_referral_dialog"] = True
                         time.sleep(0.8); st.rerun()
 
             # --- 七、WHOQOL ---
