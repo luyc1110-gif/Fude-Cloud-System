@@ -644,7 +644,7 @@ def ui_card_radio(label, options, key=None, help_text=None, index=None):
         st.markdown(f'<div class="hf-q-text">{label}</div>', unsafe_allow_html=True)
         if help_text:
             st.markdown(f'<span class="q-help" style="font-size:11px; color:var(--color-text-tertiary);">{help_text}</span>', unsafe_allow_html=True)
-        return st.radio("", options, key=key, index=index, horizontal=True, label_visibility="collapsed")
+        return st.radio(label, options, key=key, index=index, horizontal=True, label_visibility="collapsed")
 
 # 🔥 [新增] 卡片式滑桿題目 (含程度註記)
 def ui_card_slider(label, min_v, max_v, key=None, help_text=None, annotations=None):
@@ -1175,54 +1175,52 @@ elif st.session_state.page == 'health':
         else:
             st.markdown('<div class="hf-complete-box">✅ 本頁填寫完整</div>',
                         unsafe_allow_html=True)
-    with st.expander("➕ 新增/更新 評估紀錄 (請依序填寫)", expanded=True):
-        sel_n = st.selectbox(
-            "選擇評估對象 (全體名單)",
-            m_df['姓名'].tolist() if not m_df.empty else ["無名冊"],
-            index=None, placeholder="請點擊此處輸入或選擇姓名..."
-        )
-        eval_date = st.date_input("填表日期", value=date.today())
+    with st.container():
+        _sel_col, _date_col = st.columns([3, 1])
+        with _sel_col:
+            sel_n = st.selectbox(
+                "👤 選擇評估對象",
+                m_df['姓名'].tolist() if not m_df.empty else ["無名冊"],
+                index=None, placeholder="請輸入或選擇姓名..."
+            )
+        with _date_col:
+            eval_date = st.date_input("📅 填表日期", value=date.today())
 
-        # ── 未選人：顯示最近填寫紀錄，並停止渲染問卷 ──────────────
+        # ── 未選人：顯示所有問卷總覽卡片，停止渲染問卷 ─────────────
         if not sel_n:
-            st.markdown("""
-            <div style="background:#F8F9FA; border-radius:12px; border:1px solid #E0E0E0;
-                        padding:14px 18px; margin:10px 0;">
-                <div style="font-size:13px; font-weight:700; color:#555; margin-bottom:10px;">
-                    📋 最近填寫紀錄（所有人）
-                </div>
-            """, unsafe_allow_html=True)
-
-            # 收集所有問卷表的最近20筆
-            _all_rows = []
-            for _tbl, (_dname, _cols) in QUESTIONNAIRE_TABLES.items():
-                _df_r = load_data(_tbl, _cols)
-                if not _df_r.empty and "姓名" in _df_r.columns and "評估日期" in _df_r.columns:
-                    for _, _row in _df_r[["姓名", "評估日期"]].dropna().iterrows():
-                        _all_rows.append({
-                            "問卷": _dname,
-                            "姓名": str(_row["姓名"]).strip(),
-                            "填寫日期": str(_row["評估日期"]).strip(),
-                        })
-
-            if _all_rows:
-                _rec_df = pd.DataFrame(_all_rows)
-                _rec_df["_sort"] = pd.to_datetime(_rec_df["填寫日期"], errors="coerce")
-                _rec_df = _rec_df.sort_values("_sort", ascending=False).drop(columns=["_sort"]).head(30)
-                st.dataframe(
-                    _rec_df,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "問卷":   st.column_config.TextColumn("問卷", width=160),
-                        "姓名":   st.column_config.TextColumn("姓名", width=80),
-                        "填寫日期": st.column_config.TextColumn("填寫日期", width=100),
-                    }
-                )
-            else:
-                st.caption("目前尚無任何填寫紀錄")
-
-            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown(
+                '<div style="font-size:14px; font-weight:700; color:#555; '
+                'margin:16px 0 10px;">📋 問卷填寫總覽</div>',
+                unsafe_allow_html=True
+            )
+            _ov_cols = st.columns(2)
+            for _oi, (_tbl, (_dname, _cols)) in enumerate(QUESTIONNAIRE_TABLES.items()):
+                _df_ov = load_data(_tbl, _cols)
+                with _ov_cols[_oi % 2]:
+                    # 取最近 4 筆（所有人）
+                    _recent_html = ""
+                    if not _df_ov.empty and "姓名" in _df_ov.columns and "評估日期" in _df_ov.columns:
+                        _ov_sub = _df_ov[["姓名","評估日期"]].dropna().copy()
+                        _ov_sub["_dt"] = pd.to_datetime(_ov_sub["評估日期"], errors="coerce")
+                        _ov_sub = _ov_sub.sort_values("_dt", ascending=False).head(4)
+                        for _, _r in _ov_sub.iterrows():
+                            _nm  = str(_r["姓名"]).strip()
+                            _dt  = _r["_dt"].strftime("%m/%d") if pd.notna(_r["_dt"]) else str(_r["評估日期"])
+                            _recent_html += (
+                                f'<div style="display:flex;justify-content:space-between;'
+                                f'font-size:12px;color:#444;padding:3px 0;border-bottom:1px solid #F0F0F0;">'
+                                f'<span>👤 {_nm}</span><span style="color:#888;">{_dt}</span></div>'
+                            )
+                    if not _recent_html:
+                        _recent_html = '<div style="font-size:12px;color:#BDBDBD;padding:6px 0;">尚無填寫紀錄</div>'
+                    st.markdown(
+                        f'<div style="border-radius:12px;border:1px solid #E0E0E0;'
+                        f'padding:12px 14px;margin-bottom:10px;background:#FFFFFF;">'
+                        f'<div style="font-size:13px;font-weight:700;color:#333;margin-bottom:8px;">{_dname}</div>'
+                        f'{_recent_html}'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
             st.stop()
 
         # 0. 預載資料（基本資料 + 預填）
@@ -1692,24 +1690,6 @@ elif st.session_state.page == 'health':
                     }
                     if append_data("care_health_icope", icope_row, COLS_HEALTH_ICOPE):
                         st.success("✅ ICOPE 問卷已儲存！")
-                        _ref = []
-                        if icope_mem == "是":
-                            _ref.append(("🧠 失智症共同照護中心", "記憶明顯減退，建議至失智共照中心做進一步評估"))
-                        if icope_fall_unified == "是" and not aid_walk:
-                            _ref.append(("🦯 輔具資源中心", "有跌倒風險但未使用行走輔具，建議評估輔具需求"))
-                        if icope_weight_val == "是" or icope_eat_val == "是":
-                            _ref.append(("🥗 社區營養師", "體重下降或食量明顯減少，建議營養評估（請同步完成 MNA）"))
-                        if icope_eye == "是" and icope_opt == "否" and not aid_eye:
-                            _ref.append(("👁️ 眼科", "視力有困難、未驗光且未使用視力輔具，建議眼科檢查"))
-                        if icope_teeth == "否":
-                            _ref.append(("🦷 牙科", "過去六個月未洗牙，建議安排牙科潔牙"))
-                        if icope_hear_res == "是" and not aid_hear:
-                            _ref.append(("👂 耳鼻喉科／聽力中心", "有聽力困擾但未使用助聽輔具，建議聽力檢查"))
-                        if icope_mood == "是" or icope_soc == "是":
-                            _ref.append(("💚 心理衛生中心", "有心情低落或社交退縮，建議同步完成 BSRS-5 並視情況轉介"))
-                        if _ref:
-                            st.session_state["last_referrals"] = _ref
-                            st.session_state["show_referral_dialog"] = True
                         time.sleep(0.8); st.rerun()
 
             # --- 三、BSRS-5 (使用滑桿卡片) ---
@@ -1768,16 +1748,6 @@ elif st.session_state.page == 'health':
                     }
                     if append_data("care_health_bsrs", bsrs_row, COLS_HEALTH_BSRS):
                         st.success("✅ BSRS-5 心情溫度計已儲存！")
-                        _ref = []
-                        if b6 is not None and b6 >= 1:
-                            _ref.append(("⚠️ 緊急！自殺防治專線 1925", f"第6題有自殺想法（{b6}分），請立即關懷並轉介心理衛生中心"))
-                        if bsrs_total >= 10:
-                            _ref.append(("💚 心理衛生中心（建議轉介）", f"BSRS 總分 {bsrs_total} 分（{bsrs_stat}），建議轉介心理衛生中心"))
-                        elif bsrs_total >= 6:
-                            _ref.append(("💚 心理衛生中心（追蹤關懷）", f"BSRS 總分 {bsrs_total} 分（{bsrs_stat}），建議持續追蹤並關懷"))
-                        if _ref:
-                            st.session_state["last_referrals"] = _ref
-                            st.session_state["show_referral_dialog"] = True
                         time.sleep(0.8); st.rerun()
 
             # --- 四、MNA ---
@@ -1785,42 +1755,41 @@ elif st.session_state.page == 'health':
         with t4:
             st.markdown("### 🍱 第四部分：MNA 營養評估")
             
-            # === 🔥 修改開始：自動帶入但允許修改 ===
-            
-            # A題：食量
-            # A題：從 ICOPE 食慾整合題自動帶入
+            # A題：食量 — 若 ICOPE 有帶入則顯示連動值，否則直接出題
             if mna_a_from_icope:
-                st.markdown(f"""
-                <div style="background:#EAF3DE; border-radius:10px; padding:10px 14px;
-                    margin-bottom:12px; font-size:13px;">
-                    <span style="color:#27500A; font-weight:500;">A. 食量（自動帶入）</span>
-                    <span style="float:right; color:#3B6D11;">{mna_a_from_icope}</span>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    f'<div style="background:#EAF3DE; border-radius:10px; padding:10px 14px; '
+                    f'margin-bottom:4px; font-size:13px;">'
+                    f'<span style="color:#27500A; font-weight:500;">A. 食量（ICOPE 帶入）</span>'
+                    f'<span style="float:right; color:#3B6D11;">{mna_a_from_icope}</span></div>',
+                    unsafe_allow_html=True
+                )
                 mna_a = mna_a_from_icope
             else:
-                st.warning("⚠️ 請先至 ICOPE Tab 填寫食量題目")
-                mna_a = None
+                mna_a = st.radio(
+                    "A. 過去三個月食量減少程度？",
+                    ["2:食量沒有改變", "1:食量中度減少", "0:食量嚴重減少"],
+                    index=None, key="mna_a_direct", horizontal=True
+                )
 
             st.markdown("---")
 
-            # B題：從 ICOPE 體重整合題自動帶入
+            # B題：體重 — 若 ICOPE 有帶入則顯示連動值，否則直接出題
             if mna_b_from_icope:
-                st.markdown(f"""
-                <div style="background:#EAF3DE; border-radius:10px; padding:10px 14px;
-                    margin-bottom:12px; font-size:13px;">
-                    <span style="color:#27500A; font-weight:500;">B. 體重（自動帶入）</span>
-                    <span style="float:right; color:#3B6D11;">{mna_b_from_icope}</span>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    f'<div style="background:#EAF3DE; border-radius:10px; padding:10px 14px; '
+                    f'margin-bottom:4px; font-size:13px;">'
+                    f'<span style="color:#27500A; font-weight:500;">B. 體重（ICOPE 帶入）</span>'
+                    f'<span style="float:right; color:#3B6D11;">{mna_b_from_icope}</span></div>',
+                    unsafe_allow_html=True
+                )
                 mna_b = mna_b_from_icope
             else:
-                st.warning("⚠️ 請先至 ICOPE Tab 填寫體重題目")
-                mna_b = None
-
-            st.markdown("---")
-            
-            # === 🔥 修改結束 ===
+                mna_b = st.radio(
+                    "B. 過去三個月體重下降情況？",
+                    ["3:沒有下降", "2:下降1-3公斤", "1:不知道", "0:下降大於3公斤"],
+                    index=None, key="mna_b_direct", horizontal=True
+                )
 
             st.markdown("---")
 
@@ -1852,8 +1821,8 @@ elif st.session_state.page == 'health':
                 st.caption("完成所有題目後顯示結果...")
                 # --- Tab 四 即時漏填提示 ---
             t4_missing = []
-            if mna_a is None: t4_missing.append("A題：食量（請先填 ICOPE 第4題）")
-            if mna_b is None: t4_missing.append("B題：體重（請先填 ICOPE 第3題）")
+            if mna_a is None: t4_missing.append("A題：食量")
+            if mna_b is None: t4_missing.append("B題：體重")
             if mna_c is None: t4_missing.append("C題：活動能力")
             if mna_d is None: t4_missing.append("D題：心理創傷")
             if mna_e is None: t4_missing.append("E題：精神心理")
@@ -1877,14 +1846,6 @@ elif st.session_state.page == 'health':
                     }
                     if append_data("care_health_mna", mna_row, COLS_HEALTH_MNA):
                         st.success("✅ MNA 營養評估已儲存！")
-                        _ref = []
-                        if ms > 0 and ms <= 7:
-                            _ref.append(("🏥 醫院營養科", f"MNA 總分 {ms} 分（營養不良），建議轉介醫院營養科進行詳細評估"))
-                        elif ms >= 8 and ms <= 11:
-                            _ref.append(("🥗 社區營養諮詢／送餐服務", f"MNA 總分 {ms} 分（有營養不良風險），建議社區營養諮詢或安排送餐服務"))
-                        if _ref:
-                            st.session_state["last_referrals"] = _ref
-                            st.session_state["show_referral_dialog"] = True
                         time.sleep(0.8); st.rerun()
 
             # --- 五、WHO-5 ---
@@ -1929,14 +1890,6 @@ elif st.session_state.page == 'health':
                     }
                     if append_data("care_health_who5", who5_row, COLS_HEALTH_WHO5):
                         st.success("✅ WHO-5 幸福指標已儲存！")
-                        _ref = []
-                        if who_total <= 28:
-                            _ref.append(("💚 心理衛生中心／加強關懷訪視", f"WHO-5 幸福指數 {who_total} 分（偏低），可能有憂鬱傾向，建議轉介或加強訪視"))
-                        elif who_total <= 50:
-                            _ref.append(("🤝 關懷訪視加強", f"WHO-5 幸福指數 {who_total} 分（略低），建議增加關懷訪視頻率"))
-                        if _ref:
-                            st.session_state["last_referrals"] = _ref
-                            st.session_state["show_referral_dialog"] = True
                         time.sleep(0.8); st.rerun()
 
             # --- 六、膀胱 ---
@@ -1999,17 +1952,6 @@ elif st.session_state.page == 'health':
                     }
                     if append_data("care_health_bladder", bladder_row, COLS_HEALTH_BLADDER):
                         st.success("✅ 膀胱症狀評估已儲存！")
-                        _ref = []
-                        _leak = [bq2, bq3, bq4]
-                        if any(v and v != "不會" for v in _leak):
-                            _ref.append(("🏥 泌尿科／骨盆底物理治療", "有尿失禁症狀（尿急漏尿、用力漏尿或少量漏尿），建議至泌尿科或接受骨盆底復健"))
-                        if bq5 and bq5 != "不會":
-                            _ref.append(("🏥 泌尿科", "有解尿困難症狀，建議至泌尿科評估"))
-                        if bq6 and bq6 != "不會":
-                            _ref.append(("🏥 婦科／泌尿科", "有下腹部或外陰疼痛，建議至婦科或泌尿科檢查"))
-                        if _ref:
-                            st.session_state["last_referrals"] = _ref
-                            st.session_state["show_referral_dialog"] = True
                         time.sleep(0.8); st.rerun()
 
             # --- 七、WHOQOL ---
