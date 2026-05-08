@@ -4,7 +4,12 @@ from datetime import datetime, date, timedelta, timezone
 from supabase import create_client, Client
 import time
 import os
+import sys
 import streamlit.components.v1 as components
+
+# 讓 Python 能找到同目錄的 shared_style.py（無論從哪裡執行）
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from shared_style import apply_base_style
 
 # =========================================================
 # 0) 系統設定
@@ -23,124 +28,48 @@ BG_MAIN = "#F0F2F5" # 背景色 (淺灰)
 TEXT    = "#212121"
 
 # =========================================================
-# 1) CSS 樣式 (V21.0 卡片化報表 + 密碼鎖樣式)
+# 1) CSS 樣式
 # =========================================================
+# 套用共用基底樣式（字型、側邊欄、卡片、輸入框、按鈕等）
+apply_base_style(primary=PRIMARY, accent=ACCENT)
+
+# 志工頁專屬樣式
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
-
-html, body, [class*="css"], div, p, span, li, ul {{
-    font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+/* 統計指標卡片 */
+.metric-box {{
+    background-color: #F8F9FA; border-radius: 15px; padding: 20px;
+    text-align: center; border-left: 5px solid {ACCENT};
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s;
 }}
-
-/* 🔥 1. 基本背景與文字 (移除暴力的全域黑字) */
-.stApp {{ background-color: #F0F2F5 !important; }}
-[data-testid="stWidgetLabel"] p, label p, .stMarkdown p {{ color: #212121 !important; }}
-
-/* 🔥 2. 側邊欄背景與按鈕 (乾淨的獨立設定) */
-section[data-testid="stSidebar"] {{ background-color: #F0F2F5; border-right: none; }}
-section[data-testid="stSidebar"] button {{
-    background-color: #FFFFFF !important; color: #666666 !important;
-    border: 1px solid transparent !important; box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important; padding: 10px 0 !important;
-    font-weight: 700 !important; width: 100%; margin-bottom: 8px !important; transition: all 0.2s;
-}}
-section[data-testid="stSidebar"] button:hover {{
-    transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important; color: #4A148C !important;
-}}
-.nav-active {{
-    background: linear-gradient(135deg, #4A148C, #7B1FA2);
-    color: white !important; padding: 12px 0; text-align: center; border-radius: 25px;
-    font-weight: 900; box-shadow: 0 4px 10px rgba(123, 31, 162, 0.4); margin-bottom: 12px; cursor: default;
-}}
-
-/* 🔥 3. 主內容區卡片與報表 */
-.block-container {{ background-color: #FFFFFF; border-radius: 25px; padding: 3rem 3rem !important; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-top: 2rem; margin-bottom: 2rem; max-width: 95% !important; }}
-header[data-testid="stHeader"] {{ display: block !important; background-color: transparent !important; }}
-header[data-testid="stHeader"] .decoration {{ display: none; }}
-.metric-box {{ background-color: #F8F9FA; border-radius: 15px; padding: 20px; text-align: center; border-bottom: 5px solid #4A148C; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s; }}
 .metric-box:hover {{ transform: translateY(-5px); }}
 .metric-label {{ font-size: 1.1rem; color: #666666 !important; font-weight: bold; margin-bottom: 5px; }}
-.metric-value {{ font-size: 2.5rem; color: #4A148C !important; font-weight: 900; }}
-.vol-card {{ background-color: #FFFFFF; border: 1px solid #EEE; border-radius: 15px; padding: 15px; margin-bottom: 15px; border-left: 6px solid #7B1FA2; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }}
+.metric-value {{ font-size: 2.5rem; color: {PRIMARY} !important; font-weight: 900; }}
+
+/* 志工名冊卡片 */
+.vol-card {{
+    background-color: #FFFFFF; border: 1px solid #EEE; border-radius: 15px;
+    padding: 15px; margin-bottom: 15px; border-left: 6px solid {ACCENT};
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    display: flex; justify-content: space-between; align-items: center;
+}}
 .vol-card-name {{ font-size: 1.3rem; font-weight: 900; color: #333333; }}
 .vol-card-stats {{ text-align: right; }}
-.vol-card-tag {{ background: #F3E5F5; color: #4A148C; padding: 3px 10px; border-radius: 10px; font-size: 0.85rem; font-weight: bold; margin-left: 10px; }}
-.vol-log-card {{ background-color: #FAFAFA; border-radius: 12px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #aaa; display: flex; justify-content: space-between; align-items: center; }}
+.vol-card-tag {{
+    background: #F3E5F5; color: {PRIMARY}; padding: 3px 10px;
+    border-radius: 10px; font-size: 0.85rem; font-weight: bold; margin-left: 10px;
+}}
+
+/* 打卡紀錄 */
+.vol-log-card {{
+    background-color: #FAFAFA; border-radius: 12px; padding: 12px;
+    margin-bottom: 10px; border-left: 4px solid #aaa;
+    display: flex; justify-content: space-between; align-items: center;
+}}
 .vol-log-date {{ font-weight: bold; color: #333333; }}
 .vol-log-action {{ font-weight: bold; padding: 2px 8px; border-radius: 5px; font-size: 0.9rem; }}
-.action-in {{ background-color: #E8F5E9; color: #2E7D32; }}
+.action-in  {{ background-color: #E8F5E9; color: #2E7D32; }}
 .action-out {{ background-color: #FFEBEE; color: #C62828; }}
-
-/* ======================================================= */
-/* 🔥 1. 響應式設計：智慧折行 (完美解決平板與手機卡片擠壓) */
-/* ======================================================= */
-@media (max-width: 1200px) {{
-    /* 釋放兩側被吃掉的空白空間 */
-    .block-container {{ 
-        padding: 1.5rem 1rem !important; 
-        max-width: 100% !important; 
-    }}
-    /* 允許 st.columns 內的元件在空間不夠時，自動往下掉 (折行) */
-    div[data-testid="stHorizontalBlock"] {{ 
-        flex-wrap: wrap !important; 
-    }}
-    /* 強制每個欄位最少要有 280px 的寬度。
-       例如：當平板空間不夠塞 4 張卡片時，會自動變成完美的 2x2 排列，不會再擠成細長條 */
-    div[data-testid="column"] {{ 
-        min-width: 280px !important; 
-        width: auto !important; 
-        flex: 1 1 auto !important; 
-        margin-bottom: 1rem !important;
-    }}
-}}
-
-/* 🔥 4. 輸入框與下拉選單 */
-div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input {{
-    background-color: #FFFFFF !important; border: 2px solid #E0E0E0 !important; border-radius: 12px !important; color: #212121 !important; -webkit-text-fill-color: #212121 !important;
-}}
-div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{ background-color: #FFFFFF !important; color: #212121 !important; }}
-li[role="option"]:hover {{ background-color: #F3E5F5 !important; }}
-div[data-testid="stTimeInput"] input, div[data-testid="stTimeInput"] * {{ 
-    color: #212121 !important; 
-    -webkit-text-fill-color: #212121 !important; 
-    opacity: 1 !important;
-}}
-/* 🟢 修正：多選標籤 (志工姓名) 反白看不見的問題 */
-span[data-baseweb="tag"] {{ background-color: #4A148C !important; }}
-span[data-baseweb="tag"] span {{ color: #FFFFFF !important; font-weight: bold !important; font-size: 1rem !important; }}
-span[data-baseweb="tag"] svg {{ fill: #FFFFFF !important; }}
-
-/* 🔥 5. 按鈕 (精準鎖定主要按鈕，放過側邊欄與普通按鈕) */
-button[kind="primary"], div[data-testid="stFormSubmitButton"] > button {{
-    background-color: #4A148C !important; color: #FFFFFF !important; border: none !important; border-radius: 12px !important; padding: 10px 20px !important; font-weight: 900 !important;
-}}
-button[kind="primary"]:hover, div[data-testid="stFormSubmitButton"] > button:hover {{
-    background-color: #7B1FA2 !important; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-}}
-button[kind="primary"] *, div[data-testid="stFormSubmitButton"] > button * {{ color: #FFFFFF !important; }}
-
-/* 🔥 6. 日期選單樣式 (強制明亮主題，修復反黑與顏色錯亂) */
-div[data-baseweb="popover"], div[data-baseweb="popover"] > div, div[data-baseweb="calendar"] {{
-    background-color: #FFFFFF !important;
-}}
-div[data-baseweb="calendar"] *, div[data-baseweb="popover"] * {{
-    color: #212121 !important; 
-    fill: #212121 !important; /* 月份切換箭頭顏色 */
-}}
-/* 選中的日期背景與文字 */
-div[data-baseweb="calendar"] button[aria-selected="true"] {{ 
-    background-color: #4A148C !important; 
-    border-radius: 8px !important;
-}}
-div[data-baseweb="calendar"] button[aria-selected="true"] * {{ 
-    color: #FFFFFF !important; 
-}}
-/* 滑鼠游標經過的日期背景 */
-div[data-baseweb="calendar"] button:hover {{
-    background-color: #F3E5F5 !important; 
-    border-radius: 8px !important;
-}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -362,6 +291,9 @@ def render_nav():
 
         if st.session_state.page == 'members':
             st.markdown('<div class="nav-active">📋 志工名冊管理</div>', unsafe_allow_html=True)
+        else:
+            if st.button("📋 志工名冊管理", key="nav_members", use_container_width=True):
+                st.session_state.page = 'members'; st.rerun()
 
         if st.session_state.page == 'report':
             st.markdown('<div class="nav-active">📉 數據報表中心</div>', unsafe_allow_html=True)
