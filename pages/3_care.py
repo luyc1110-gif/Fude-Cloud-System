@@ -712,35 +712,58 @@ def get_quarterly_status(uid, ref_date):
 def get_latest_merged_health():
     """
     跨所有問卷資料表，取得每位長輩最新的合併健康資料（用於首頁預警看板）。
-    若新分表有資料，優先用新分表；否則 fallback 到舊的 care_health。
+    ─ 修正重點 ─
+    1. 各表各自取「該表最新一筆」後 merge，不讓後處理的表覆蓋掉較新的評估日期。
+    2. 用 dropna(subset=["_dt"]) 排除無法解析的日期，避免 NaT 被誤判為最新。
+    3. 最終統一用跨所有表的最新日期作為「最新評估日期」欄位。
     """
-    all_data = {}  # uid -> merged row dict
+    all_data   = {}   # uid -> merged row dict
+    max_dates  = {}   # uid -> 跨所有表的最新 Timestamp
 
-    # 先讀舊表作為 baseline（向後相容）
-    old_df = load_data("care_health", COLS_HEALTH)
-    if not old_df.empty and "身分證字號" in old_df.columns:
-        old_df["_dt"] = pd.to_datetime(old_df["評估日期"], errors="coerce")
-        for uid, grp in old_df.groupby("身分證字號"):
-            latest = grp.sort_values("_dt").iloc[-1].to_dict()
-            latest.pop("_dt", None)
-            all_data[uid] = latest
-
-    # 再用新分表覆蓋（各問卷最新值覆寫舊值）
-    for table_name, (_, cols) in QUESTIONNAIRE_TABLES.items():
-        df = load_data(table_name, cols)
+    def _merge_table(df, cols):
+        """從一張表取每人最新一筆，merge 進 all_data。"""
         if df.empty or "身分證字號" not in df.columns:
-            continue
+            return
+        df = df.copy()
         df["_dt"] = pd.to_datetime(df["評估日期"], errors="coerce")
+        df = df.dropna(subset=["_dt"])   # ← 排除無效日期
+        if df.empty:
+            return
         for uid, grp in df.groupby("身分證字號"):
-            latest = grp.sort_values("_dt").iloc[-1].to_dict()
-            latest.pop("_dt", None)
+            grp_sorted = grp.sort_values("_dt", ascending=True)
+            latest = grp_sorted.iloc[-1].to_dict()
+            row_dt = latest.pop("_dt", None)
+            # 更新最大日期追蹤器
+            if uid not in max_dates or (row_dt and row_dt > max_dates[uid]):
+                max_dates[uid] = row_dt
+            # 合併欄位（但不讓 評估日期 被舊表覆蓋）
             if uid not in all_data:
                 all_data[uid] = latest
             else:
-                all_data[uid].update(latest)
+                for k, v in latest.items():
+                    if k == "評估日期":
+                        # 只在本行日期 >= 已存值時才更新
+                        existing_dt = pd.to_datetime(all_data[uid].get("評估日期"), errors="coerce")
+                        if pd.isna(existing_dt) or (row_dt and row_dt >= existing_dt):
+                            all_data[uid]["評估日期"] = v
+                    else:
+                        all_data[uid][k] = v
+
+    # 1. 先讀舊表作為 baseline
+    _merge_table(load_data("care_health", COLS_HEALTH), COLS_HEALTH)
+
+    # 2. 各新分表依序 merge（各取最新一筆，不互相覆蓋較新資料）
+    for table_name, (_, cols) in QUESTIONNAIRE_TABLES.items():
+        _merge_table(load_data(table_name, cols), cols)
 
     if not all_data:
         return pd.DataFrame()
+
+    # 3. 把跨表最新日期寫入 "最新評估日期" 欄，方便 UI 顯示
+    for uid, row in all_data.items():
+        dt = max_dates.get(uid)
+        row["最新評估日期"] = dt.strftime("%Y-%m-%d") if dt and pd.notna(dt) else row.get("評估日期", "")
+
     return pd.DataFrame(list(all_data.values()))
 
 
@@ -2481,18 +2504,25 @@ elif st.session_state.page == 'visit':
     with st.container(border=True):
         st.markdown('<div class="visit-card-title">👤 訪視對象</div>', unsafe_allow_html=True)
         
+        # 一般戶預設隱藏，勾選才顯示
+        show_general = st.checkbox("顯示一般戶", value=False, help="一般戶預設不出現在下拉選單，勾選此項才顯示")
+        base_mems = mems if show_general else (
+            mems[~mems['身分別'].astype(str).str.contains('一般戶', na=False)] if not mems.empty else mems
+        )
+
         all_tags = set()
-        if not mems.empty:
-            for s in mems['身分別'].astype(str):
+        if not base_mems.empty:
+            for s in base_mems['身分別'].astype(str):
                 for t in s.split(','):
-                    if t.strip(): all_tags.add(t.strip())
-        
+                    tag = t.strip()
+                    if tag and tag != '一般戶': all_tags.add(tag)
+
         c_filter, c_person = st.columns([1, 2])
         with c_filter: sel_tag = st.selectbox("🌪️ 依身分別篩選", ["(全部顯示)"] + sorted(list(all_tags)))
         with c_person:
-            filtered_mems = mems if sel_tag == "(全部顯示)" else mems[mems['身分別'].str.contains(sel_tag, na=False)]
-            # 讓選單顯示 "姓名 (後四碼)"
-            display_options = filtered_mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-4:]})", axis=1).tolist() if not filtered_mems.empty else []
+            filtered_mems = base_mems if sel_tag == "(全部顯示)" else base_mems[base_mems['身分別'].str.contains(sel_tag, na=False)]
+            # 讓選單顯示 "姓名 (末三碼)"
+            display_options = filtered_mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-3:]})", axis=1).tolist() if not filtered_mems.empty else []
             target_sel = st.selectbox("選擇關懷戶", display_options, index=None, placeholder="請點擊此處輸入或選擇姓名...", label_visibility="collapsed")
 
         # 💡 個案速寫智慧面板
@@ -2504,7 +2534,7 @@ elif st.session_state.page == 'visit':
         if target_sel and not mems.empty:
             # 將選單的文字拆解回 姓名 和 身分證字號
             target_p = target_sel.split(' (')[0]
-            p_row = filtered_mems[filtered_mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-4:]})", axis=1) == target_sel].iloc[0]
+            p_row = filtered_mems[filtered_mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-3:]})", axis=1) == target_sel].iloc[0]
             p_row_idx = p_row.name
             my_id = str(p_row['身分證字號']).strip()
             
@@ -2566,13 +2596,25 @@ elif st.session_state.page == 'visit':
                     for _, r in p_logs.iterrows():
                         is_pure = (r['物資內容'] == "(僅訪視)")
                         itm = "純訪視" if is_pure else f"{r['物資內容']} x{r['發放數量']}"
-                        display_date = str(r['發放日期']).split(" ")[0] 
-                        st.markdown(f"""
-                        <div style="background:#F5F5F5; padding:8px; border-radius:8px; margin-bottom:6px; font-size:0.85rem;">
-                            <b>{display_date}</b> | <span style="color:#2E7D32; font-weight:bold;">{itm}</span><br>
-                            <span style="color:#666; display:block; margin-top:4px; line-height:1.5; word-wrap:break-word;">📝 {str(r['訪視紀錄']).strip() or '無備註'}</span>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        display_date = str(r['發放日期']).split(" ")[0]
+                        note_text = str(r['訪視紀錄']).strip()
+                        has_note = note_text and note_text not in ('', 'nan', 'None', '無備註')
+                        if has_note:
+                            # 有備註 → 完整顯示（包含備註文字）
+                            st.markdown(f"""
+                            <div style="background:#F5F5F5; padding:8px; border-radius:8px; margin-bottom:6px; font-size:0.85rem;">
+                                <b>{display_date}</b> | <span style="color:#2E7D32; font-weight:bold;">{itm}</span><br>
+                                <span style="color:#666; display:block; margin-top:4px; line-height:1.5; word-wrap:break-word;">📝 {note_text}</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            # 純發放無備註 → 縮小成 chip，節省版面
+                            st.markdown(f"""
+                            <div style="display:inline-flex; align-items:center; gap:6px; background:#F0F0F0; padding:3px 10px; border-radius:20px; margin-bottom:4px; font-size:0.78rem;">
+                                <span style="color:#999;">{display_date}</span>
+                                <span style="color:#2E7D32; font-weight:bold;">{itm}</span>
+                            </div>
+                            """, unsafe_allow_html=True)
                 else: st.caption("尚無近期紀錄")
 
                 bad_rels = []
@@ -2725,8 +2767,8 @@ elif st.session_state.page == 'stats':
     with tab1:
         if mems.empty: st.info("無資料")
         else:
-            # 建立選單用的名單 (顯示: 姓名 + ID末四碼以防重複)
-            all_options = mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-4:]})", axis=1).tolist()
+            # 建立選單用的名單 (顯示: 姓名 + ID末三碼)
+            all_options = mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-3:]})", axis=1).tolist()
             
             # 2. 改掉下拉選單的提示文字
             sel_label = st.selectbox("請選擇查詢對象", all_options, index=None, placeholder="請點擊此處輸入或選擇姓名...")
@@ -2753,7 +2795,7 @@ elif st.session_state.page == 'stats':
                 target_name = sel_label.split(' (')[0]
                 
                 # 取得該個案資料列
-                p_row = mems[mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-4:]})", axis=1) == sel_label].iloc[0]
+                p_row = mems[mems.apply(lambda x: f"{x['姓名']} ({str(x['身分證字號'])[-3:]})", axis=1) == sel_label].iloc[0]
                 p_idx = p_row.name # 取得原始資料表的 index 方便寫入
                 
                 # 取得關鍵變數
@@ -2962,12 +3004,14 @@ elif st.session_state.page == 'stats':
                 # ... (原有的健康警示邏輯區塊，可接續在後) ...
 
                 
-                # 2. 自動警示卡片邏輯 (Smart Alerts)
-                if not h_df.empty:
-                    p_health = h_df[h_df['姓名'] == target_name]
+                # 2. 自動警示卡片邏輯 (Smart Alerts) — 改用跨問卷合併資料，確保日期最新
+                _merged_h = get_latest_merged_health()
+                if not _merged_h.empty:
+                    p_health = _merged_h[_merged_h['姓名'] == target_name]
                     if not p_health.empty:
-                        last_h = p_health.sort_values("評估日期").iloc[-1]
-                        st.markdown(f"#### 🩺 健康評估警示 (評估日：{last_h['評估日期']})")
+                        last_h = p_health.iloc[0]
+                        display_date = last_h.get('最新評估日期') or last_h.get('評估日期', '—')
+                        st.markdown(f"#### 🩺 健康評估警示 (最新評估日：{display_date})")
                         
                         alerts = []
                         
