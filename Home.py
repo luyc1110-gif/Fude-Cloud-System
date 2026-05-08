@@ -3,7 +3,11 @@ import pandas as pd
 from datetime import datetime, date, timedelta
 from supabase import create_client, Client
 import os
+import sys
 import base64
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from shared_style import apply_base_style
 
 # =========================================================
 # 0) 系統設定
@@ -16,73 +20,29 @@ st.set_page_config(
 )
 
 # =========================================================
-# 1) CSS 樣式 (V31.0 數據儀表板版)
+# 1) CSS 樣式
 # =========================================================
+apply_base_style(primary="#4A148C", accent="#7B1FA2")
+
+# 首頁專屬樣式
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
-
-html, body, [class*="css"], div, p, span, li, ul {
-    font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-}
-
-.stApp { background-color: #F0F2F5 !important; }
-section[data-testid="stSidebar"] { 
-    background-color: #F0F2F5; 
-    border-right: none; 
-}
-
-.block-container {
-    background-color: #FFFFFF;
-    border-radius: 25px;
-    padding: 3rem 4rem !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-top: 2rem; margin-bottom: 2rem;
-    max-width: 1100px !important;
-}
-
-@media (max-width: 1000px) {
-    .block-container { padding: 2rem 1.5rem !important; }
-}
-
-header[data-testid="stHeader"] { background-color: transparent !important; }
-header[data-testid="stHeader"] .decoration { display: none; }
-
-section[data-testid="stSidebar"] button {
-    background-color: #FFFFFF !important;
-    color: #666666 !important;
-    border: 1px solid transparent !important;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important;
-    padding: 10px 15px !important; /* 👈 把左右留白加回來 */
-    font-weight: 700 !important;
-    width: 100%;
-    margin-bottom: 8px !important;
-    transition: all 0.2s;
-}
-section[data-testid="stSidebar"] button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
-    color: #4A148C !important;   /* ← 改成固定紫色 */
-    border: 1px solid var(--color-border-secondary) !important;
-}
-
+/* 標題區 */
 .hero-title {
     font-size: 2.5rem; font-weight: 900;
-    color: #212121;              /* ← 改成固定深色 */
-    text-align: center; margin-bottom: 10px;
+    color: #212121; text-align: center; margin-bottom: 10px;
 }
 .hero-subtitle {
-    font-size: 1.2rem;
-    color: #666666;              /* ← 改成固定灰色 */
-    text-align: center; margin-bottom: 50px;
+    font-size: 1.2rem; color: #666666;
+    text-align: center; margin-bottom: 30px;
 }
 
+/* 服務卡片 */
 .service-box {
     display: flex; flex-direction: row;
-    background-color: #FFFFFF;   /* ← var(--color-background-secondary) 換掉 */
-    border-radius: 20px; padding: 0; margin-bottom: 30px;
-    overflow: hidden; border: 0.5px solid #E0E0E0; /* ← var(--color-border-tertiary) 換掉 */
+    background-color: #FFFFFF; border-radius: 20px;
+    padding: 0; margin-bottom: 30px; overflow: hidden;
+    border: 0.5px solid #E0E0E0;
     transition: transform 0.3s; min-height: 250px;
 }
 .service-box:hover {
@@ -90,8 +50,7 @@ section[data-testid="stSidebar"] button:hover {
     box-shadow: 0 10px 20px rgba(0,0,0,0.08);
 }
 .service-img {
-    width: 40%;
-    background-size: cover; background-position: center;
+    width: 40%; background-size: cover; background-position: center;
     display: flex; align-items: center; justify-content: center;
 }
 .service-content {
@@ -110,56 +69,15 @@ section[data-testid="stSidebar"] button:hover {
 .service-desc { font-size: 1rem; color: #666666; line-height: 1.6; margin-bottom: 15px; }
 .service-icon-placeholder { font-size: 5rem; }
 
+/* 統計徽章 */
 .stats-row { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px; }
 .stat-item {
-    background-color: #FFFFFF;
-    border: 1px solid #E0E0E0;
+    background-color: #FFFFFF; border: 1px solid #E0E0E0;
     border-radius: 10px; padding: 8px 15px;
     font-size: 0.9rem; color: #666666;
     font-weight: 500; display: flex; align-items: center; gap: 8px;
 }
 .stat-item b { color: #212121; font-size: 1.1rem; margin-left: 5px; }
-/* ── 輸入框、選單 ── */
-div[data-baseweb="select"] > div,
-.stTextInput input,
-.stDateInput input,
-.stNumberInput input,
-.stTimeInput input {
-    background-color: #FFFFFF !important;
-    border: 2px solid #E0E0E0 !important;
-    border-radius: 12px !important;
-    color: #212121 !important;
-}
-
-/* 下拉選單選項 */
-div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {
-    background-color: #FFFFFF !important;
-    color: #212121 !important;
-}
-li[role="option"]:hover { background-color: #F3E5F5 !important; }
-
-/* checkbox 文字 */
-.stCheckbox label, .stCheckbox span {
-    color: #212121 !important;
-}
-
-/* label / caption 文字 */
-label, .stTextInput label, .stSelectbox label,
-.stDateInput label, .stNumberInput label,
-[data-testid="stWidgetLabel"] {
-    color: #212121 !important;
-}
-
-/* 確認新增按鈕 */
-div[data-testid="stFormSubmitButton"] > button,
-.stButton > button {
-    background-color: #4A148C !important;
-    color: #FFFFFF !important;
-    border: none !important;
-    border-radius: 12px !important;
-    font-weight: 900 !important;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -307,10 +225,50 @@ with st.sidebar:
 
 st.markdown('<div class="hero-title">🏘️ 福德里 - 社區數位管理中樞</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="hero-subtitle">志工調度．長輩照護．弱勢關懷．一站整合 ({datetime.now().year} 年度數據)</div>', unsafe_allow_html=True)
-st.markdown("---")
 
 # 讀取數據
 data = load_dashboard_stats()
+
+# ── 年度概況橫幅 ──
+total_people = data['vol_count'] + data['eld_count'] + data['care_count']
+st.markdown(f"""
+<div style="
+    background: linear-gradient(135deg, #1A0533 0%, #4A148C 50%, #7B1FA2 100%);
+    border-radius: 20px; padding: 32px 40px; margin: 20px 0 30px 0;
+    box-shadow: 0 12px 35px rgba(74, 20, 140, 0.35);
+    display: flex; align-items: center; justify-content: space-around;
+    flex-wrap: wrap; gap: 20px;
+">
+  <div style="text-align:center; color:white;">
+    <div style="font-size:0.95rem; opacity:0.75; letter-spacing:2px; font-weight:600;">📅 {datetime.now().year} 年度</div>
+    <div style="font-size:1rem; opacity:0.85; margin-top:4px;">全體志工服務時數</div>
+    <div style="font-size:3.5rem; font-weight:900; line-height:1.1; margin-top:6px;">
+        {data['vol_hours']}<span style="font-size:1.3rem; margin-left:6px; opacity:0.85;">小時</span>
+    </div>
+  </div>
+  <div style="width:1px; height:80px; background:rgba(255,255,255,0.2); flex-shrink:0;"></div>
+  <div style="display:flex; gap:30px; flex-wrap:wrap; justify-content:center;">
+    <div style="text-align:center; color:white;">
+      <div style="font-size:2rem; font-weight:900;">{data['vol_count']}</div>
+      <div style="font-size:0.85rem; opacity:0.75; margin-top:2px;">💜 活躍志工</div>
+    </div>
+    <div style="text-align:center; color:white;">
+      <div style="font-size:2rem; font-weight:900;">{data['eld_count']}</div>
+      <div style="font-size:0.85rem; opacity:0.75; margin-top:2px;">👴 服務長者</div>
+    </div>
+    <div style="text-align:center; color:white;">
+      <div style="font-size:2rem; font-weight:900;">{data['care_count']}</div>
+      <div style="font-size:0.85rem; opacity:0.75; margin-top:2px;">🏠 關懷戶數</div>
+    </div>
+    <div style="text-align:center; color:white;">
+      <div style="font-size:2rem; font-weight:900;">{data['care_items']}</div>
+      <div style="font-size:0.85rem; opacity:0.75; margin-top:2px;">📦 年度發放</div>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("---")
 
 # 定義服務內容與對應數據
 services = [
@@ -340,7 +298,7 @@ services = [
     {
         "title": "關懷戶系統",
         "desc": "建立弱勢家庭數位名冊，記錄物資發放與訪視歷程。確保資源能精準送達需要的人手中，不遺漏任何一個角落。",
-        "color": "#2E7D32",
+        "color": "#4A4E69",
         "icon": "🏠",
         "img_file": "care.jpg",
         "stats": [
