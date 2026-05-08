@@ -307,7 +307,7 @@ if st.session_state.page == 'home':
             st.info("目前無長輩資料可供操作。")
         else:
             member_options_exit = [
-                f"{row.姓名} ({row.身分證字號})"
+                f"{row.姓名} ({str(row.身分證字號)[-3:]})"
                 for row in members.itertuples(index=False)
             ]
             c_sel, c_reason = st.columns([1, 1])
@@ -528,7 +528,7 @@ elif st.session_state.page == 'checkin':
             with bc_name: b_course_name_input = st.text_input("課程名稱 (選填)", key="b_course_name")
             
             st.markdown("#### b. 報到設定")
-            member_options = [f"{idx}. {row.姓名} ({row.身分證字號})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
+            member_options = [f"{idx}. {row.姓名} ({str(row.身分證字號)[-3:]})" for idx, row in enumerate(df_m.itertuples(index=False), start=1)]
             selected_members = st.multiselect("下拉選單選擇長輩 (可多選)", options=member_options, key="b_members")
             
             submitted = st.button("🚀 執行批次補登", type="primary")
