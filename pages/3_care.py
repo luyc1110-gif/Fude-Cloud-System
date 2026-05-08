@@ -7,6 +7,11 @@ import plotly.express as px
 import random
 import time
 import re  # 新增：用於正則表達式提取樓層
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from shared_style import apply_base_style
 
 # === 以下是為了解決 AI 辨識與 Render 部署新增的套件 ===
 import os
@@ -55,81 +60,24 @@ BG_MAIN = "#F8F9FA"   # 淺灰底
 TEXT    = "#333333"
 
 # =========================================================
-# 1) CSS 樣式 (請直接覆蓋整段)
+# 1) CSS 樣式
 # =========================================================
+apply_base_style(primary=PRIMARY, accent=GREEN)
+
+# 關懷戶頁專屬樣式
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
-
-html, body, [class*="css"], div, p, span, li, ul {{
-    font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-    color: {TEXT} !important;
-}}
-
-.stApp {{ background-color: {BG_MAIN} !important; }}
-section[data-testid="stSidebar"] {{ background-color: {BG_MAIN}; border-right: none; }}
-
-/* 懸浮大卡片 */
-.block-container {{
-    background-color: #FFFFFF; border-radius: 25px;
-    padding: 3rem 3rem !important; box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-top: 2rem; margin-bottom: 2rem; max-width: 95% !important;
-}}
-
-header[data-testid="stHeader"] {{ display: block !important; background-color: transparent !important; }}
-header[data-testid="stHeader"] .decoration {{ display: none; }}
-
-/* 側邊欄按鈕 */
-section[data-testid="stSidebar"] button {{
-    background-color: #FFFFFF !important; color: #666 !important;
-    border: 1px solid transparent !important; box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important; padding: 10px 0 !important;
-    font-weight: 700 !important; width: 100%; margin-bottom: 8px !important;
-    transition: all 0.2s;
-}}
-section[data-testid="stSidebar"] button:hover {{
-    transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
-    color: {GREEN} !important;
-}}
-.nav-active {{
-    background: linear-gradient(135deg, {GREEN}, #6D6875);
-    color: white !important; padding: 12px 0; text-align: center; border-radius: 25px;
-    font-weight: 900; box-shadow: 0 4px 10px rgba(142, 151, 117, 0.4);
-    margin-bottom: 12px; cursor: default;
-}}
-
-/* 輸入框優化 */
+/* 資料表格 */
 div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
     background-color: #FFFFFF !important; border-radius: 10px; padding: 5px;
 }}
-div[data-testid="stDataFrame"], div[data-testid="stTable"] {{
-    background-color: #FFFFFF !important; border-radius: 10px; padding: 5px;
-}}
-div[data-baseweb="select"] > div, .stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input, .stTextArea textarea {{
-    background-color: #F8F9FA !important; color: #000000 !important;
-    border: 2px solid #E0E0E0 !important; border-radius: 12px !important; font-weight: 700 !important;
-}}
 
-/* 確保下拉選單打字時文字可見 */
-div[data-baseweb="select"] input {{
-    color: #000000 !important;
-    -webkit-text-fill-color: #000000 !important;
-}}
-div[role="listbox"], ul[data-baseweb="menu"], li[role="option"] {{
-    background-color: #FFFFFF !important; color: #000000 !important;
-}}
-li[role="option"]:hover {{
-    background-color: #E8F5E9 !important; color: {GREEN} !important;
-}}
-
-/* 按鈕樣式 */
-div[data-testid="stFormSubmitButton"] > button,
+/* 下載按鈕 */
 div[data-testid="stDownloadButton"] > button {{
     background-color: {PRIMARY} !important; color: #FFFFFF !important;
-    border: none !important; border-radius: 12px !important; font-weight: 900 !important;
-    padding: 10px 25px !important;
+    border: none !important; border-radius: 12px !important;
+    font-weight: 900 !important; padding: 10px 25px !important;
 }}
-div[data-testid="stFormSubmitButton"] > button:hover,
 div[data-testid="stDownloadButton"] > button:hover {{
     background-color: {GREEN} !important;
     transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.15);
@@ -233,28 +181,6 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
 .h-card-title {{ font-size: 0.9rem; opacity: 0.9; font-weight: bold; }}
 .h-card-value {{ font-size: 1.4rem; font-weight: 900; }}
 .h-card-score {{ background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }}
-
-/* 🔥 6. 日期選單樣式 (強制明亮主題，修復反黑與顏色錯亂) */
-div[data-baseweb="popover"], div[data-baseweb="popover"] > div, div[data-baseweb="calendar"] {{
-    background-color: #FFFFFF !important;
-}}
-div[data-baseweb="calendar"] *, div[data-baseweb="popover"] * {{
-    color: #212121 !important; 
-    fill: #212121 !important; /* 月份切換箭頭顏色 */
-}}
-/* 選中的日期背景與文字 */
-div[data-baseweb="calendar"] button[aria-selected="true"] {{ 
-    background-color: #4A148C !important; 
-    border-radius: 8px !important;
-}}
-div[data-baseweb="calendar"] button[aria-selected="true"] * {{ 
-    color: #FFFFFF !important; 
-}}
-/* 滑鼠游標經過的日期背景 */
-div[data-baseweb="calendar"] button:hover {{
-    background-color: #F3E5F5 !important; 
-    border-radius: 8px !important;
-}}
 
 /* ✅ Radio 統一樣式：未選灰底深字，Hover 淺綠，選中綠底白字 */
 div[role="radiogroup"] {{
