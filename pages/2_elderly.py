@@ -4,8 +4,12 @@ from datetime import datetime, date, timedelta, timezone
 from supabase import create_client, Client
 import time
 import os
+import sys
 import plotly.express as px
 import random
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from shared_style import apply_base_style
 
 # =========================================================
 # 0) 系統設定 (🎨 這裡可以調整全站基礎設定)
@@ -31,141 +35,31 @@ BG_MAIN = "#F0F2F5"   # 🌫️ 網頁大背景顏色 (目前是淺灰)
 TEXT    = "#212121"   # 📝 主要文字顏色 (目前是深灰)
 
 # =========================================================
-# 1) CSS 樣式 (已加入詳細註解，方便您調整)
+# 1) CSS 樣式
 # =========================================================
+apply_base_style(primary=PRIMARY, accent=ACCENT)
+
+# 長輩頁專屬樣式
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
-
-/* 全站文字字型設定 */
-html, body, [class*="css"], div, p, span, li, ul {{
-    font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-    color: {TEXT} !important;
-}}
-
-/* 🌫️ 1. 整體網頁背景顏色 */
-.stApp {{
-    background-color: {BG_MAIN} !important;
-}}
-
-/* 🗂️ 2. 側邊欄 (Sidebar) 設定 */
-section[data-testid="stSidebar"] {{
-    background-color: {BG_MAIN};  /* 讓側邊欄跟背景同色，看起來更寬闊 */
-    border-right: none;           /* 去掉側邊欄右邊那條死板的分隔線 */
-    min-width: 200px !important;  /* 新增：限制最小寬度 */
-    max-width: 220px !important;  /* 新增：限制最大寬度，避免在平板上佔用過多空間 */
-}}
-
-/* ⬜ 3. 【關鍵】主內容區的「懸浮大卡片」樣式 */
-.block-container {{
-    background-color: #FFFFFF;      /* ⬜ 卡片背景色 (白色) */
-    border-radius: 25px;            /* 📏 圓角大小 (數字越大越圓) */
-    padding: 3rem 3rem !important;  /* ↔️ 內距：控制內容離邊框的距離 */
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05); /* 🌫️ 陰影：讓卡片有浮起來的感覺 */
-    margin-top: 2rem;               /* ⬆️ 距離視窗頂部的距離 */
-    margin-bottom: 2rem;            /* ⬇️ 距離視窗底部的距離 */
-    max-width: 95% !important;      /* ↔️ 卡片寬度 (佔螢幕 95%) */
-}}
-
-/* 頂部 Header 設定 (保持透明，不擋住內容) */
-header[data-testid="stHeader"] {{
-    display: block !important;
-    background-color: transparent !important;
-}}
-header[data-testid="stHeader"] .decoration {{ display: none; }}
-
-/* 🔘 4. 側邊欄按鈕樣式 */
-section[data-testid="stSidebar"] button {{
-    background-color: #FFFFFF !important;
-    color: #666 !important;
-    border: 1px solid transparent !important;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-    border-radius: 25px !important;  /* 📏 按鈕圓角 */
-    padding: 10px 0 !important;      /* ↕️ 按鈕高度 */
-    font-weight: 700 !important;
-    width: 100%; 
-    margin-bottom: 8px !important;   /* ⬇️ 按鈕之間的間距 */
-    transition: all 0.2s;            /* 動畫過渡效果 */
-}}
-/* 滑鼠移過去按鈕時的特效 */
-section[data-testid="stSidebar"] button:hover {{
-    transform: translateY(-2px);     /* 微微上浮 */
-    box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
-    color: {PRIMARY} !important;     /* 變色 */
-}}
-
-/* 🌟 5. 側邊欄「目前選中」的按鈕樣式 */
-.nav-active {{
-    background: linear-gradient(135deg, {PRIMARY}, {ACCENT}); /* 🌈 漸層背景 */
-    color: white !important;
-    padding: 12px 0; 
-    text-align: center; 
-    border-radius: 25px;
-    font-weight: 900; 
-    box-shadow: 0 4px 10px rgba(239, 108, 0, 0.3); /* 發光陰影 */
-    margin-bottom: 12px; 
-    cursor: default;
-}}
-
-/* 📊 6. 內部統計小卡片 (Dash Card) */
+/* 統計小卡片 */
 .dash-card {{
-    background-color: #F8F9FA;       /* 淺灰底色 */
-    padding: 20px; 
-    border-radius: 15px;             /* 圓角 */
-    border-left: 6px solid {ACCENT}; /* 👈 左邊那條裝飾線的顏色 */
-    margin-bottom: 15px;
+    background-color: #F8F9FA; padding: 20px; border-radius: 15px;
+    border-left: 6px solid {ACCENT}; margin-bottom: 15px;
 }}
 .dash-label {{ font-size: 1.1rem; color: #444 !important; font-weight: bold; margin-bottom: 5px; }}
-.dash-value {{ font-size: 2.2rem; color: {PRIMARY} !important; font-weight: 900; margin: 10px 0; }} /* 數字顏色 */
-.dash-sub {{ font-size: 0.95rem; color: #666 !important; line-height: 1.6; }}
+.dash-value {{ font-size: 2.2rem; color: {PRIMARY} !important; font-weight: 900; margin: 10px 0; }}
+.dash-sub   {{ font-size: 0.95rem; color: #666 !important; line-height: 1.6; }}
 
-/* 📝 7. 輸入框與下拉選單樣式 */
-div[data-baseweb="select"] > div {{
-    background-color: #FFFFFF !important;
-    color: #000000 !important;
-    border: 2px solid #E0E0E0 !important; /* 邊框顏色 */
-    border-radius: 12px !important;
-}}
-/* 修正多選下拉選單的標籤背景與文字顏色 */
-span[data-baseweb="tag"] {{
-    background-color: #EF6C00 !important; /* 背景改成你的主色調 */
-}}
-span[data-baseweb="tag"] span {{
-    color: #FFFFFF !important; /* 文字強制變白色 */
-}}
-div[data-baseweb="select"] span {{ color: #000000 !important; }}
-ul[data-baseweb="menu"] {{ background-color: #FFFFFF !important; }}
-li[role="option"] {{ color: #000000 !important; background-color: #FFFFFF !important; }}
-li[role="option"]:hover {{
-    background-color: #FFF3E0 !important; /* 滑鼠移過去的背景色 */
-    color: {PRIMARY} !important;
-}}
-.stTextInput input, .stDateInput input, .stTimeInput input, .stNumberInput input {{
-    background-color: #F8F9FA !important;
-    border: 1px solid #E0E0E0 !important;
-    border-radius: 12px !important;
-    color: #333 !important;
-}}
-
-/* 🖱️ 8. 主要操作按鈕 (提交、下載) */
-div[data-testid="stFormSubmitButton"] > button,
+/* 下載按鈕 */
 div[data-testid="stDownloadButton"] > button {{
-    background-color: {PRIMARY} !important; /* 按鈕背景色 */
-    color: #FFFFFF !important;              /* 文字顏色 */
-    border: none !important; 
-    border-radius: 12px !important;
-    padding: 10px 20px !important;
+    background-color: {PRIMARY} !important; color: #FFFFFF !important;
+    border: none !important; border-radius: 12px !important;
+    font-weight: 900 !important; padding: 10px 25px !important;
 }}
-div[data-testid="stFormSubmitButton"] > button *, 
-div[data-testid="stDownloadButton"] > button * {{
-    color: #FFFFFF !important; font-weight: 900 !important;
-}}
-/* 滑鼠移過去按鈕 */
-div[data-testid="stFormSubmitButton"] > button:hover,
 div[data-testid="stDownloadButton"] > button:hover {{
     background-color: {ACCENT} !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }}
 
 /* Toast 訊息框 */
@@ -175,29 +69,6 @@ div[data-baseweb="toast"] {{
     box-shadow: 0 5px 20px rgba(0,0,0,0.3) !important;
 }}
 div[data-baseweb="toast"] * {{ color: #000000 !important; font-weight: 900 !important; }}
-
-/* 🔥 6. 日期選單樣式 (強制明亮主題，修復反黑與顏色錯亂) */
-div[data-baseweb="popover"], div[data-baseweb="popover"] > div, div[data-baseweb="calendar"] {{
-    background-color: #FFFFFF !important;
-}}
-div[data-baseweb="calendar"] *, div[data-baseweb="popover"] * {{
-    color: #212121 !important; 
-    fill: #212121 !important; /* 月份切換箭頭顏色 */
-}}
-/* 選中的日期背景與文字 */
-div[data-baseweb="calendar"] button[aria-selected="true"] {{ 
-    background-color: #4A148C !important; 
-    border-radius: 8px !important;
-}}
-div[data-baseweb="calendar"] button[aria-selected="true"] * {{ 
-    color: #FFFFFF !important; 
-}}
-/* 滑鼠游標經過的日期背景 */
-div[data-baseweb="calendar"] button:hover {{
-    background-color: #F3E5F5 !important; 
-    border-radius: 8px !important;
-}}
-
 </style>
 """, unsafe_allow_html=True)
 
