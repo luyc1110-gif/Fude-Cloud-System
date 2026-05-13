@@ -3474,56 +3474,41 @@ elif st.session_state.page == 'stats':
         if mems.empty:
             st.info("尚無成員資料")
         else:
-            # --- 群體選擇 ---
+            # --- 群體選擇（多選） ---
             GROUP_OPTIONS = {
-                "全部成員": None,
-                "🏠 一般戶": "一般戶",
-                "🧓 獨居長者": "獨居",
-                "📉 低收入戶": "低收",
-                "📊 中低收入戶": "中低收",
+                "🏠 一般戶": ("一般戶", "#8E9775"),
+                "🧓 獨居長者": ("獨居", "#CB997E"),
+                "📉 低收入戶": ("低收", "#C62828"),
+                "📊 中低收入戶": ("中低收", "#6D6875"),
             }
 
-            st.markdown("""
-            <style>
-            div[data-testid="stRadio"] > div { display: flex; flex-wrap: wrap; gap: 10px; }
-            div[data-testid="stRadio"] label {
-                background-color: #F1F3F4 !important;
-                border: 2px solid #D0D0D0 !important;
-                border-radius: 20px !important;
-                padding: 8px 20px !important;
-                color: #333 !important;
-                font-weight: 600 !important;
-                cursor: pointer;
-                transition: all 0.2s;
-            }
-            div[data-testid="stRadio"] label[data-checked="true"] {
-                background-color: #4A4E69 !important;
-                border-color: #4A4E69 !important;
-                color: white !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+            st.markdown("**請勾選要查看的群體（可複選）：**")
+            chk_cols = st.columns(len(GROUP_OPTIONS))
+            selected_groups = []
+            for i, (label, (keyword, color)) in enumerate(GROUP_OPTIONS.items()):
+                with chk_cols[i]:
+                    if st.checkbox(label, key=f"grp_chk_{i}"):
+                        selected_groups.append((label, keyword, color))
 
-            selected_group = st.radio(
-                "請選擇要查看的群體：",
-                list(GROUP_OPTIONS.keys()),
-                horizontal=True,
-                key="group_filter_radio"
-            )
-
-            keyword = GROUP_OPTIONS[selected_group]
-
-            # --- 篩選邏輯 ---
-            if keyword is None:
+            # --- 篩選邏輯（多選取聯集） ---
+            if not selected_groups:
+                # 未選任何群體 → 顯示全部
                 filtered_mems = mems.copy()
+                display_label = "全部成員"
+                badge_color = "#4A4E69"
             else:
-                filtered_mems = mems[mems['身分別'].astype(str).str.contains(keyword, na=False)].copy()
+                # 有選 → 取各群體聯集，去除重複
+                masks = [mems['身分別'].astype(str).str.contains(kw, na=False) for _, kw, _ in selected_groups]
+                combined_mask = masks[0]
+                for m in masks[1:]:
+                    combined_mask = combined_mask | m
+                filtered_mems = mems[combined_mask].copy()
+                display_label = " ＋ ".join([lb for lb, _, _ in selected_groups])
+                badge_color = selected_groups[0][2] if len(selected_groups) == 1 else "#4A4E69"
 
-            # --- 地址排序 ---
-            # 依地址文字排序（先按路街名，再按門牌號，最後按樓層）
+            # --- 地址排序（自然排序） ---
             def address_sort_key(addr):
                 addr_str = str(addr) if addr else ""
-                # 嘗試提取數字部分用於自然排序
                 parts = re.split(r'(\d+)', addr_str)
                 result = []
                 for p in parts:
@@ -3539,18 +3524,11 @@ elif st.session_state.page == 'stats':
 
             # --- 顯示統計摘要 ---
             total_count = len(filtered_mems)
-            badge_color = {
-                "全部成員": "#4A4E69",
-                "🏠 一般戶": "#8E9775",
-                "🧓 獨居長者": "#CB997E",
-                "📉 低收入戶": "#C62828",
-                "📊 中低收入戶": "#6D6875",
-            }.get(selected_group, "#4A4E69")
 
             st.markdown(f"""
-            <div style="display:flex; align-items:center; margin: 15px 0 20px 0; gap: 12px;">
-                <div style="background:{badge_color}; color:white; padding:8px 20px; border-radius:20px; font-weight:900; font-size:1.1rem;">
-                    {selected_group}
+            <div style="display:flex; align-items:center; margin: 15px 0 20px 0; gap: 12px; flex-wrap:wrap;">
+                <div style="background:{badge_color}; color:white; padding:8px 20px; border-radius:20px; font-weight:900; font-size:1.05rem;">
+                    {display_label}
                 </div>
                 <div style="font-size:1.5rem; font-weight:900; color:#333;">
                     共 <span style="color:{badge_color};">{total_count}</span> 人
@@ -3559,7 +3537,7 @@ elif st.session_state.page == 'stats':
             """, unsafe_allow_html=True)
 
             if filtered_mems.empty:
-                st.info(f"⚠️ 「{selected_group}」目前尚無任何成員資料。")
+                st.info(f"⚠️ 所選群體目前尚無任何成員資料。")
             else:
                 # --- 身分別標籤顏色對照 ---
                 def get_identity_badge(identity_str):
@@ -3586,6 +3564,19 @@ elif st.session_state.page == 'stats':
                     return badges
 
                 # --- 卡片式呈現（3 欄） ---
+                # 決定每張卡片的頂部顏色（多選時依個別身分別判斷）
+                def get_card_top_color(identity_str):
+                    id_str = str(identity_str)
+                    if "低收" in id_str and "中低收" not in id_str:
+                        return "#C62828"
+                    if "中低收" in id_str:
+                        return "#6D6875"
+                    if "獨居" in id_str:
+                        return "#CB997E"
+                    if "一般戶" in id_str:
+                        return "#8E9775"
+                    return badge_color
+
                 cols = st.columns(3)
                 for idx, (_, row) in enumerate(filtered_mems.iterrows()):
                     name = row.get('姓名', '未知')
@@ -3593,6 +3584,7 @@ elif st.session_state.page == 'stats':
                     address = str(row.get('地址', '未登錄')).strip()
                     identity = str(row.get('身分別', ''))
                     badges_html = get_identity_badge(identity)
+                    card_color = get_card_top_color(identity)
 
                     with cols[idx % 3]:
                         st.markdown(f"""
@@ -3601,7 +3593,7 @@ elif st.session_state.page == 'stats':
                             border-radius: 14px;
                             padding: 16px 18px;
                             margin-bottom: 16px;
-                            border-top: 5px solid {badge_color};
+                            border-top: 5px solid {card_color};
                             box-shadow: 0 3px 10px rgba(0,0,0,0.08);
                             transition: transform 0.2s;
                         ">
