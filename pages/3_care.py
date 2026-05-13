@@ -2760,8 +2760,8 @@ elif st.session_state.page == 'stats':
     logs, mems = load_data("care_logs", COLS_LOG), get_all_members()
     h_df = load_data("care_health", COLS_HEALTH)
 
-    # 修改：從 2 個分頁變成 3 個分頁
-    tab1, tab2, tab3 = st.tabs(["👤 個案詳細檔案 (含警示)", "🔍 題項交叉篩選", "📈 整體物資統計"])
+    # 修改：從 2 個分頁變成 4 個分頁
+    tab1, tab2, tab3, tab4 = st.tabs(["👤 個案詳細檔案 (含警示)", "🔍 題項交叉篩選", "📈 整體物資統計", "👥 群體名單快查"])
 
     # --- Tab 1: 詳細檔案 (含雙向關係與警示) ---
     with tab1:
@@ -3465,3 +3465,160 @@ elif st.session_state.page == 'stats':
                     st.plotly_chart(fig_sun, use_container_width=True, theme=None)
         else:
             st.info("目前尚無庫存資料")
+
+    # --- Tab 4: 群體名單快查 ---
+    with tab4:
+        st.markdown("### 👥 群體名單快查")
+        st.caption("💡 選擇群體後，可快速查看該群體所有成員的姓名、電話與地址（依地址排序）。")
+
+        if mems.empty:
+            st.info("尚無成員資料")
+        else:
+            # --- 群體選擇 ---
+            GROUP_OPTIONS = {
+                "全部成員": None,
+                "🏠 一般戶": "一般戶",
+                "🧓 獨居長者": "獨居",
+                "📉 低收入戶": "低收",
+                "📊 中低收入戶": "中低收",
+            }
+
+            st.markdown("""
+            <style>
+            div[data-testid="stRadio"] > div { display: flex; flex-wrap: wrap; gap: 10px; }
+            div[data-testid="stRadio"] label {
+                background-color: #F1F3F4 !important;
+                border: 2px solid #D0D0D0 !important;
+                border-radius: 20px !important;
+                padding: 8px 20px !important;
+                color: #333 !important;
+                font-weight: 600 !important;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            div[data-testid="stRadio"] label[data-checked="true"] {
+                background-color: #4A4E69 !important;
+                border-color: #4A4E69 !important;
+                color: white !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
+            selected_group = st.radio(
+                "請選擇要查看的群體：",
+                list(GROUP_OPTIONS.keys()),
+                horizontal=True,
+                key="group_filter_radio"
+            )
+
+            keyword = GROUP_OPTIONS[selected_group]
+
+            # --- 篩選邏輯 ---
+            if keyword is None:
+                filtered_mems = mems.copy()
+            else:
+                filtered_mems = mems[mems['身分別'].astype(str).str.contains(keyword, na=False)].copy()
+
+            # --- 地址排序 ---
+            # 依地址文字排序（先按路街名，再按門牌號，最後按樓層）
+            def address_sort_key(addr):
+                addr_str = str(addr) if addr else ""
+                # 嘗試提取數字部分用於自然排序
+                parts = re.split(r'(\d+)', addr_str)
+                result = []
+                for p in parts:
+                    try:
+                        result.append((0, int(p)))
+                    except ValueError:
+                        result.append((1, p))
+                return result
+
+            if not filtered_mems.empty and '地址' in filtered_mems.columns:
+                filtered_mems['_sort_key'] = filtered_mems['地址'].apply(address_sort_key)
+                filtered_mems = filtered_mems.sort_values('_sort_key').drop(columns=['_sort_key'])
+
+            # --- 顯示統計摘要 ---
+            total_count = len(filtered_mems)
+            badge_color = {
+                "全部成員": "#4A4E69",
+                "🏠 一般戶": "#8E9775",
+                "🧓 獨居長者": "#CB997E",
+                "📉 低收入戶": "#C62828",
+                "📊 中低收入戶": "#6D6875",
+            }.get(selected_group, "#4A4E69")
+
+            st.markdown(f"""
+            <div style="display:flex; align-items:center; margin: 15px 0 20px 0; gap: 12px;">
+                <div style="background:{badge_color}; color:white; padding:8px 20px; border-radius:20px; font-weight:900; font-size:1.1rem;">
+                    {selected_group}
+                </div>
+                <div style="font-size:1.5rem; font-weight:900; color:#333;">
+                    共 <span style="color:{badge_color};">{total_count}</span> 人
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if filtered_mems.empty:
+                st.info(f"⚠️ 「{selected_group}」目前尚無任何成員資料。")
+            else:
+                # --- 身分別標籤顏色對照 ---
+                def get_identity_badge(identity_str):
+                    color_map = {
+                        "獨居": ("#FFF3E0", "#E65100"),
+                        "身障": ("#E3F2FD", "#1565C0"),
+                        "低收": ("#FFEBEE", "#C62828"),
+                        "中低收": ("#FFF8E1", "#E65100"),
+                        "老人": ("#E8F5E9", "#2E7D32"),
+                        "一般戶": ("#F5F5F5", "#616161"),
+                    }
+                    tags = str(identity_str).replace('，', ',').split(',')
+                    badges = ""
+                    for tag in tags:
+                        tag = tag.strip()
+                        if not tag or tag == 'nan':
+                            continue
+                        bg, txt = "#F3F4F6", "#374151"
+                        for key, (c_bg, c_txt) in color_map.items():
+                            if key in tag:
+                                bg, txt = c_bg, c_txt
+                                break
+                        badges += f'<span style="background:{bg};color:{txt};padding:3px 10px;border-radius:12px;font-size:0.78rem;font-weight:700;margin-right:4px;display:inline-block;">{tag}</span>'
+                    return badges
+
+                # --- 卡片式呈現（3 欄） ---
+                cols = st.columns(3)
+                for idx, (_, row) in enumerate(filtered_mems.iterrows()):
+                    name = row.get('姓名', '未知')
+                    phone = str(row.get('電話', '未登錄')).strip()
+                    address = str(row.get('地址', '未登錄')).strip()
+                    identity = str(row.get('身分別', ''))
+                    badges_html = get_identity_badge(identity)
+
+                    with cols[idx % 3]:
+                        st.markdown(f"""
+                        <div style="
+                            background: white;
+                            border-radius: 14px;
+                            padding: 16px 18px;
+                            margin-bottom: 16px;
+                            border-top: 5px solid {badge_color};
+                            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+                            transition: transform 0.2s;
+                        ">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                                <div style="font-size:1.2rem; font-weight:900; color:#222;">{name}</div>
+                                <div style="font-size:0.8rem; background:#F3F4F6; color:#888; padding:2px 8px; border-radius:10px;">#{idx+1}</div>
+                            </div>
+                            <div style="margin-bottom:10px;">{badges_html}</div>
+                            <div style="display:flex; flex-direction:column; gap:6px; border-top:1px solid #f0f0f0; padding-top:10px;">
+                                <div style="display:flex; align-items:flex-start; gap:8px; font-size:0.9rem; color:#444;">
+                                    <span style="font-size:1rem; flex-shrink:0;">📞</span>
+                                    <span>{phone if phone and phone != 'nan' else '（未登錄）'}</span>
+                                </div>
+                                <div style="display:flex; align-items:flex-start; gap:8px; font-size:0.9rem; color:#444;">
+                                    <span style="font-size:1rem; flex-shrink:0; color:#D32F2F;">📍</span>
+                                    <span style="line-height:1.4;">{address if address and address != 'nan' else '（未登錄）'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
