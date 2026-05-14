@@ -3474,35 +3474,34 @@ elif st.session_state.page == 'stats':
         if mems.empty:
             st.info("尚無成員資料")
         else:
-            # --- 群體選擇（多選） ---
+            # --- 群體選擇（藥丸多選） ---
             GROUP_OPTIONS = {
                 "🏠 一般戶": ("一般戶", "#8E9775"),
                 "🧓 獨居長者": ("獨居", "#CB997E"),
                 "📉 低收入戶": ("低收", "#C62828"),
                 "📊 中低收入戶": ("中低收", "#6D6875"),
+                "♿ 身障": ("身障", "#1565C0"),
             }
 
-            st.markdown("**請勾選要查看的群體（可複選）：**")
-            chk_cols = st.columns(len(GROUP_OPTIONS))
-            selected_groups = []
-            for i, (label, (keyword, color)) in enumerate(GROUP_OPTIONS.items()):
-                with chk_cols[i]:
-                    if st.checkbox(label, key=f"grp_chk_{i}"):
-                        selected_groups.append((label, keyword, color))
+            selected_pills = st.pills(
+                "請選擇群體（可複選，取交集）：",
+                options=list(GROUP_OPTIONS.keys()),
+                selection_mode="multi",
+                key="group_pills"
+            )
 
-            # --- 篩選邏輯（多選取聯集） ---
-            if not selected_groups:
+            # --- 篩選邏輯（多選取交集 AND） ---
+            if not selected_pills:
                 # 未選任何群體 → 顯示全部
                 filtered_mems = mems.copy()
                 display_label = "全部成員"
                 badge_color = "#4A4E69"
             else:
-                # 有選 → 取各群體聯集，去除重複
-                masks = [mems['身分別'].astype(str).str.contains(kw, na=False) for _, kw, _ in selected_groups]
-                combined_mask = masks[0]
-                for m in masks[1:]:
-                    combined_mask = combined_mask | m
-                filtered_mems = mems[combined_mask].copy()
+                selected_groups = [(lb, GROUP_OPTIONS[lb][0], GROUP_OPTIONS[lb][1]) for lb in selected_pills]
+                # 取交集：每個選取的關鍵字都必須出現在身分別中
+                filtered_mems = mems.copy()
+                for _, kw, _ in selected_groups:
+                    filtered_mems = filtered_mems[filtered_mems['身分別'].astype(str).str.contains(kw, na=False)]
                 display_label = " ＋ ".join([lb for lb, _, _ in selected_groups])
                 badge_color = selected_groups[0][2] if len(selected_groups) == 1 else "#4A4E69"
 
